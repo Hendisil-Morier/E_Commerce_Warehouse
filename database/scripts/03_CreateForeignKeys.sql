@@ -1,532 +1,329 @@
 /*
-    Dự án: E-Commerce Marketplace + Warehouse Management
-    Cơ sở dữ liệu: ECommerceWarehouse
-    Hệ quản trị CSDL: Microsoft SQL Server
-    Mục đích file: Định nghĩa và tạo tất cả các khóa ngoại (Foreign Keys - FK) ràng buộc toàn vẹn dữ liệu giữa các bảng.
-    Thứ tự thực thi: Chạy sau script 02_CreateTables.sql.
+================================================================================
+ Dự án      : E-Commerce Marketplace (đa người bán) + Warehouse Management
+ Database   : ECommerceWarehouse (MySQL 8.0.16+)
+ File       : 03_CreateForeignKeys.sql
+ Mục đích   : Tạo toàn bộ khóa ngoại (FK) bảo đảm toàn vẹn dữ liệu giữa các bảng.
+ Chạy sau   : 02_CreateTables.sql
+
+ DANH SÁCH MỤC:
+   1. Identity & Sellers          6. Nhập kho (Receipts)
+   2. Product Catalog             7. Xuất kho (Issues)
+   3. Customer Interactions       8. Điều chuyển (Transfers)
+   4. Orders & Payments           9. Kiểm kê (Stock Counts) & Sổ cái (Movements)
+   5. Warehouse & Inventory      10. Shipping, Returns & Reviews
+
+ GHI CHÚ:
+   - MySQL tự tạo chỉ mục cho cột FK nếu chưa có, nên file 04 chỉ bổ sung chỉ mục phục vụ truy vấn.
+   - Mặc định ON DELETE/UPDATE = RESTRICT (không xóa được bản ghi cha khi còn con).
+     Chỉ dùng CASCADE cho dữ liệu "phụ thuộc hoàn toàn": UserRoles, RefreshTokens, CartItems, WishlistItems.
+   - KHÓA NGOẠI KÉP (composite FK): (LocationId, WarehouseId) -> WarehouseLocations và
+     (ReceiptId|IssueId|StockCountId, WarehouseId) -> bảng phiếu. Nhờ đó không thể ghi vị trí của
+     kho A kèm mã kho B, và chi tiết phiếu luôn cùng kho với phiếu cha. Đây là ràng buộc khai báo,
+     không cần trigger.
+================================================================================
 */
 
 USE ECommerceWarehouse;
-GO
 
 -- ============================================================================
--- 1. MODULE PHÂN QUYỀN & NGƯỜI BÁN (IDENTITY, ROLES & SELLERS)
+-- 1. IDENTITY & SELLERS (TÀI KHOẢN, PHÂN QUYỀN, NGƯỜI BÁN, GIAN HÀNG)
 -- ============================================================================
 
--- Phân quyền: Một người dùng có thể đảm nhiệm một hoặc nhiều vai trò (Admin, Seller, Customer...)
-ALTER TABLE dbo.UserRoles 
-    ADD CONSTRAINT FK_UserRoles_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
+-- Phân quyền: xóa người dùng (nếu được phép) thì xóa luôn bản ghi vai trò đi kèm.
+ALTER TABLE UserRoles
+    ADD CONSTRAINT FK_UserRoles_Users FOREIGN KEY (UserId) REFERENCES Users (UserId) ON DELETE CASCADE;
 
--- Phân quyền: Vai trò được cấp phát phải tồn tại trong danh mục Roles
-ALTER TABLE dbo.UserRoles 
-    ADD CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES dbo.Roles(RoleId);
+-- Phân quyền: vai trò cấp phát phải tồn tại trong danh mục Roles.
+ALTER TABLE UserRoles
+    ADD CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES Roles (RoleId);
 
--- Người bán: Mỗi hồ sơ Seller phải gắn liền với một tài khoản người dùng đã đăng ký
-ALTER TABLE dbo.Sellers 
-    ADD CONSTRAINT FK_Sellers_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
+-- Refresh token thuộc về một tài khoản; xóa tài khoản thì xóa token.
+ALTER TABLE RefreshTokens
+    ADD CONSTRAINT FK_RefreshTokens_Users FOREIGN KEY (UserId) REFERENCES Users (UserId) ON DELETE CASCADE;
 
--- Gian hàng: Mỗi Shop (cửa hàng kinh doanh) trực thuộc quyền quản lý của một Seller
-ALTER TABLE dbo.Shops 
-    ADD CONSTRAINT FK_Shops_Sellers FOREIGN KEY (SellerId) REFERENCES dbo.Sellers(SellerId);
-GO
+-- Hồ sơ người bán gắn với một tài khoản đã đăng ký.
+ALTER TABLE Sellers
+    ADD CONSTRAINT FK_Sellers_Users FOREIGN KEY (UserId) REFERENCES Users (UserId);
 
-
--- ============================================================================
--- 2. MODULE DANH MỤC & SẢN PHẨM (CATALOG & PRODUCTS)
--- ============================================================================
-
--- Danh mục đa cấp: Một danh mục con liên kết với danh mục cha (Self-referencing FK, NULL nếu là cấp cao nhất)
-ALTER TABLE dbo.Categories 
-    ADD CONSTRAINT FK_Categories_Parent FOREIGN KEY (ParentCategoryId) REFERENCES dbo.Categories(CategoryId);
-
--- Sản phẩm: Xác định chủ sở hữu sản phẩm (Seller)
-ALTER TABLE dbo.Products 
-    ADD CONSTRAINT FK_Products_Sellers FOREIGN KEY (SellerId) REFERENCES dbo.Sellers(SellerId);
-
--- Sản phẩm: Xác định gian hàng cụ thể đang bày bán sản phẩm
-ALTER TABLE dbo.Products 
-    ADD CONSTRAINT FK_Products_Shops FOREIGN KEY (ShopId) REFERENCES dbo.Shops(ShopId);
-
--- Sản phẩm: Sản phẩm phải thuộc về một danh mục ngành hàng hợp lệ
-ALTER TABLE dbo.Products 
-    ADD CONSTRAINT FK_Products_Categories FOREIGN KEY (CategoryId) REFERENCES dbo.Categories(CategoryId);
-
--- Biến thể sản phẩm: Các phân loại hàng (màu sắc, kích cỡ...) thuộc về sản phẩm gốc
-ALTER TABLE dbo.ProductVariants 
-    ADD CONSTRAINT FK_Variants_Products FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId);
-
--- Hình ảnh sản phẩm: Hình ảnh minh họa thuộc về sản phẩm tương ứng
-ALTER TABLE dbo.ProductImages 
-    ADD CONSTRAINT FK_Images_Products FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId);
-GO
+-- Mỗi shop thuộc một seller.
+ALTER TABLE Shops
+    ADD CONSTRAINT FK_Shops_Sellers FOREIGN KEY (SellerId) REFERENCES Sellers (SellerId);
 
 
 -- ============================================================================
--- 3. MODULE KHÁCH HÀNG & TƯƠNG TÁC (CUSTOMER ADDRESSES, CARTS & WISHLISTS)
+-- 2. PRODUCT CATALOG (DANH MỤC, SẢN PHẨM, BIẾN THỂ, HÌNH ẢNH)
 -- ============================================================================
 
--- Sổ địa chỉ: Địa chỉ nhận hàng thuộc về tài khoản khách hàng
-ALTER TABLE dbo.UserAddresses 
-    ADD CONSTRAINT FK_Addresses_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
+-- Danh mục đa cấp: danh mục con trỏ về danh mục cha (tự tham chiếu).
+ALTER TABLE Categories
+    ADD CONSTRAINT FK_Categories_Parent FOREIGN KEY (ParentCategoryId) REFERENCES Categories (CategoryId);
 
--- Giỏ hàng: Mỗi khách hàng có một giỏ hàng mua sắm
-ALTER TABLE dbo.Carts 
-    ADD CONSTRAINT FK_Carts_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
+-- Sản phẩm thuộc một shop (seller suy ra qua shop) và một danh mục.
+ALTER TABLE Products
+    ADD CONSTRAINT FK_Products_Shops FOREIGN KEY (ShopId) REFERENCES Shops (ShopId);
+ALTER TABLE Products
+    ADD CONSTRAINT FK_Products_Categories FOREIGN KEY (CategoryId) REFERENCES Categories (CategoryId);
 
--- Chi tiết giỏ hàng: Sản phẩm trong giỏ thuộc về giỏ hàng cụ thể
-ALTER TABLE dbo.CartItems 
-    ADD CONSTRAINT FK_CartItems_Carts FOREIGN KEY (CartId) REFERENCES dbo.Carts(CartId);
+-- Biến thể (SKU) thuộc sản phẩm gốc.
+ALTER TABLE ProductVariants
+    ADD CONSTRAINT FK_Variants_Products FOREIGN KEY (ProductId) REFERENCES Products (ProductId);
 
--- Chi tiết giỏ hàng: Tham chiếu chính xác đến phân loại/biến thể sản phẩm khách đã chọn
-ALTER TABLE dbo.CartItems 
-    ADD CONSTRAINT FK_CartItems_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Danh sách yêu thích: Bộ sưu tập yêu thích của khách hàng
-ALTER TABLE dbo.Wishlists 
-    ADD CONSTRAINT FK_Wishlists_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
-
--- Chi tiết danh sách yêu thích: Sản phẩm lưu trong danh sách yêu thích cụ thể
-ALTER TABLE dbo.WishlistItems 
-    ADD CONSTRAINT FK_WishlistItems_Wishlists FOREIGN KEY (WishlistId) REFERENCES dbo.Wishlists(WishlistId);
-
--- Chi tiết danh sách yêu thích: Tham chiếu đến sản phẩm được yêu thích
-ALTER TABLE dbo.WishlistItems 
-    ADD CONSTRAINT FK_WishlistItems_Products FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId);
-GO
+-- Ảnh thuộc sản phẩm.
+ALTER TABLE ProductImages
+    ADD CONSTRAINT FK_Images_Products FOREIGN KEY (ProductId) REFERENCES Products (ProductId);
 
 
 -- ============================================================================
--- 4. MODULE ĐƠN HÀNG, THANH TOÁN & HOÀN TIỀN (ORDERS, PAYMENTS & REFUNDS)
+-- 3. CUSTOMER INTERACTIONS (SỔ ĐỊA CHỈ, GIỎ HÀNG, YÊU THÍCH)
 -- ============================================================================
 
--- Đơn hàng tổng: Khách hàng thực hiện đặt đơn hàng
-ALTER TABLE dbo.Orders 
-    ADD CONSTRAINT FK_Orders_Customers FOREIGN KEY (CustomerId) REFERENCES dbo.Users(UserId);
+-- Sổ địa chỉ và giỏ hàng thuộc tài khoản khách.
+ALTER TABLE UserAddresses
+    ADD CONSTRAINT FK_Addresses_Users FOREIGN KEY (UserId) REFERENCES Users (UserId);
+ALTER TABLE Carts
+    ADD CONSTRAINT FK_Carts_Users FOREIGN KEY (UserId) REFERENCES Users (UserId);
 
--- Đơn hàng người bán (Sub-Order): Thuộc về đơn hàng tổng của khách
-ALTER TABLE dbo.SellerOrders 
-    ADD CONSTRAINT FK_SellerOrders_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(OrderId);
+-- Dòng giỏ hàng: xóa giỏ thì xóa dòng; tham chiếu đúng biến thể khách chọn.
+ALTER TABLE CartItems
+    ADD CONSTRAINT FK_CartItems_Carts FOREIGN KEY (CartId) REFERENCES Carts (CartId) ON DELETE CASCADE;
+ALTER TABLE CartItems
+    ADD CONSTRAINT FK_CartItems_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
 
--- Đơn hàng người bán: Người bán chịu trách nhiệm đóng gói và xử lý đơn này
-ALTER TABLE dbo.SellerOrders 
-    ADD CONSTRAINT FK_SellerOrders_Sellers FOREIGN KEY (SellerId) REFERENCES dbo.Sellers(SellerId);
-
--- Đơn hàng người bán: Kho hàng được phân bổ để xuất đơn (kho sàn hoặc kho seller, có thể NULL trước khi điều phối)
-ALTER TABLE dbo.SellerOrders 
-    ADD CONSTRAINT FK_SellerOrders_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Chi tiết đơn hàng: Dòng hàng thuộc về đơn hàng của seller tương ứng
-ALTER TABLE dbo.OrderItems 
-    ADD CONSTRAINT FK_OrderItems_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
-
--- Chi tiết đơn hàng: Biến thể sản phẩm cụ thể được khách đặt mua
-ALTER TABLE dbo.OrderItems 
-    ADD CONSTRAINT FK_OrderItems_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Thanh toán: Giao dịch thanh toán gắn liền với đơn hàng tổng
-ALTER TABLE dbo.Payments 
-    ADD CONSTRAINT FK_Payments_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(OrderId);
-
--- Hoàn tiền: Giao dịch hoàn tiền phải liên kết với khoản thanh toán ban đầu
-ALTER TABLE dbo.Refunds 
-    ADD CONSTRAINT FK_Refunds_Payments FOREIGN KEY (PaymentId) REFERENCES dbo.Payments(PaymentId);
-
--- Hoàn tiền: Giao dịch hoàn tiền liên kết đến đơn bán hàng cụ thể bị trả/hủy (nếu có)
-ALTER TABLE dbo.Refunds 
-    ADD CONSTRAINT FK_Refunds_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
-GO
+-- Danh sách yêu thích và các mục trong đó.
+ALTER TABLE Wishlists
+    ADD CONSTRAINT FK_Wishlists_Users FOREIGN KEY (UserId) REFERENCES Users (UserId);
+ALTER TABLE WishlistItems
+    ADD CONSTRAINT FK_WishlistItems_Wishlists FOREIGN KEY (WishlistId) REFERENCES Wishlists (WishlistId) ON DELETE CASCADE;
+ALTER TABLE WishlistItems
+    ADD CONSTRAINT FK_WishlistItems_Products FOREIGN KEY (ProductId) REFERENCES Products (ProductId);
 
 
 -- ============================================================================
--- 5. MODULE CẤU TRÚC KHO & TỒN KHO (WAREHOUSE STRUCTURE & INVENTORY)
+-- 4. ORDERS & PAYMENTS (ĐƠN TỔNG, ĐƠN SELLER, DÒNG HÀNG, LỊCH SỬ, THANH TOÁN, HOÀN TIỀN)
 -- ============================================================================
 
--- Kho hàng: Nếu là kho riêng của người bán (WarehouseType = 'Seller'), liên kết đến Seller sở hữu
-ALTER TABLE dbo.Warehouses 
-    ADD CONSTRAINT FK_Warehouses_Sellers FOREIGN KEY (OwnerSellerId) REFERENCES dbo.Sellers(SellerId);
+-- Đơn tổng thuộc khách đặt hàng.
+ALTER TABLE Orders
+    ADD CONSTRAINT FK_Orders_Customers FOREIGN KEY (CustomerId) REFERENCES Users (UserId);
 
--- Vị trí trong kho (Kệ/Ngăn/Khu vực): Trực thuộc một kho hàng nhất định
-ALTER TABLE dbo.WarehouseLocations 
-    ADD CONSTRAINT FK_Locations_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
+-- Đơn con: thuộc đơn tổng, một seller, và (tùy chọn) một kho được phân bổ.
+ALTER TABLE SellerOrders
+    ADD CONSTRAINT FK_SellerOrders_Orders FOREIGN KEY (OrderId) REFERENCES Orders (OrderId);
+ALTER TABLE SellerOrders
+    ADD CONSTRAINT FK_SellerOrders_Sellers FOREIGN KEY (SellerId) REFERENCES Sellers (SellerId);
+ALTER TABLE SellerOrders
+    ADD CONSTRAINT FK_SellerOrders_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses (WarehouseId);
 
--- Bảng tồn kho tổng hợp: Xác định kho chứa hàng tồn
-ALTER TABLE dbo.Inventory 
-    ADD CONSTRAINT FK_Inventory_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
+-- Dòng hàng thuộc đơn seller và trỏ tới biến thể được mua.
+ALTER TABLE OrderItems
+    ADD CONSTRAINT FK_OrderItems_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
+ALTER TABLE OrderItems
+    ADD CONSTRAINT FK_OrderItems_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
 
--- Bảng tồn kho tổng hợp: Xác định vị trí/ô kệ lưu trữ hàng tồn
-ALTER TABLE dbo.Inventory 
-    ADD CONSTRAINT FK_Inventory_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
+-- Lịch sử trạng thái: thuộc đơn tổng, (tùy chọn) đơn seller, và người thực hiện.
+ALTER TABLE OrderStatusHistory
+    ADD CONSTRAINT FK_StatusHistory_Orders FOREIGN KEY (OrderId) REFERENCES Orders (OrderId);
+ALTER TABLE OrderStatusHistory
+    ADD CONSTRAINT FK_StatusHistory_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
+ALTER TABLE OrderStatusHistory
+    ADD CONSTRAINT FK_StatusHistory_Users FOREIGN KEY (ChangedBy) REFERENCES Users (UserId);
 
--- Bảng tồn kho tổng hợp: Xác định biến thể sản phẩm đang tồn kho
-ALTER TABLE dbo.Inventory 
-    ADD CONSTRAINT FK_Inventory_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-GO
+-- Thanh toán gắn với đơn tổng.
+ALTER TABLE Payments
+    ADD CONSTRAINT FK_Payments_Orders FOREIGN KEY (OrderId) REFERENCES Orders (OrderId);
 
-
--- ============================================================================
--- 6. MODULE NHẬP KHO (INVENTORY RECEIPTS - INBOUND)
--- ============================================================================
-
--- Phiếu nhập kho: Kho đích tiếp nhận hàng hóa nhập về
-ALTER TABLE dbo.InventoryReceipts 
-    ADD CONSTRAINT FK_Receipts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Phiếu nhập kho: Người bán gửi hàng nhập vào kho (áp dụng cho luồng Seller ký gửi hàng)
-ALTER TABLE dbo.InventoryReceipts 
-    ADD CONSTRAINT FK_Receipts_Sellers FOREIGN KEY (SenderSellerId) REFERENCES dbo.Sellers(SellerId);
-
--- Chi tiết phiếu nhập: Gắn liền với phiếu nhập kho tương ứng
-ALTER TABLE dbo.ReceiptDetails 
-    ADD CONSTRAINT FK_ReceiptDetails_Receipts FOREIGN KEY (ReceiptId) REFERENCES dbo.InventoryReceipts(ReceiptId);
-
--- Chi tiết phiếu nhập: Biến thể hàng hóa được nhập kho
-ALTER TABLE dbo.ReceiptDetails 
-    ADD CONSTRAINT FK_ReceiptDetails_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Chi tiết phiếu nhập: Vị trí/ô kệ lưu trữ được chỉ định cất hàng
-ALTER TABLE dbo.ReceiptDetails 
-    ADD CONSTRAINT FK_ReceiptDetails_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-GO
+-- Hoàn tiền: liên kết khoản thanh toán gốc, đơn seller bị hủy/trả, yêu cầu trả hàng và người duyệt.
+ALTER TABLE Refunds
+    ADD CONSTRAINT FK_Refunds_Payments FOREIGN KEY (PaymentId) REFERENCES Payments (PaymentId);
+ALTER TABLE Refunds
+    ADD CONSTRAINT FK_Refunds_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
+ALTER TABLE Refunds
+    ADD CONSTRAINT FK_Refunds_ReturnRequests FOREIGN KEY (ReturnRequestId) REFERENCES ReturnRequests (ReturnRequestId);
+ALTER TABLE Refunds
+    ADD CONSTRAINT FK_Refunds_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
 
 
 -- ============================================================================
--- 7. MODULE XUẤT KHO (INVENTORY ISSUES - OUTBOUND)
+-- 5. WAREHOUSE & INVENTORY (KHO, VỊ TRÍ, TỒN KHO, GIỮ CHỖ)
 -- ============================================================================
 
--- Phiếu xuất kho: Kho thực hiện việc xuất hàng đi
-ALTER TABLE dbo.InventoryIssues 
-    ADD CONSTRAINT FK_Issues_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
+-- Kho riêng của seller trỏ về seller sở hữu.
+ALTER TABLE Warehouses
+    ADD CONSTRAINT FK_Warehouses_Sellers FOREIGN KEY (OwnerSellerId) REFERENCES Sellers (SellerId);
 
--- Phiếu xuất kho: Đơn hàng cần xuất kho để đóng gói/giao hàng (NULL nếu xuất do điều chỉnh/tiêu hủy)
-ALTER TABLE dbo.InventoryIssues 
-    ADD CONSTRAINT FK_Issues_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
+-- Vị trí thuộc một kho.
+ALTER TABLE WarehouseLocations
+    ADD CONSTRAINT FK_Locations_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses (WarehouseId);
 
--- Chi tiết phiếu xuất: Gắn liền với phiếu xuất kho tương ứng
-ALTER TABLE dbo.IssueDetails 
-    ADD CONSTRAINT FK_IssueDetails_Issues FOREIGN KEY (IssueId) REFERENCES dbo.InventoryIssues(IssueId);
+-- Tồn kho: FK KÉP (vị trí phải thuộc đúng kho) + biến thể.
+ALTER TABLE Inventory
+    ADD CONSTRAINT FK_Inventory_Locations FOREIGN KEY (LocationId, WarehouseId)
+        REFERENCES WarehouseLocations (LocationId, WarehouseId);
+ALTER TABLE Inventory
+    ADD CONSTRAINT FK_Inventory_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
 
--- Chi tiết phiếu xuất: Biến thể hàng hóa được lấy ra khỏi kho
-ALTER TABLE dbo.IssueDetails 
-    ADD CONSTRAINT FK_IssueDetails_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Chi tiết phiếu xuất: Vị trí/ô kệ thực tế đã thực hiện lấy hàng ra
-ALTER TABLE dbo.IssueDetails 
-    ADD CONSTRAINT FK_IssueDetails_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-GO
-
-
--- ============================================================================
--- 8. MODULE ĐIỀU CHUYỂN KHO NỘI BỘ (STOCK TRANSFERS)
--- ============================================================================
-
--- Phiếu điều chuyển kho: Kho nguồn xuất hàng đi
-ALTER TABLE dbo.StockTransfers 
-    ADD CONSTRAINT FK_Transfers_Source FOREIGN KEY (SourceWarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Phiếu điều chuyển kho: Kho đích tiếp nhận hàng đến
-ALTER TABLE dbo.StockTransfers 
-    ADD CONSTRAINT FK_Transfers_Destination FOREIGN KEY (DestinationWarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Chi tiết điều chuyển: Gắn liền với phiếu điều chuyển kho
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_Transfers FOREIGN KEY (TransferId) REFERENCES dbo.StockTransfers(TransferId);
-
--- Chi tiết điều chuyển: Biến thể hàng hóa cần điều chuyển
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Chi tiết điều chuyển: Vị trí lấy hàng tại kho nguồn
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_SourceLocation FOREIGN KEY (SourceLocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-
--- Chi tiết điều chuyển: Vị trí sắp xếp vào kho đích (có thể cập nhật khi kho đích nhận hàng)
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_DestinationLocation FOREIGN KEY (DestinationLocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-GO
+-- Giữ chỗ: gắn dòng đơn hàng; vị trí đúng kho; và PHẢI có dòng tồn (vị trí, biến thể) tương ứng.
+ALTER TABLE StockReservations
+    ADD CONSTRAINT FK_Reservations_OrderItems FOREIGN KEY (OrderItemId) REFERENCES OrderItems (OrderItemId);
+ALTER TABLE StockReservations
+    ADD CONSTRAINT FK_Reservations_Locations FOREIGN KEY (LocationId, WarehouseId)
+        REFERENCES WarehouseLocations (LocationId, WarehouseId);
+ALTER TABLE StockReservations
+    ADD CONSTRAINT FK_Reservations_Inventory FOREIGN KEY (LocationId, VariantId)
+        REFERENCES Inventory (LocationId, VariantId);
 
 
 -- ============================================================================
--- 9. MODULE NHẬT KÝ BIẾN ĐỘNG KHO (STOCK MOVEMENTS / AUDIT TRAIL)
+-- 6. NHẬP KHO (INVENTORY RECEIPTS - INBOUND)
 -- ============================================================================
 
--- Nhật ký kho: Kho hàng diễn ra giao dịch biến động tồn kho
-ALTER TABLE dbo.StockMovements 
-    ADD CONSTRAINT FK_Movements_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
+-- Phiếu nhập: kho đích, seller gửi hàng, phiếu điều chuyển/yêu cầu trả hàng nguồn, người tạo/xác nhận.
+ALTER TABLE InventoryReceipts
+    ADD CONSTRAINT FK_Receipts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses (WarehouseId);
+ALTER TABLE InventoryReceipts
+    ADD CONSTRAINT FK_Receipts_Sellers FOREIGN KEY (SenderSellerId) REFERENCES Sellers (SellerId);
+ALTER TABLE InventoryReceipts
+    ADD CONSTRAINT FK_Receipts_Transfers FOREIGN KEY (TransferId) REFERENCES StockTransfers (TransferId);
+ALTER TABLE InventoryReceipts
+    ADD CONSTRAINT FK_Receipts_ReturnRequests FOREIGN KEY (ReturnRequestId) REFERENCES ReturnRequests (ReturnRequestId);
+ALTER TABLE InventoryReceipts
+    ADD CONSTRAINT FK_Receipts_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
+ALTER TABLE InventoryReceipts
+    ADD CONSTRAINT FK_Receipts_ConfirmedBy FOREIGN KEY (ConfirmedBy) REFERENCES Users (UserId);
 
--- Nhật ký kho: Vị trí/ô kệ diễn ra biến động tồn kho
-ALTER TABLE dbo.StockMovements 
-    ADD CONSTRAINT FK_Movements_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-
--- Nhật ký kho: Biến thể hàng hóa có số lượng tồn kho thay đổi
-ALTER TABLE dbo.StockMovements 
-    ADD CONSTRAINT FK_Movements_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-GO
-
-
--- ============================================================================
--- 10. MODULE VẬN CHUYỂN & ĐÁNH GIÁ (SHIPMENTS & REVIEWS)
--- ============================================================================
-
--- Giao hàng: Kiện hàng vận chuyển gắn liền với đơn hàng của người bán
-ALTER TABLE dbo.Shipments 
-    ADD CONSTRAINT FK_Shipments_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
-
--- Đánh giá sản phẩm: Khách hàng thực hiện viết đánh giá sản phẩm
-ALTER TABLE dbo.Reviews 
-    ADD CONSTRAINT FK_Reviews_Customers FOREIGN KEY (CustomerId) REFERENCES dbo.Users(UserId);
-
--- Đánh giá sản phẩm: Đánh giá phải gắn liền với từng chi tiết đơn hàng đã mua
-ALTER TABLE dbo.Reviews 
-    ADD CONSTRAINT FK_Reviews_OrderItems FOREIGN KEY (OrderItemId) REFERENCES dbo.OrderItems(OrderItemId);
-GO
-
+-- Chi tiết phiếu nhập: FK KÉP với phiếu cha (cùng kho) và với vị trí (vị trí thuộc kho của phiếu).
+ALTER TABLE ReceiptDetails
+    ADD CONSTRAINT FK_ReceiptDetails_Receipts FOREIGN KEY (ReceiptId, WarehouseId)
+        REFERENCES InventoryReceipts (ReceiptId, WarehouseId);
+ALTER TABLE ReceiptDetails
+    ADD CONSTRAINT FK_ReceiptDetails_Locations FOREIGN KEY (LocationId, WarehouseId)
+        REFERENCES WarehouseLocations (LocationId, WarehouseId);
+ALTER TABLE ReceiptDetails
+    ADD CONSTRAINT FK_ReceiptDetails_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
 
 
 -- ============================================================================
--- 2. MODULE DANH MỤC & SẢN PHẨM (CATALOG & PRODUCTS)
+-- 7. XUẤT KHO (INVENTORY ISSUES - OUTBOUND)
 -- ============================================================================
 
--- Danh mục đa cấp: Một danh mục con liên kết với danh mục cha (Self-referencing FK, NULL nếu là cấp cao nhất)
-ALTER TABLE dbo.Categories 
-    ADD CONSTRAINT FK_Categories_Parent FOREIGN KEY (ParentCategoryId) REFERENCES dbo.Categories(CategoryId);
+-- Phiếu xuất: kho, đơn seller cần xuất, phiếu điều chuyển, người tạo/duyệt/xuất.
+ALTER TABLE InventoryIssues
+    ADD CONSTRAINT FK_Issues_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses (WarehouseId);
+ALTER TABLE InventoryIssues
+    ADD CONSTRAINT FK_Issues_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
+ALTER TABLE InventoryIssues
+    ADD CONSTRAINT FK_Issues_Transfers FOREIGN KEY (TransferId) REFERENCES StockTransfers (TransferId);
+ALTER TABLE InventoryIssues
+    ADD CONSTRAINT FK_Issues_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
+ALTER TABLE InventoryIssues
+    ADD CONSTRAINT FK_Issues_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
+ALTER TABLE InventoryIssues
+    ADD CONSTRAINT FK_Issues_DispatchedBy FOREIGN KEY (DispatchedBy) REFERENCES Users (UserId);
 
--- Sản phẩm: Xác định chủ sở hữu sản phẩm (Seller)
-ALTER TABLE dbo.Products 
-    ADD CONSTRAINT FK_Products_Sellers FOREIGN KEY (SellerId) REFERENCES dbo.Sellers(SellerId);
-
--- Sản phẩm: Xác định gian hàng cụ thể đang bày bán sản phẩm
-ALTER TABLE dbo.Products 
-    ADD CONSTRAINT FK_Products_Shops FOREIGN KEY (ShopId) REFERENCES dbo.Shops(ShopId);
-
--- Sản phẩm: Sản phẩm phải thuộc về một danh mục ngành hàng hợp lệ
-ALTER TABLE dbo.Products 
-    ADD CONSTRAINT FK_Products_Categories FOREIGN KEY (CategoryId) REFERENCES dbo.Categories(CategoryId);
-
--- Biến thể sản phẩm: Các phân loại hàng (màu sắc, kích cỡ...) thuộc về sản phẩm gốc
-ALTER TABLE dbo.ProductVariants 
-    ADD CONSTRAINT FK_Variants_Products FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId);
-
--- Hình ảnh sản phẩm: Hình ảnh minh họa thuộc về sản phẩm tương ứng
-ALTER TABLE dbo.ProductImages 
-    ADD CONSTRAINT FK_Images_Products FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId);
-GO
-
-
--- ============================================================================
--- 3. MODULE KHÁCH HÀNG & TƯƠNG TÁC (CUSTOMER ADDRESSES, CARTS & WISHLISTS)
--- ============================================================================
-
--- Sổ địa chỉ: Địa chỉ nhận hàng thuộc về tài khoản khách hàng
-ALTER TABLE dbo.UserAddresses 
-    ADD CONSTRAINT FK_Addresses_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
-
--- Giỏ hàng: Mỗi khách hàng có một giỏ hàng mua sắm
-ALTER TABLE dbo.Carts 
-    ADD CONSTRAINT FK_Carts_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
-
--- Chi tiết giỏ hàng: Sản phẩm trong giỏ thuộc về giỏ hàng cụ thể
-ALTER TABLE dbo.CartItems 
-    ADD CONSTRAINT FK_CartItems_Carts FOREIGN KEY (CartId) REFERENCES dbo.Carts(CartId);
-
--- Chi tiết giỏ hàng: Tham chiếu chính xác đến phân loại/biến thể sản phẩm khách đã chọn
-ALTER TABLE dbo.CartItems 
-    ADD CONSTRAINT FK_CartItems_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Danh sách yêu thích: Bộ sưu tập yêu thích của khách hàng
-ALTER TABLE dbo.Wishlists 
-    ADD CONSTRAINT FK_Wishlists_Users FOREIGN KEY (UserId) REFERENCES dbo.Users(UserId);
-
--- Chi tiết danh sách yêu thích: Sản phẩm lưu trong danh sách yêu thích cụ thể
-ALTER TABLE dbo.WishlistItems 
-    ADD CONSTRAINT FK_WishlistItems_Wishlists FOREIGN KEY (WishlistId) REFERENCES dbo.Wishlists(WishlistId);
-
--- Chi tiết danh sách yêu thích: Tham chiếu đến sản phẩm được yêu thích
-ALTER TABLE dbo.WishlistItems 
-    ADD CONSTRAINT FK_WishlistItems_Products FOREIGN KEY (ProductId) REFERENCES dbo.Products(ProductId);
-GO
+-- Chi tiết phiếu xuất: FK KÉP với phiếu cha và vị trí; biến thể; dòng giữ chỗ được tiêu thụ.
+ALTER TABLE IssueDetails
+    ADD CONSTRAINT FK_IssueDetails_Issues FOREIGN KEY (IssueId, WarehouseId)
+        REFERENCES InventoryIssues (IssueId, WarehouseId);
+ALTER TABLE IssueDetails
+    ADD CONSTRAINT FK_IssueDetails_Locations FOREIGN KEY (LocationId, WarehouseId)
+        REFERENCES WarehouseLocations (LocationId, WarehouseId);
+ALTER TABLE IssueDetails
+    ADD CONSTRAINT FK_IssueDetails_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
+ALTER TABLE IssueDetails
+    ADD CONSTRAINT FK_IssueDetails_Reservations FOREIGN KEY (ReservationId) REFERENCES StockReservations (ReservationId);
 
 
 -- ============================================================================
--- 4. MODULE ĐƠN HÀNG, THANH TOÁN & HOÀN TIỀN (ORDERS, PAYMENTS & REFUNDS)
+-- 8. ĐIỀU CHUYỂN KHO NỘI BỘ (STOCK TRANSFERS)
 -- ============================================================================
 
--- Đơn hàng tổng: Khách hàng thực hiện đặt đơn hàng
-ALTER TABLE dbo.Orders 
-    ADD CONSTRAINT FK_Orders_Customers FOREIGN KEY (CustomerId) REFERENCES dbo.Users(UserId);
+-- Phiếu điều chuyển: kho nguồn, kho đích, người tạo/duyệt/nhận.
+ALTER TABLE StockTransfers
+    ADD CONSTRAINT FK_Transfers_Source FOREIGN KEY (SourceWarehouseId) REFERENCES Warehouses (WarehouseId);
+ALTER TABLE StockTransfers
+    ADD CONSTRAINT FK_Transfers_Destination FOREIGN KEY (DestinationWarehouseId) REFERENCES Warehouses (WarehouseId);
+ALTER TABLE StockTransfers
+    ADD CONSTRAINT FK_Transfers_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
+ALTER TABLE StockTransfers
+    ADD CONSTRAINT FK_Transfers_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
+ALTER TABLE StockTransfers
+    ADD CONSTRAINT FK_Transfers_ReceivedBy FOREIGN KEY (ReceivedBy) REFERENCES Users (UserId);
 
--- Đơn hàng người bán (Sub-Order): Thuộc về đơn hàng tổng của khách
-ALTER TABLE dbo.SellerOrders 
-    ADD CONSTRAINT FK_SellerOrders_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(OrderId);
-
--- Đơn hàng người bán: Người bán chịu trách nhiệm đóng gói và xử lý đơn này
-ALTER TABLE dbo.SellerOrders 
-    ADD CONSTRAINT FK_SellerOrders_Sellers FOREIGN KEY (SellerId) REFERENCES dbo.Sellers(SellerId);
-
--- Đơn hàng người bán: Kho hàng được phân bổ để xuất đơn (kho sàn hoặc kho seller, có thể NULL trước khi điều phối)
-ALTER TABLE dbo.SellerOrders 
-    ADD CONSTRAINT FK_SellerOrders_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Chi tiết đơn hàng: Dòng hàng thuộc về đơn hàng của seller tương ứng
-ALTER TABLE dbo.OrderItems 
-    ADD CONSTRAINT FK_OrderItems_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
-
--- Chi tiết đơn hàng: Biến thể sản phẩm cụ thể được khách đặt mua
-ALTER TABLE dbo.OrderItems 
-    ADD CONSTRAINT FK_OrderItems_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Thanh toán: Giao dịch thanh toán gắn liền với đơn hàng tổng
-ALTER TABLE dbo.Payments 
-    ADD CONSTRAINT FK_Payments_Orders FOREIGN KEY (OrderId) REFERENCES dbo.Orders(OrderId);
-
--- Hoàn tiền: Giao dịch hoàn tiền phải liên kết với khoản thanh toán ban đầu
-ALTER TABLE dbo.Refunds 
-    ADD CONSTRAINT FK_Refunds_Payments FOREIGN KEY (PaymentId) REFERENCES dbo.Payments(PaymentId);
-
--- Hoàn tiền: Giao dịch hoàn tiền liên kết đến đơn bán hàng cụ thể bị trả/hủy (nếu có)
-ALTER TABLE dbo.Refunds 
-    ADD CONSTRAINT FK_Refunds_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
-GO
+-- Chi tiết điều chuyển: phiếu, biến thể, vị trí lấy (kho nguồn), vị trí cất (kho đích).
+-- Việc vị trí thuộc đúng kho nguồn/đích được kiểm tra bằng trigger (file 05).
+ALTER TABLE StockTransferDetails
+    ADD CONSTRAINT FK_TransferDetails_Transfers FOREIGN KEY (TransferId) REFERENCES StockTransfers (TransferId);
+ALTER TABLE StockTransferDetails
+    ADD CONSTRAINT FK_TransferDetails_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
+ALTER TABLE StockTransferDetails
+    ADD CONSTRAINT FK_TransferDetails_SourceLocation FOREIGN KEY (SourceLocationId) REFERENCES WarehouseLocations (LocationId);
+ALTER TABLE StockTransferDetails
+    ADD CONSTRAINT FK_TransferDetails_DestinationLocation FOREIGN KEY (DestinationLocationId) REFERENCES WarehouseLocations (LocationId);
 
 
 -- ============================================================================
--- 5. MODULE CẤU TRÚC KHO & TỒN KHO (WAREHOUSE STRUCTURE & INVENTORY)
+-- 9. KIỂM KÊ (STOCK COUNTS) & SỔ CÁI BIẾN ĐỘNG KHO (STOCK MOVEMENTS)
 -- ============================================================================
 
--- Kho hàng: Nếu là kho riêng của người bán (WarehouseType = 'Seller'), liên kết đến Seller sở hữu
-ALTER TABLE dbo.Warehouses 
-    ADD CONSTRAINT FK_Warehouses_Sellers FOREIGN KEY (OwnerSellerId) REFERENCES dbo.Sellers(SellerId);
+-- Phiếu kiểm kê: kho, người tạo/duyệt.
+ALTER TABLE StockCounts
+    ADD CONSTRAINT FK_StockCounts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses (WarehouseId);
+ALTER TABLE StockCounts
+    ADD CONSTRAINT FK_StockCounts_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
+ALTER TABLE StockCounts
+    ADD CONSTRAINT FK_StockCounts_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
 
--- Vị trí trong kho (Kệ/Ngăn/Khu vực): Trực thuộc một kho hàng nhất định
-ALTER TABLE dbo.WarehouseLocations 
-    ADD CONSTRAINT FK_Locations_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
+-- Chi tiết kiểm kê: FK KÉP với phiếu cha và vị trí.
+ALTER TABLE StockCountDetails
+    ADD CONSTRAINT FK_StockCountDetails_Counts FOREIGN KEY (StockCountId, WarehouseId)
+        REFERENCES StockCounts (StockCountId, WarehouseId);
+ALTER TABLE StockCountDetails
+    ADD CONSTRAINT FK_StockCountDetails_Locations FOREIGN KEY (LocationId, WarehouseId)
+        REFERENCES WarehouseLocations (LocationId, WarehouseId);
+ALTER TABLE StockCountDetails
+    ADD CONSTRAINT FK_StockCountDetails_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
 
--- Bảng tồn kho tổng hợp: Xác định kho chứa hàng tồn
-ALTER TABLE dbo.Inventory 
-    ADD CONSTRAINT FK_Inventory_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Bảng tồn kho tổng hợp: Xác định vị trí/ô kệ lưu trữ hàng tồn
-ALTER TABLE dbo.Inventory 
-    ADD CONSTRAINT FK_Inventory_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-
--- Bảng tồn kho tổng hợp: Xác định biến thể sản phẩm đang tồn kho
-ALTER TABLE dbo.Inventory 
-    ADD CONSTRAINT FK_Inventory_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-GO
-
-
--- ============================================================================
--- 6. MODULE NHẬP KHO (INVENTORY RECEIPTS - INBOUND)
--- ============================================================================
-
--- Phiếu nhập kho: Kho đích tiếp nhận hàng hóa nhập về
-ALTER TABLE dbo.InventoryReceipts 
-    ADD CONSTRAINT FK_Receipts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Phiếu nhập kho: Người bán gửi hàng nhập vào kho (áp dụng cho luồng Seller ký gửi hàng)
-ALTER TABLE dbo.InventoryReceipts 
-    ADD CONSTRAINT FK_Receipts_Sellers FOREIGN KEY (SenderSellerId) REFERENCES dbo.Sellers(SellerId);
-
--- Chi tiết phiếu nhập: Gắn liền với phiếu nhập kho tương ứng
-ALTER TABLE dbo.ReceiptDetails 
-    ADD CONSTRAINT FK_ReceiptDetails_Receipts FOREIGN KEY (ReceiptId) REFERENCES dbo.InventoryReceipts(ReceiptId);
-
--- Chi tiết phiếu nhập: Biến thể hàng hóa được nhập kho
-ALTER TABLE dbo.ReceiptDetails 
-    ADD CONSTRAINT FK_ReceiptDetails_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Chi tiết phiếu nhập: Vị trí/ô kệ lưu trữ được chỉ định cất hàng
-ALTER TABLE dbo.ReceiptDetails 
-    ADD CONSTRAINT FK_ReceiptDetails_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-GO
+-- Sổ cái: FK KÉP vị trí-kho, biến thể, người thực hiện.
+ALTER TABLE StockMovements
+    ADD CONSTRAINT FK_Movements_Locations FOREIGN KEY (LocationId, WarehouseId)
+        REFERENCES WarehouseLocations (LocationId, WarehouseId);
+ALTER TABLE StockMovements
+    ADD CONSTRAINT FK_Movements_Variants FOREIGN KEY (VariantId) REFERENCES ProductVariants (VariantId);
+ALTER TABLE StockMovements
+    ADD CONSTRAINT FK_Movements_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
 
 
 -- ============================================================================
--- 7. MODULE XUẤT KHO (INVENTORY ISSUES - OUTBOUND)
+-- 10. SHIPPING, RETURNS & REVIEWS (VẬN CHUYỂN, TRẢ HÀNG, ĐÁNH GIÁ)
 -- ============================================================================
 
--- Phiếu xuất kho: Kho thực hiện việc xuất hàng đi
-ALTER TABLE dbo.InventoryIssues 
-    ADD CONSTRAINT FK_Issues_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
+-- Kiện hàng thuộc đơn seller và (tùy chọn) một hãng vận chuyển.
+ALTER TABLE Shipments
+    ADD CONSTRAINT FK_Shipments_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
+ALTER TABLE Shipments
+    ADD CONSTRAINT FK_Shipments_Carriers FOREIGN KEY (CarrierId) REFERENCES Carriers (CarrierId);
 
--- Phiếu xuất kho: Đơn hàng cần xuất kho để đóng gói/giao hàng (NULL nếu xuất do điều chỉnh/tiêu hủy)
-ALTER TABLE dbo.InventoryIssues 
-    ADD CONSTRAINT FK_Issues_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
+-- Yêu cầu trả hàng: đơn seller, khách yêu cầu, người duyệt.
+ALTER TABLE ReturnRequests
+    ADD CONSTRAINT FK_ReturnRequests_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
+ALTER TABLE ReturnRequests
+    ADD CONSTRAINT FK_ReturnRequests_Customers FOREIGN KEY (CustomerId) REFERENCES Users (UserId);
+ALTER TABLE ReturnRequests
+    ADD CONSTRAINT FK_ReturnRequests_ReviewedBy FOREIGN KEY (ReviewedBy) REFERENCES Users (UserId);
 
--- Chi tiết phiếu xuất: Gắn liền với phiếu xuất kho tương ứng
-ALTER TABLE dbo.IssueDetails 
-    ADD CONSTRAINT FK_IssueDetails_Issues FOREIGN KEY (IssueId) REFERENCES dbo.InventoryIssues(IssueId);
+-- Dòng hàng trả: yêu cầu cha, dòng đơn gốc, người kiểm tra, vị trí nhập lại.
+ALTER TABLE ReturnRequestItems
+    ADD CONSTRAINT FK_ReturnItems_Requests FOREIGN KEY (ReturnRequestId) REFERENCES ReturnRequests (ReturnRequestId);
+ALTER TABLE ReturnRequestItems
+    ADD CONSTRAINT FK_ReturnItems_OrderItems FOREIGN KEY (OrderItemId) REFERENCES OrderItems (OrderItemId);
+ALTER TABLE ReturnRequestItems
+    ADD CONSTRAINT FK_ReturnItems_InspectedBy FOREIGN KEY (InspectedBy) REFERENCES Users (UserId);
+ALTER TABLE ReturnRequestItems
+    ADD CONSTRAINT FK_ReturnItems_RestockLocation FOREIGN KEY (RestockLocationId) REFERENCES WarehouseLocations (LocationId);
 
--- Chi tiết phiếu xuất: Biến thể hàng hóa được lấy ra khỏi kho
-ALTER TABLE dbo.IssueDetails 
-    ADD CONSTRAINT FK_IssueDetails_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Chi tiết phiếu xuất: Vị trí/ô kệ thực tế đã thực hiện lấy hàng ra
-ALTER TABLE dbo.IssueDetails 
-    ADD CONSTRAINT FK_IssueDetails_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-GO
-
-
--- ============================================================================
--- 8. MODULE ĐIỀU CHUYỂN KHO NỘI BỘ (STOCK TRANSFERS)
--- ============================================================================
-
--- Phiếu điều chuyển kho: Kho nguồn xuất hàng đi
-ALTER TABLE dbo.StockTransfers 
-    ADD CONSTRAINT FK_Transfers_Source FOREIGN KEY (SourceWarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Phiếu điều chuyển kho: Kho đích tiếp nhận hàng đến
-ALTER TABLE dbo.StockTransfers 
-    ADD CONSTRAINT FK_Transfers_Destination FOREIGN KEY (DestinationWarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Chi tiết điều chuyển: Gắn liền với phiếu điều chuyển kho
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_Transfers FOREIGN KEY (TransferId) REFERENCES dbo.StockTransfers(TransferId);
-
--- Chi tiết điều chuyển: Biến thể hàng hóa cần điều chuyển
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-
--- Chi tiết điều chuyển: Vị trí lấy hàng tại kho nguồn
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_SourceLocation FOREIGN KEY (SourceLocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-
--- Chi tiết điều chuyển: Vị trí sắp xếp vào kho đích (có thể cập nhật khi kho đích nhận hàng)
-ALTER TABLE dbo.StockTransferDetails 
-    ADD CONSTRAINT FK_TransferDetails_DestinationLocation FOREIGN KEY (DestinationLocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-GO
-
-
--- ============================================================================
--- 9. MODULE NHẬT KÝ BIẾN ĐỘNG KHO (STOCK MOVEMENTS / AUDIT TRAIL)
--- ============================================================================
-
--- Nhật ký kho: Kho hàng diễn ra giao dịch biến động tồn kho
-ALTER TABLE dbo.StockMovements 
-    ADD CONSTRAINT FK_Movements_Warehouses FOREIGN KEY (WarehouseId) REFERENCES dbo.Warehouses(WarehouseId);
-
--- Nhật ký kho: Vị trí/ô kệ diễn ra biến động tồn kho
-ALTER TABLE dbo.StockMovements 
-    ADD CONSTRAINT FK_Movements_Locations FOREIGN KEY (LocationId) REFERENCES dbo.WarehouseLocations(LocationId);
-
--- Nhật ký kho: Biến thể hàng hóa có số lượng tồn kho thay đổi
-ALTER TABLE dbo.StockMovements 
-    ADD CONSTRAINT FK_Movements_Variants FOREIGN KEY (VariantId) REFERENCES dbo.ProductVariants(VariantId);
-GO
-
-
--- ============================================================================
--- 10. MODULE VẬN CHUYỂN & ĐÁNH GIÁ (SHIPMENTS & REVIEWS)
--- ============================================================================
-
--- Giao hàng: Kiện hàng vận chuyển gắn liền với đơn hàng của người bán
-ALTER TABLE dbo.Shipments 
-    ADD CONSTRAINT FK_Shipments_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES dbo.SellerOrders(SellerOrderId);
-
--- Đánh giá sản phẩm: Khách hàng thực hiện viết đánh giá sản phẩm
-ALTER TABLE dbo.Reviews 
-    ADD CONSTRAINT FK_Reviews_Customers FOREIGN KEY (CustomerId) REFERENCES dbo.Users(UserId);
-
--- Đánh giá sản phẩm: Đánh giá phải gắn liền với từng chi tiết đơn hàng đã mua
-ALTER TABLE dbo.Reviews 
-    ADD CONSTRAINT FK_Reviews_OrderItems FOREIGN KEY (OrderItemId) REFERENCES dbo.OrderItems(OrderItemId);
-GO
+-- Đánh giá: khách viết và dòng hàng đã mua.
+ALTER TABLE Reviews
+    ADD CONSTRAINT FK_Reviews_Customers FOREIGN KEY (CustomerId) REFERENCES Users (UserId);
+ALTER TABLE Reviews
+    ADD CONSTRAINT FK_Reviews_OrderItems FOREIGN KEY (OrderItemId) REFERENCES OrderItems (OrderItemId);

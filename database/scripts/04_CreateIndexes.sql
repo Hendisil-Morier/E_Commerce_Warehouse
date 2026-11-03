@@ -1,160 +1,173 @@
 /*
-    Dự án: E-Commerce Marketplace + Warehouse Management
-    Cơ sở dữ liệu: ECommerceWarehouse
-    Hệ quản trị CSDL: Microsoft SQL Server
-    Mục đích file: Định nghĩa các chỉ mục phụ (Non-Clustered Indexes) nhằm tối ưu hóa hiệu năng truy vấn, 
-                   tăng tốc phép JOIN và lọc dữ liệu (WHERE, ORDER BY) trên các bảng có tần suất truy cập cao.
-    Thứ tự thực thi: Chạy sau script 03_CreateForeignKeys.sql (hoặc sau khi hoàn tất nạp dữ liệu mẫu 05_InsertSeedData.sql để tối ưu tốc độ bulk insert).
+================================================================================
+ Dự án      : E-Commerce Marketplace (đa người bán) + Warehouse Management
+ Database   : ECommerceWarehouse (MySQL 8.0.16+)
+ File       : 04_CreateIndexes.sql
+ Mục đích   : Chỉ mục phụ phục vụ các truy vấn thực tế (lọc, sắp xếp, phân trang, job nền).
+ Chạy sau   : 03_CreateForeignKeys.sql (hoặc sau khi nạp dữ liệu mẫu lớn để bulk insert nhanh hơn).
+
+ DANH SÁCH MỤC:
+   1. Catalog & Products            4. Kho, giữ chỗ & sổ cái
+   2. Orders & Sales                5. Vận chuyển, trả hàng, tài khoản
+   3. Payments
+
+ GHI CHÚ QUAN TRỌNG:
+   - MySQL TỰ ĐỘNG tạo chỉ mục cho mọi cột khóa ngoại (file 03), nên KHÔNG cần tạo lại chỉ mục chỉ cho FK.
+     File này chỉ có chỉ mục phục vụ điều kiện lọc/sắp xếp. Khi một chỉ mục ghép ở đây dùng cột FK làm
+     cột đầu, MySQL sẽ tự bỏ chỉ mục FK ngầm định trùng lặp.
+   - Với chỉ mục (cột, CreatedAt DESC), MySQL 8 hỗ trợ chỉ mục giảm dần thật sự.
+   - Các UNIQUE đã khai báo ở file 02 (SKU, OrderCode, TransactionCode, TrackingNumber...) cũng là chỉ mục tra cứu.
+================================================================================
 */
 
 USE ECommerceWarehouse;
-GO
 
 -- ============================================================================
--- 1. NHÓM TỐI ƯU HÓA DANH MỤC & SẢN PHẨM (CATALOG & PRODUCTS)
+-- 1. CATALOG & PRODUCTS
 -- ============================================================================
 
--- Tối ưu hóa kênh người bán (Seller Portal):
--- Tăng tốc độ truy vấn danh sách sản phẩm thuộc quyền quản lý của một Seller cụ thể và tối ưu phép JOIN giữa Sellers và Products.
-CREATE INDEX IX_Products_SellerId 
-    ON dbo.Products(SellerId);
+-- Seller Center: danh sách sản phẩm của một shop theo trạng thái (WHERE ShopId = ? AND ProductStatus = ?).
+CREATE INDEX IX_Products_Shop_Status
+    ON Products (ShopId, ProductStatus);
 
--- Tối ưu hóa trang mua sắm (Storefront / Category Browsing):
--- Composite Index hỗ trợ truy vấn lọc sản phẩm theo ngành hàng kết hợp trạng thái hiển thị (ví dụ: WHERE CategoryId = @CatId AND ProductStatus = 'Active').
--- Giúp giảm thiểu chi phí quét bảng (Table/Index Scan) khi người dùng lướt xem hàng hóa.
-CREATE INDEX IX_Products_Category_Status 
-    ON dbo.Products(CategoryId, ProductStatus);
+-- Storefront: duyệt sản phẩm theo ngành hàng đang bán (WHERE CategoryId = ? AND ProductStatus = 'Active').
+CREATE INDEX IX_Products_Category_Status
+    ON Products (CategoryId, ProductStatus);
 
--- Tối ưu hóa trang chi tiết sản phẩm (Product Detail Page):
--- Tăng tốc lấy danh sách tất cả các biến thể (SKU, màu sắc, kích cỡ, giá tiền) của một sản phẩm (WHERE ProductId = @ProductId).
--- Đồng thời hỗ trợ tối đa hiệu năng phép JOIN giữa Products và ProductVariants.
-CREATE INDEX IX_Variants_ProductId 
-    ON dbo.ProductVariants(ProductId);
-GO
+-- Admin: hàng đợi duyệt sản phẩm mới nhất trước (WHERE ProductStatus = 'PendingReview' ORDER BY CreatedAt).
+CREATE INDEX IX_Products_Status_Created
+    ON Products (ProductStatus, CreatedAt);
 
+-- Tìm kiếm theo tên sản phẩm (MATCH ... AGAINST). Parser mặc định tách từ theo khoảng trắng, phù hợp tiếng Việt có dấu.
+CREATE FULLTEXT INDEX FT_Products_Name
+    ON Products (ProductName);
 
--- ============================================================================
--- 2. NHÓM TỐI ƯU HÓA ĐƠN HÀNG & BÁN HÀNG (ORDERS & SALES MANAGEMENT)
--- ============================================================================
+-- Trang chi tiết: lấy các biến thể đang bán của một sản phẩm (WHERE ProductId = ? AND IsActive = 1).
+CREATE INDEX IX_Variants_Product_Active
+    ON ProductVariants (ProductId, IsActive);
 
--- Tối ưu hóa màn hình "Lịch sử mua hàng" của khách hàng (Customer Order History):
--- Composite Index kết hợp sắp xếp giảm dần (DESC) theo thời gian tạo đơn.
--- Hỗ trợ phân trang (Pagination) xem các đơn hàng gần nhất của khách hàng (WHERE CustomerId = @CustomerId ORDER BY CreatedAt DESC) 
--- mà không phải tốn bộ nhớ CPU/RAM để sắp xếp lại (Sort operator).
-CREATE INDEX IX_Orders_Customer_Created 
-    ON dbo.Orders(CustomerId, CreatedAt DESC);
-
--- Tối ưu hóa màn hình quản trị đơn hàng (Admin / Operations Dashboard):
--- Giúp ban vận hành lọc nhanh các đơn hàng theo trạng thái xử lý (Pending, Processing, Completed...) 
--- ưu tiên những đơn mới phát sinh gần nhất (WHERE OrderStatus = @Status ORDER BY CreatedAt DESC).
-CREATE INDEX IX_Orders_Status_Created 
-    ON dbo.Orders(OrderStatus, CreatedAt DESC);
-
--- Tối ưu hóa quản lý đơn hàng của Seller (Seller Center Order Fulfillment):
--- Composite Index phục vụ màn hình xử lý đơn của người bán, lọc đơn hàng con theo từng gian hàng và trạng thái đơn 
--- (ví dụ: WHERE SellerId = @SellerId AND Status = 'ReadyToShip').
-CREATE INDEX IX_SellerOrders_Seller_Status 
-    ON dbo.SellerOrders(SellerId, Status);
-
--- Tối ưu hóa chi tiết mặt hàng đơn hàng:
--- Tăng tốc độ lấy danh sách các mặt hàng thuộc về một đơn hàng của Seller (WHERE SellerOrderId = @SellerOrderId) 
--- khi in phiếu đóng gói, xuất kho hoặc kiểm hàng.
-CREATE INDEX IX_OrderItems_SellerOrder 
-    ON dbo.OrderItems(SellerOrderId);
-GO
+-- Trang chi tiết: ảnh theo thứ tự hiển thị.
+CREATE INDEX IX_Images_Product_Order
+    ON ProductImages (ProductId, DisplayOrder);
 
 
 -- ============================================================================
--- 3. NHÓM TỐI ƯU HÓA QUẢN LÝ KHO & BIẾN ĐỘNG TỒN KHO (INVENTORY & AUDIT LOG)
+-- 2. ORDERS & SALES
 -- ============================================================================
 
--- Tối ưu hóa kiểm tra số lượng tồn kho (Stock Availability Check):
--- Hỗ trợ truy vấn nhanh số lượng tồn (QuantityOnHand, QuantityReserved) theo từng biến thể sản phẩm 
--- khi khách hàng thêm vào giỏ hàng hoặc hệ thống giữ hàng khi đặt cọc (Reserve Stock).
-CREATE INDEX IX_Inventory_Variant 
-    ON dbo.Inventory(VariantId);
+-- Lịch sử mua hàng của khách, đơn mới nhất trước, phân trang không phải sort lại.
+CREATE INDEX IX_Orders_Customer_Created
+    ON Orders (CustomerId, CreatedAt DESC);
 
--- Tối ưu hóa truy vấn lịch sử thẻ kho (Stock Movement Card / Audit Trail):
--- Hỗ trợ thủ kho và kế toán tra cứu toàn bộ lịch sử xuất/nhập/điều chỉnh của một mặt hàng 
--- theo trình tự thời gian mới nhất (WHERE VariantId = @VariantId ORDER BY CreatedAt DESC).
-CREATE INDEX IX_StockMovements_Variant_Created 
-    ON dbo.StockMovements(VariantId, CreatedAt DESC);
-GO
+-- Admin: lọc đơn theo trạng thái, mới nhất trước.
+CREATE INDEX IX_Orders_Status_Created
+    ON Orders (OrderStatus, CreatedAt DESC);
 
+-- Job nền: tìm đơn chờ thanh toán đã quá hạn để hủy và nhả giữ chỗ
+-- (WHERE OrderStatus = 'PendingPayment' AND ExpiresAt < UTC_TIMESTAMP()).
+CREATE INDEX IX_Orders_Status_Expires
+    ON Orders (OrderStatus, ExpiresAt);
 
--- ============================================================================
--- 4. NHÓM TỐI ƯU HÓA VẬN CHUYỂN & TRA CỨU ĐƠN (LOGISTICS & SHIPMENTS)
--- ============================================================================
+-- Seller Center: xử lý đơn theo trạng thái, mới nhất trước.
+CREATE INDEX IX_SellerOrders_Seller_Status_Created
+    ON SellerOrders (SellerId, Status, CreatedAt DESC);
 
--- Tối ưu hóa tra cứu hành trình kiện hàng (Shipment Tracking):
--- Filtered Index (Chỉ mục có điều kiện lọc WHERE TrackingNumber IS NOT NULL):
--- Chỉ lập chỉ mục cho các bản ghi đã có mã vận đơn thực tế, giúp tiết kiệm dung lượng lưu trữ chỉ mục
--- và tăng tốc độ tối đa cho thao tác tìm kiếm kiện hàng theo mã vận đơn từ đối tác vận chuyển.
-CREATE INDEX IX_Shipments_Tracking 
-    ON dbo.Shipments(TrackingNumber) 
-    WHERE TrackingNumber IS NOT NULL;
-GO
+-- Hàng đợi của kho: các đơn seller đã phân bổ về một kho và đang chờ xử lý.
+CREATE INDEX IX_SellerOrders_Warehouse_Status
+    ON SellerOrders (WarehouseId, Status);
 
+-- Báo cáo bán chạy / truy ngược các đơn chứa một biến thể.
+CREATE INDEX IX_OrderItems_Variant
+    ON OrderItems (VariantId);
 
-
--- ============================================================================
--- 2. NHÓM TỐI ƯU HÓA ĐƠN HÀNG & BÁN HÀNG (ORDERS & SALES MANAGEMENT)
--- ============================================================================
-
--- Tối ưu hóa màn hình "Lịch sử mua hàng" của khách hàng (Customer Order History):
--- Composite Index kết hợp sắp xếp giảm dần (DESC) theo thời gian tạo đơn.
--- Hỗ trợ phân trang (Pagination) xem các đơn hàng gần nhất của khách hàng (WHERE CustomerId = @CustomerId ORDER BY CreatedAt DESC) 
--- mà không phải tốn bộ nhớ CPU/RAM để sắp xếp lại (Sort operator).
-CREATE INDEX IX_Orders_Customer_Created 
-    ON dbo.Orders(CustomerId, CreatedAt DESC);
-
--- Tối ưu hóa màn hình quản trị đơn hàng (Admin / Operations Dashboard):
--- Giúp ban vận hành lọc nhanh các đơn hàng theo trạng thái xử lý (Pending, Processing, Completed...) 
--- ưu tiên những đơn mới phát sinh gần nhất (WHERE OrderStatus = @Status ORDER BY CreatedAt DESC).
-CREATE INDEX IX_Orders_Status_Created 
-    ON dbo.Orders(OrderStatus, CreatedAt DESC);
-
--- Tối ưu hóa quản lý đơn hàng của Seller (Seller Center Order Fulfillment):
--- Composite Index phục vụ màn hình xử lý đơn của người bán, lọc đơn hàng con theo từng gian hàng và trạng thái đơn 
--- (ví dụ: WHERE SellerId = @SellerId AND Status = 'ReadyToShip').
-CREATE INDEX IX_SellerOrders_Seller_Status 
-    ON dbo.SellerOrders(SellerId, Status);
-
--- Tối ưu hóa chi tiết mặt hàng đơn hàng:
--- Tăng tốc độ lấy danh sách các mặt hàng thuộc về một đơn hàng của Seller (WHERE SellerOrderId = @SellerOrderId) 
--- khi in phiếu đóng gói, xuất kho hoặc kiểm hàng.
-CREATE INDEX IX_OrderItems_SellerOrder 
-    ON dbo.OrderItems(SellerOrderId);
-GO
+-- Màn hình chi tiết đơn: timeline trạng thái theo thời gian.
+CREATE INDEX IX_StatusHistory_Order_Created
+    ON OrderStatusHistory (OrderId, CreatedAt);
 
 
 -- ============================================================================
--- 3. NHÓM TỐI ƯU HÓA QUẢN LÝ KHO & BIẾN ĐỘNG TỒN KHO (INVENTORY & AUDIT LOG)
+-- 3. PAYMENTS
 -- ============================================================================
 
--- Tối ưu hóa kiểm tra số lượng tồn kho (Stock Availability Check):
--- Hỗ trợ truy vấn nhanh số lượng tồn (QuantityOnHand, QuantityReserved) theo từng biến thể sản phẩm 
--- khi khách hàng thêm vào giỏ hàng hoặc hệ thống giữ hàng khi đặt cọc (Reserve Stock).
-CREATE INDEX IX_Inventory_Variant 
-    ON dbo.Inventory(VariantId);
+-- Tra các giao dịch của một đơn theo trạng thái (kiểm tra đã thanh toán chưa, đối soát).
+CREATE INDEX IX_Payments_Order_Status
+    ON Payments (OrderId, PaymentStatus);
 
--- Tối ưu hóa truy vấn lịch sử thẻ kho (Stock Movement Card / Audit Trail):
--- Hỗ trợ thủ kho và kế toán tra cứu toàn bộ lịch sử xuất/nhập/điều chỉnh của một mặt hàng 
--- theo trình tự thời gian mới nhất (WHERE VariantId = @VariantId ORDER BY CreatedAt DESC).
-CREATE INDEX IX_StockMovements_Variant_Created 
-    ON dbo.StockMovements(VariantId, CreatedAt DESC);
-GO
+-- Đối soát hoàn tiền: các yêu cầu hoàn đang chờ xử lý.
+CREATE INDEX IX_Refunds_Status_Created
+    ON Refunds (RefundStatus, CreatedAt);
 
 
 -- ============================================================================
--- 4. NHÓM TỐI ƯU HÓA VẬN CHUYỂN & TRA CỨU ĐƠN (LOGISTICS & SHIPMENTS)
+-- 4. KHO, GIỮ CHỖ & SỔ CÁI TỒN KHO
 -- ============================================================================
 
--- Tối ưu hóa tra cứu hành trình kiện hàng (Shipment Tracking):
--- Filtered Index (Chỉ mục có điều kiện lọc WHERE TrackingNumber IS NOT NULL):
--- Chỉ lập chỉ mục cho các bản ghi đã có mã vận đơn thực tế, giúp tiết kiệm dung lượng lưu trữ chỉ mục
--- và tăng tốc độ tối đa cho thao tác tìm kiếm kiện hàng theo mã vận đơn từ đối tác vận chuyển.
-CREATE INDEX IX_Shipments_Tracking 
-    ON dbo.Shipments(TrackingNumber) 
-    WHERE TrackingNumber IS NOT NULL;
-GO
+-- Kiểm tra tồn khả dụng theo biến thể trong một kho (đầu vào của việc chọn kho và giữ chỗ).
+CREATE INDEX IX_Inventory_Variant_Warehouse
+    ON Inventory (VariantId, WarehouseId);
+
+-- Job nền: nhả các giữ chỗ Active đã hết hạn (WHERE Status = 'Active' AND ExpiresAt < UTC_TIMESTAMP()).
+CREATE INDEX IX_Reservations_Status_Expires
+    ON StockReservations (Status, ExpiresAt);
+
+-- Tìm giữ chỗ của một dòng đơn hàng khi hủy/xuất.
+CREATE INDEX IX_Reservations_OrderItem_Status
+    ON StockReservations (OrderItemId, Status);
+
+-- Tổng giữ chỗ đang Active theo (kho, biến thể) - dùng đối soát và tính tồn khả dụng.
+CREATE INDEX IX_Reservations_Warehouse_Variant_Status
+    ON StockReservations (WarehouseId, VariantId, Status);
+
+-- Thẻ kho của một mặt hàng theo thời gian (mới nhất trước).
+CREATE INDEX IX_StockMovements_Variant_Created
+    ON StockMovements (VariantId, CreatedAt DESC);
+
+-- Nhật ký của một kho theo thời gian (báo cáo nhập-xuất-tồn theo kỳ).
+CREATE INDEX IX_StockMovements_Warehouse_Created
+    ON StockMovements (WarehouseId, CreatedAt);
+
+-- Truy ngược sổ cái từ chứng từ gốc (ví dụ mọi biến động của phiếu xuất #123).
+CREATE INDEX IX_StockMovements_Reference
+    ON StockMovements (ReferenceType, ReferenceId);
+
+-- Danh sách phiếu theo kho + trạng thái, mới nhất trước (màn hình duyệt phiếu của quản lý kho).
+CREATE INDEX IX_Receipts_Warehouse_Status_Created
+    ON InventoryReceipts (WarehouseId, Status, CreatedAt DESC);
+
+CREATE INDEX IX_Issues_Warehouse_Status_Created
+    ON InventoryIssues (WarehouseId, Status, CreatedAt DESC);
+
+-- Phiếu xuất của một đơn seller.
+CREATE INDEX IX_Issues_SellerOrder
+    ON InventoryIssues (SellerOrderId);
+
+CREATE INDEX IX_Transfers_Source_Status
+    ON StockTransfers (SourceWarehouseId, Status);
+
+CREATE INDEX IX_Transfers_Destination_Status
+    ON StockTransfers (DestinationWarehouseId, Status);
+
+
+-- ============================================================================
+-- 5. VẬN CHUYỂN, TRẢ HÀNG & TÀI KHOẢN
+-- ============================================================================
+
+-- Kiện hàng của một đơn seller theo trạng thái vận chuyển.
+CREATE INDEX IX_Shipments_SellerOrder_Status
+    ON Shipments (SellerOrderId, ShippingStatus);
+
+-- Hàng đợi xử lý trả hàng theo trạng thái.
+CREATE INDEX IX_ReturnRequests_Status_Created
+    ON ReturnRequests (Status, CreatedAt);
+
+-- Yêu cầu trả hàng của một khách.
+CREATE INDEX IX_ReturnRequests_Customer_Created
+    ON ReturnRequests (CustomerId, CreatedAt DESC);
+
+-- Dọn token hết hạn và tìm token còn hiệu lực của một người dùng.
+CREATE INDEX IX_RefreshTokens_User_Expires
+    ON RefreshTokens (UserId, ExpiresAt);
+
+-- Seller duyệt/ngừng: lọc hồ sơ seller theo trạng thái.
+CREATE INDEX IX_Sellers_Status
+    ON Sellers (Status);
