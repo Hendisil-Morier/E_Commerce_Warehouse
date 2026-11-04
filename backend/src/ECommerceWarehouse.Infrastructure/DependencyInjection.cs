@@ -7,26 +7,17 @@ namespace ECommerceWarehouse.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructureServices(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        if (!string.IsNullOrEmpty(connectionString))
-        {
-            // Cấu hình tương thích MySQL 8.0+ (khớp với schema 01_CreateDatabase.sql)
-            var serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
-
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseMySql(connectionString, serverVersion, mySqlOptions =>
-                {
-                    mySqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorNumbersToAdd: null);
-                }));
-        }
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseMySql(
+                connectionString,
+                ServerVersion.AutoDetect(connectionString),
+                mySqlOptions => mySqlOptions.EnableRetryOnFailure(3)
+            ));
 
         return services;
     }
