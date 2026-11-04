@@ -1,3 +1,9 @@
+using ECommerceWarehouse.Domain.Entities.Catalog;
+using ECommerceWarehouse.Domain.Entities.Identity;
+using ECommerceWarehouse.Domain.Entities.Review;
+
+namespace ECommerceWarehouse.Domain.Entities.Warehouse; 
+
 public class StockTransferDetail
 {
     public long TransferDetailId { get; set; }

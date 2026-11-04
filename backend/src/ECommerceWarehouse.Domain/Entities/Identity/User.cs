@@ -1,5 +1,3 @@
-using ECommerceWarehouse.Domain.Entities.Seller;
-
 namespace ECommerceWarehouse.Domain.Entities.Identity;
 
 public class User
@@ -17,5 +15,5 @@ public class User
     // Navigation Properties
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
-    public SellerProfile? SellerProfile { get; set; }
+    public ECommerceWarehouse.Domain.Entities.Seller.Seller? Seller { get; set; }
 }

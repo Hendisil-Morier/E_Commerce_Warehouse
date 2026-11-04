@@ -1,4 +1,10 @@
-
+using ECommerceWarehouse.Domain.Entities.Catalog;
+using ECommerceWarehouse.Domain.Entities.Customer;
+using ECommerceWarehouse.Domain.Entities.Identity;
+using ECommerceWarehouse.Domain.Entities.Order;
+using ECommerceWarehouse.Domain.Entities.Review;
+using ECommerceWarehouse.Domain.Entities.Seller;
+using ECommerceWarehouse.Domain.Entities.Warehouse;
 using Microsoft.EntityFrameworkCore;
 
 namespace ECommerceWarehouse.Infrastructure.Data;
