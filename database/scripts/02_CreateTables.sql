@@ -4,6 +4,9 @@
  Database   : ECommerceWarehouse (MySQL 8.0.16+)
  File       : 02_CreateTables.sql
  Mục đích   : Tạo toàn bộ 39 bảng, khóa chính, UNIQUE và CHECK.
+              CHẠY LẠI ĐƯỢC NHIỀU LẦN: mỗi bảng có DROP TABLE IF EXISTS phía trước.
+              CẢNH BÁO: chạy lại sẽ XÓA TOÀN BỘ DỮ LIỆU và các khóa ngoại/chỉ mục đã tạo.
+              Sau khi chạy lại file này phải chạy lại 03, 04, 05, 06 theo thứ tự.
               Khóa ngoại nằm ở 03_CreateForeignKeys.sql, chỉ mục truy vấn ở 04.
 
  DANH SÁCH MỤC (39 bảng):
@@ -36,13 +39,19 @@
 
 USE ECommerceWarehouse;
 
+-- Tắt kiểm tra khóa ngoại trong lúc xóa/tạo lại bảng (chỉ có hiệu lực trong phiên chạy script này).
+-- Bắt buộc khi chạy lại: các FK đã tạo ở file 03 sẽ chặn việc DROP bảng cha.
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- ============================================================================
 -- 1. IDENTITY & SELLERS (TÀI KHOẢN, PHÂN QUYỀN, NGƯỜI BÁN, GIAN HÀNG)
 -- ============================================================================
 
+DROP TABLE IF EXISTS Users;
 -- Tài khoản dùng chung cho khách hàng, người bán, nhân viên kho, quản trị.
 CREATE TABLE Users (
     UserId        BIGINT        NOT NULL AUTO_INCREMENT,
+    Username      VARCHAR(100)  NULL,
     FullName      VARCHAR(150)  NOT NULL,
     Email         VARCHAR(255)  NOT NULL,
     PasswordHash  VARCHAR(500)  NOT NULL,                       -- chỉ lưu hash (BCrypt/PBKDF2), không lưu mật khẩu thô
@@ -52,9 +61,11 @@ CREATE TABLE Users (
     CreatedAt     DATETIME(3)   NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
     UpdatedAt     DATETIME(3)   NULL,
     CONSTRAINT PK_Users PRIMARY KEY (UserId),
-    CONSTRAINT UQ_Users_Email UNIQUE (Email)
+    CONSTRAINT UQ_Users_Email UNIQUE (Email),
+    CONSTRAINT UQ_Users_Username UNIQUE (Username)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Roles;
 -- Danh mục vai trò: Admin, Customer, Seller, WarehouseManager, WarehouseStaff, CustomerSupport...
 CREATE TABLE Roles (
     RoleId       INT          NOT NULL AUTO_INCREMENT,
@@ -64,6 +75,7 @@ CREATE TABLE Roles (
     CONSTRAINT UQ_Roles_RoleName UNIQUE (RoleName)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS UserRoles;
 -- Một người dùng có thể giữ nhiều vai trò.
 CREATE TABLE UserRoles (
     UserId      BIGINT      NOT NULL,
@@ -72,6 +84,7 @@ CREATE TABLE UserRoles (
     CONSTRAINT PK_UserRoles PRIMARY KEY (UserId, RoleId)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS RefreshTokens;
 -- Refresh token của JWT. Chỉ lưu hash của token; thu hồi bằng RevokedAt.
 CREATE TABLE RefreshTokens (
     RefreshTokenId   BIGINT       NOT NULL AUTO_INCREMENT,
@@ -86,6 +99,7 @@ CREATE TABLE RefreshTokens (
     CONSTRAINT UQ_RefreshTokens_Hash UNIQUE (TokenHash)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Sellers;
 -- Hồ sơ người bán (1 tài khoản = tối đa 1 hồ sơ). Admin duyệt trước khi được bán.
 CREATE TABLE Sellers (
     SellerId        BIGINT        NOT NULL AUTO_INCREMENT,
@@ -104,6 +118,7 @@ CREATE TABLE Sellers (
     CONSTRAINT CK_Sellers_Commission CHECK (CommissionRate BETWEEN 0 AND 100)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Shops;
 -- Gian hàng của người bán (một seller có thể mở nhiều shop).
 CREATE TABLE Shops (
     ShopId       BIGINT        NOT NULL AUTO_INCREMENT,
@@ -123,6 +138,7 @@ CREATE TABLE Shops (
 -- 2. PRODUCT CATALOG (DANH MỤC, SẢN PHẨM, BIẾN THỂ, HÌNH ẢNH)
 -- ============================================================================
 
+DROP TABLE IF EXISTS Categories;
 -- Danh mục đa cấp (tự tham chiếu qua ParentCategoryId, NULL = danh mục gốc).
 CREATE TABLE Categories (
     CategoryId        BIGINT        NOT NULL AUTO_INCREMENT,
@@ -134,6 +150,7 @@ CREATE TABLE Categories (
     CONSTRAINT UQ_Categories_Parent_Name UNIQUE (ParentCategoryId, CategoryName)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Products;
 -- Sản phẩm. Người bán suy ra qua Shops.SellerId (không lưu SellerId ở đây).
 -- Luồng: Draft -> PendingReview (seller gửi duyệt) -> Active / Rejected (admin) -> Inactive (ẩn bán).
 CREATE TABLE Products (
@@ -149,6 +166,7 @@ CREATE TABLE Products (
     CONSTRAINT CK_Products_Status CHECK (ProductStatus IN ('Draft','PendingReview','Active','Inactive','Rejected'))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS ProductVariants;
 -- Biến thể (SKU) là đơn vị bán và đơn vị tồn kho. Giá hiện hành nằm ở đây;
 -- đơn hàng chỉ lưu bản chụp giá (OrderItems.UnitPrice).
 CREATE TABLE ProductVariants (
@@ -169,6 +187,7 @@ CREATE TABLE ProductVariants (
     CONSTRAINT CK_Variants_Weight CHECK (WeightGrams IS NULL OR WeightGrams >= 0)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS ProductImages;
 -- Album ảnh sản phẩm. Mỗi sản phẩm tối đa 1 ảnh đại diện (ràng buộc bằng cột sinh PrimaryFlag).
 CREATE TABLE ProductImages (
     ImageId       BIGINT        NOT NULL AUTO_INCREMENT,
@@ -187,6 +206,7 @@ CREATE TABLE ProductImages (
 -- 3. CUSTOMER INTERACTIONS (SỔ ĐỊA CHỈ, GIỎ HÀNG, YÊU THÍCH)
 -- ============================================================================
 
+DROP TABLE IF EXISTS UserAddresses;
 -- Sổ địa chỉ giao hàng. Mỗi người dùng tối đa 1 địa chỉ mặc định (cột sinh DefaultFlag).
 -- Khi đặt địa chỉ mặc định mới, service phải bỏ cờ mặc định của địa chỉ cũ trong cùng transaction.
 CREATE TABLE UserAddresses (
@@ -206,6 +226,7 @@ CREATE TABLE UserAddresses (
     CONSTRAINT UQ_UserAddresses_OneDefault UNIQUE (UserId, DefaultFlag)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Carts;
 -- Giỏ hàng: mỗi khách đúng 1 giỏ. Giỏ chỉ KIỂM TRA tồn, KHÔNG giữ chỗ.
 CREATE TABLE Carts (
     CartId     BIGINT      NOT NULL AUTO_INCREMENT,
@@ -216,6 +237,7 @@ CREATE TABLE Carts (
     CONSTRAINT UQ_Carts_User UNIQUE (UserId)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS CartItems;
 CREATE TABLE CartItems (
     CartItemId  BIGINT      NOT NULL AUTO_INCREMENT,
     CartId      BIGINT      NOT NULL,
@@ -227,6 +249,7 @@ CREATE TABLE CartItems (
     CONSTRAINT CK_CartItems_Qty CHECK (Quantity > 0)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Wishlists;
 CREATE TABLE Wishlists (
     WishlistId    BIGINT       NOT NULL AUTO_INCREMENT,
     UserId        BIGINT       NOT NULL,
@@ -236,6 +259,7 @@ CREATE TABLE Wishlists (
     CONSTRAINT UQ_Wishlists_User_Name UNIQUE (UserId, WishlistName)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS WishlistItems;
 CREATE TABLE WishlistItems (
     WishlistItemId  BIGINT      NOT NULL AUTO_INCREMENT,
     WishlistId      BIGINT      NOT NULL,
@@ -250,6 +274,7 @@ CREATE TABLE WishlistItems (
 -- 4. ORDERS & PAYMENTS (ĐƠN TỔNG, ĐƠN THEO SELLER, DÒNG HÀNG, THANH TOÁN, HOÀN TIỀN)
 -- ============================================================================
 
+DROP TABLE IF EXISTS Orders;
 -- Đơn tổng của khách (một lần checkout). Địa chỉ giao là BẢN CHỤP, không phụ thuộc UserAddresses.
 -- ExpiresAt: hạn thanh toán với đơn online; job nền hủy đơn + nhả giữ chỗ khi quá hạn (Status = 'Expired').
 -- Tổng tiền phải luôn khớp: TotalAmount = Subtotal + ShippingFee - DiscountAmount.
@@ -284,6 +309,7 @@ CREATE TABLE Orders (
     CONSTRAINT CK_Orders_Cancel    CHECK (CancelledAt IS NULL OR OrderStatus IN ('Cancelled','Expired'))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS SellerOrders;
 -- Đơn con theo từng seller (đa người bán). Mỗi seller tự xử lý/ xuất kho phần của mình.
 -- WarehouseId: kho được phân bổ để xuất (kho sàn hoặc kho của chính seller đó); NULL cho tới khi phân bổ.
 CREATE TABLE SellerOrders (
@@ -305,6 +331,7 @@ CREATE TABLE SellerOrders (
     CONSTRAINT CK_SellerOrders_Cancel CHECK (CancelledAt IS NULL OR Status = 'Cancelled')
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS OrderItems;
 -- Dòng hàng. Lưu BẢN CHỤP tên, SKU, đơn giá tại thời điểm đặt (đổi giá sau này không ảnh hưởng đơn cũ).
 CREATE TABLE OrderItems (
     OrderItemId          BIGINT        NOT NULL AUTO_INCREMENT,
@@ -321,6 +348,7 @@ CREATE TABLE OrderItems (
     CONSTRAINT CK_OrderItems_Qty CHECK (Quantity > 0)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS OrderStatusHistory;
 -- Lịch sử đổi trạng thái (ai, lúc nào, vì sao). SellerOrderId NULL = đổi trạng thái đơn tổng.
 -- ChangedBy NULL = hệ thống/job nền (ví dụ hết hạn thanh toán).
 CREATE TABLE OrderStatusHistory (
@@ -335,6 +363,7 @@ CREATE TABLE OrderStatusHistory (
     CONSTRAINT PK_OrderStatusHistory PRIMARY KEY (HistoryId)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Payments;
 -- Giao dịch thanh toán của đơn tổng.
 -- UNIQUE(PaymentMethod, TransactionCode): callback cổng thanh toán gọi lại nhiều lần chỉ tạo/xử lý 1 lần (idempotent).
 CREATE TABLE Payments (
@@ -355,6 +384,7 @@ CREATE TABLE Payments (
     CONSTRAINT CK_Payments_PaidAt CHECK (PaymentStatus NOT IN ('Paid','Refunded','PartiallyRefunded') OR PaidAt IS NOT NULL)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Refunds;
 -- Hoàn tiền. Tổng hoàn không được vượt số đã thanh toán (trigger trg_Refunds_BI ở file 05).
 CREATE TABLE Refunds (
     RefundId        BIGINT        NOT NULL AUTO_INCREMENT,
@@ -378,6 +408,7 @@ CREATE TABLE Refunds (
 -- 5. WAREHOUSE & INVENTORY (KHO, VỊ TRÍ, TỒN KHO, GIỮ CHỖ, NHẬP/XUẤT/CHUYỂN/KIỂM KÊ, SỔ CÁI)
 -- ============================================================================
 
+DROP TABLE IF EXISTS Warehouses;
 -- Kho: 'Platform' (kho sàn, giữ hàng của nhiều seller) hoặc 'Seller' (kho riêng của 1 seller).
 CREATE TABLE Warehouses (
     WarehouseId    BIGINT        NOT NULL AUTO_INCREMENT,
@@ -395,6 +426,7 @@ CREATE TABLE Warehouses (
         (WarehouseType = 'Seller'   AND OwnerSellerId IS NOT NULL))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS WarehouseLocations;
 -- Vị trí lưu trữ (khu/kệ/ô). IsSellable = TRUE: hàng ở đây được tính vào tồn bán được.
 -- Khu đặc biệt (Inbound = chờ cất, Returns = chờ kiểm hàng hoàn, Damaged = hàng hỏng) KHÔNG bán được.
 -- UNIQUE(LocationId, WarehouseId) là đích của khóa ngoại kép để mọi bảng không thể ghi vị trí của kho này kèm mã kho khác.
@@ -412,6 +444,7 @@ CREATE TABLE WarehouseLocations (
     CONSTRAINT CK_Locations_Sellable CHECK (StorageType IN ('Standard','Cold','Hazardous','Fragile') OR IsSellable = FALSE)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Inventory;
 -- Tồn kho theo (vị trí, biến thể). Available = QuantityOnHand - QuantityReserved (tính khi truy vấn, không lưu).
 -- QuantityReserved luôn bằng tổng StockReservations 'Active' tại vị trí đó (đối chiếu bằng view vw_StockReconciliation).
 -- RowVersion: chống 2 request cùng giữ món cuối. Khi giữ chỗ nên dùng câu lệnh nguyên tử:
@@ -431,6 +464,7 @@ CREATE TABLE Inventory (
     CONSTRAINT CK_Inventory_Qty CHECK (QuantityOnHand >= 0 AND QuantityReserved >= 0 AND QuantityReserved <= QuantityOnHand)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS StockReservations;
 -- Giữ chỗ tồn kho cho từng dòng đơn hàng.
 -- Active   : đang giữ (đơn chờ thanh toán/chờ xuất).  ExpiresAt NULL = không hết hạn (ví dụ COD).
 -- Consumed : đã xuất kho thật.  Released: hủy đơn/nhả tay.  Expired: job nền nhả do quá hạn thanh toán.
@@ -452,6 +486,7 @@ CREATE TABLE StockReservations (
         (Status = 'Active' AND ResolvedAt IS NULL) OR (Status <> 'Active' AND ResolvedAt IS NOT NULL))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS InventoryReceipts;
 -- Phiếu NHẬP kho (inbound).
 --   SellerInbound   : seller gửi hàng vào kho sàn (bắt buộc có SenderSellerId)
 --   TransferInbound : nhận hàng điều chuyển (bắt buộc có TransferId)
@@ -487,6 +522,7 @@ CREATE TABLE InventoryReceipts (
     CONSTRAINT CK_Receipts_Separation CHECK (ConfirmedBy IS NULL OR ConfirmedBy <> CreatedBy)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS ReceiptDetails;
 -- Chi tiết phiếu nhập. WarehouseId lặp lại có chủ đích: khóa ngoại kép (file 03) đảm bảo
 -- vị trí cất hàng thuộc đúng kho của phiếu.
 CREATE TABLE ReceiptDetails (
@@ -502,6 +538,7 @@ CREATE TABLE ReceiptDetails (
     CONSTRAINT CK_ReceiptDetails_Cost CHECK (UnitCost IS NULL OR UnitCost >= 0)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS InventoryIssues;
 -- Phiếu XUẤT kho (outbound). Luồng soạn/đóng gói cho đơn hàng: Draft -> Approved -> Picking -> Packed -> Dispatched.
 --   OrderFulfillment : xuất cho đơn của seller (bắt buộc SellerOrderId)
 --   TransferOutbound : xuất điều chuyển (bắt buộc TransferId)
@@ -534,6 +571,7 @@ CREATE TABLE InventoryIssues (
     CONSTRAINT CK_Issues_NeedApproval CHECK (Status <> 'Dispatched' OR IssueType IN ('OrderFulfillment','TransferOutbound') OR ApprovedBy IS NOT NULL)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS IssueDetails;
 -- Chi tiết phiếu xuất. Quantity = số cần lấy, PickedQuantity = số đã quét lấy thực tế.
 -- ReservationId: dòng giữ chỗ được tiêu thụ khi xuất (chỉ có với OrderFulfillment).
 CREATE TABLE IssueDetails (
@@ -550,6 +588,7 @@ CREATE TABLE IssueDetails (
     CONSTRAINT CK_IssueDetails_Picked CHECK (PickedQuantity >= 0 AND PickedQuantity <= Quantity)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS StockTransfers;
 -- Phiếu ĐIỀU CHUYỂN giữa hai kho: Draft -> Approved -> InTransit (xuất kho nguồn) -> Received (nhập kho đích).
 CREATE TABLE StockTransfers (
     TransferId              BIGINT       NOT NULL AUTO_INCREMENT,
@@ -573,6 +612,7 @@ CREATE TABLE StockTransfers (
     CONSTRAINT CK_Transfer_Received CHECK (Status <> 'Received' OR (ReceivedAt IS NOT NULL AND ReceivedBy IS NOT NULL))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS StockTransferDetails;
 -- Chi tiết điều chuyển. ReceivedQuantity ghi số thực nhận (lệch với Quantity = thất thoát khi vận chuyển).
 -- Vị trí nguồn/đích phải thuộc đúng kho nguồn/đích (trigger ở file 05).
 CREATE TABLE StockTransferDetails (
@@ -588,6 +628,7 @@ CREATE TABLE StockTransferDetails (
     CONSTRAINT CK_TransferDetails_Received CHECK (ReceivedQuantity IS NULL OR (ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS StockCounts;
 -- Phiếu KIỂM KÊ: Draft -> Counting -> PendingApproval -> Approved (sinh điều chỉnh tồn) / Cancelled.
 CREATE TABLE StockCounts (
     StockCountId  BIGINT       NOT NULL AUTO_INCREMENT,
@@ -607,6 +648,7 @@ CREATE TABLE StockCounts (
     CONSTRAINT CK_StockCounts_Approved CHECK (Status <> 'Approved' OR (ApprovedBy IS NOT NULL AND ApprovedAt IS NOT NULL))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS StockCountDetails;
 -- Chi tiết kiểm kê. SystemQuantity chụp tồn hệ thống lúc bắt đầu; Difference = đếm thực - hệ thống.
 -- Chênh lệch bắt buộc có lý do (Reason) khi khác 0 (kiểm tra ở service).
 CREATE TABLE StockCountDetails (
@@ -624,6 +666,7 @@ CREATE TABLE StockCountDetails (
     CONSTRAINT CK_StockCountDetails_Qty CHECK (SystemQuantity >= 0 AND (CountedQuantity IS NULL OR CountedQuantity >= 0))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS StockMovements;
 -- SỔ CÁI TỒN KHO (stock ledger / thẻ kho). CHỈ THÊM, không sửa/xóa (trigger chặn ở file 05).
 --   OnHandChange   : thay đổi tồn thực tế (Receipt/Issue/TransferIn/TransferOut/Adjustment/ReturnIn/StockCount)
 --   ReservedChange : thay đổi tồn đang giữ (Reserve/ReleaseReserve)
@@ -657,6 +700,7 @@ CREATE TABLE StockMovements (
 -- 6. SHIPPING, RETURNS & REVIEWS (VẬN CHUYỂN, TRẢ HÀNG, ĐÁNH GIÁ)
 -- ============================================================================
 
+DROP TABLE IF EXISTS Carriers;
 -- Danh mục đơn vị vận chuyển (GHN, GHTK, Viettel Post...).
 CREATE TABLE Carriers (
     CarrierId    INT          NOT NULL AUTO_INCREMENT,
@@ -667,6 +711,7 @@ CREATE TABLE Carriers (
     CONSTRAINT UQ_Carriers_Code UNIQUE (CarrierCode)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Shipments;
 -- Kiện hàng vận chuyển của một đơn seller (một đơn có thể tách nhiều kiện).
 -- CodAmount: số tiền shipper thu hộ (đơn COD), 0 nếu đã thanh toán trước.
 CREATE TABLE Shipments (
@@ -688,6 +733,7 @@ CREATE TABLE Shipments (
     CONSTRAINT CK_Shipments_Delivered CHECK (ShippingStatus <> 'Delivered' OR DeliveredAt IS NOT NULL)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS ReturnRequests;
 -- Yêu cầu TRẢ HÀNG của khách (theo đơn seller). Hàng hoàn KHÔNG tự cộng tồn bán được:
 -- nhận về -> kiểm tra từng dòng (ReturnRequestItems.InspectionResult) -> mới nhập vào kệ bán hoặc khu hàng hỏng.
 CREATE TABLE ReturnRequests (
@@ -708,6 +754,7 @@ CREATE TABLE ReturnRequests (
     CONSTRAINT CK_ReturnRequests_Rejected CHECK (Status <> 'Rejected' OR RejectReason IS NOT NULL)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS ReturnRequestItems;
 -- Dòng hàng trả + kết quả kiểm tra tình trạng.
 --   Good        : nguyên vẹn -> nhập kệ bán      MinorDefect: lỗi nhẹ -> khu giảm giá/bán lại tùy chính sách
 --   Damaged     : hỏng       -> khu hàng hỏng    Pending    : chưa kiểm
@@ -731,6 +778,7 @@ CREATE TABLE ReturnRequestItems (
         (InspectionResult <> 'Pending' AND InspectedBy IS NOT NULL AND InspectedAt IS NOT NULL))
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS Reviews;
 -- Đánh giá sản phẩm: mỗi khách đánh giá 1 lần cho mỗi dòng hàng, chỉ khi đơn đã giao (trigger ở file 05).
 CREATE TABLE Reviews (
     ReviewId     BIGINT        NOT NULL AUTO_INCREMENT,
@@ -744,3 +792,6 @@ CREATE TABLE Reviews (
     CONSTRAINT UQ_Reviews_Customer_Item UNIQUE (CustomerId, OrderItemId),
     CONSTRAINT CK_Reviews_Rating CHECK (Rating BETWEEN 1 AND 5)
 ) ENGINE=InnoDB;
+
+-- Bật lại kiểm tra khóa ngoại.
+SET FOREIGN_KEY_CHECKS = 1;
