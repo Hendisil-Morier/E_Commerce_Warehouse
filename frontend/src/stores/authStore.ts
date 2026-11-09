@@ -25,6 +25,8 @@ export const useAuthStore = create<AuthState>()(
             userId: data.userId,
             fullName: data.fullName,
             email: data.email,
+            role: data.role || "Customer",
+            roles: data.roles || ["Customer"],
           },
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
@@ -44,4 +46,3 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
-

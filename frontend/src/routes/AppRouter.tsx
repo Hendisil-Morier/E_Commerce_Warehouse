@@ -10,6 +10,8 @@ import { ProductsPage } from "@/pages/ProductsPage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { WarehousePage } from "@/pages/WarehousePage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { SellerPage } from "@/pages/SellerPage";
+import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 
 const router = createBrowserRouter([
   {
@@ -24,17 +26,45 @@ const router = createBrowserRouter([
         path: ROUTES.PRODUCTS,
         element: <ProductsPage />,
       },
+      // Protected for logged in customers / all authenticated users
       {
-        path: ROUTES.ORDERS,
-        element: <OrdersPage />,
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: ROUTES.ORDERS,
+            element: <OrdersPage />,
+          },
+        ],
       },
+      // Protected for Warehouse Manager & Staff
       {
-        path: ROUTES.WAREHOUSE,
-        element: <WarehousePage />,
+        element: <ProtectedRoute allowedRoles={["WarehouseManager", "WarehouseStaff", "Admin"]} />,
+        children: [
+          {
+            path: ROUTES.WAREHOUSE,
+            element: <WarehousePage />,
+          },
+        ],
       },
+      // Protected for Sellers
       {
-        path: ROUTES.ADMIN,
-        element: <DashboardPage />,
+        element: <ProtectedRoute allowedRoles={["Seller", "Admin"]} />,
+        children: [
+          {
+            path: ROUTES.SELLER,
+            element: <SellerPage />,
+          },
+        ],
+      },
+      // Protected for System Admin
+      {
+        element: <ProtectedRoute allowedRoles={["Admin"]} />,
+        children: [
+          {
+            path: ROUTES.ADMIN,
+            element: <DashboardPage />,
+          },
+        ],
       },
     ],
   },
@@ -56,4 +86,3 @@ const router = createBrowserRouter([
 export const AppRouter: React.FC = () => {
   return <RouterProvider router={router} />;
 };
-

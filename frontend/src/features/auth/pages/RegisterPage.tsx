@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Phone, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Store,
+  ShoppingBag,
+} from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/authStore";
@@ -9,11 +14,14 @@ export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
+  const [accountType, setAccountType] = useState<"customer" | "seller">("customer");
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [shopName, setShopName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -22,8 +30,40 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!fullName.trim() || !email.trim() || !password.trim()) {
+    const cleanFullName = fullName.trim();
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phoneNumber.trim().replace(/\D/g, "");
+
+    if (!cleanFullName || !cleanUsername || !cleanEmail || !cleanPhone || !password.trim()) {
       setErrorMessage("Vui lòng nhập đầy đủ các trường bắt buộc.");
+      return;
+    }
+
+    if (cleanUsername.length < 3) {
+      setErrorMessage("Tên đăng nhập phải có ít nhất 3 ký tự.");
+      return;
+    }
+
+    // 1. Kiểm tra định dạng Gmail hợp lệ (@gmail.com)
+    const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+    if (!GMAIL_REGEX.test(cleanEmail)) {
+      setErrorMessage("Địa chỉ email phải là Gmail hợp lệ (kết thúc bằng @gmail.com, ví dụ: yourname@gmail.com).");
+      return;
+    }
+
+    // 2. Kiểm tra số điện thoại: đúng 10 số và thuộc các đầu số nhà mạng VN quy định
+    // Các đầu số hợp lệ: 070, 076-079, 089, 090, 093, 032-039, 086, 096-098, 081-085, 088, 091, 094, 092, 056, 058, 052, 099, 059
+    const VIETNAM_PHONE_REGEX = /^(03[2-9]|05[2689]|07[06-9]|08[1-689]|09[0-46-9])\d{7}$/;
+    if (cleanPhone.length !== 10) {
+      setErrorMessage("Số điện thoại phải gồm đúng 10 chữ số.");
+      return;
+    }
+
+    if (!VIETNAM_PHONE_REGEX.test(cleanPhone)) {
+      setErrorMessage(
+        "Đầu số điện thoại không hợp lệ. Chỉ chấp nhận các đầu số: 032-039, 052/056/058/059, 070/076-079, 081-086/088/089, 090-094/096-099."
+      );
       return;
     }
 
@@ -40,14 +80,22 @@ export const RegisterPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await authService.register({
-        fullName,
-        email,
+        fullName: cleanFullName,
+        username: cleanUsername,
+        email: cleanEmail,
         password,
-        phoneNumber: phoneNumber.trim() || undefined,
+        phoneNumber: cleanPhone,
+        accountType,
+        shopName: accountType === "seller" ? shopName.trim() : undefined,
       });
 
       setAuth(data);
-      navigate(ROUTES.HOME);
+
+      if (accountType === "seller") {
+        navigate(ROUTES.SELLER);
+      } else {
+        navigate(ROUTES.HOME);
+      }
     } catch (err: unknown) {
       if (err && typeof err === "object" && "response" in err) {
         const response = (err as { response?: { data?: { message?: string } } }).response;
@@ -61,14 +109,76 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div>
-      <div style={{ textAlign: "center", marginBottom: "24px" }}>
-        <h2 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>
-          Tạo tài khoản
-        </h2>
-        <p style={{ color: "#6b7280", fontSize: "0.95rem" }}>
-          Đăng ký để trải nghiệm mua sắm và quản lý bán hàng.
-        </p>
+    <div style={{
+      backgroundColor: "#ffffff",
+      borderRadius: "16px",
+      boxShadow: "0 20px 40px rgba(15, 23, 42, 0.25)",
+      padding: "32px 36px",
+      width: "100%",
+      maxWidth: "480px",
+      boxSizing: "border-box",
+    }}>
+      <h2 style={{
+        fontSize: "1.45rem",
+        fontWeight: 800,
+        color: "#0f172a",
+        marginBottom: "16px",
+      }}>
+        Đăng ký tài khoản
+      </h2>
+
+      {/* Account Type Selector (Khách hàng vs Người bán) */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "10px",
+        marginBottom: "20px",
+      }}>
+        <button
+          type="button"
+          onClick={() => setAccountType("customer")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "10px",
+            borderRadius: "8px",
+            border: accountType === "customer" ? "2px solid #4f46e5" : "1px solid #cbd5e1",
+            backgroundColor: accountType === "customer" ? "#eef2ff" : "#ffffff",
+            color: accountType === "customer" ? "#4f46e5" : "#64748b",
+            fontWeight: 700,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          <ShoppingBag size={17} />
+          <span>Khách mua hàng</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAccountType("seller")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "10px",
+            borderRadius: "8px",
+            border: accountType === "seller" ? "2px solid #4f46e5" : "1px solid #cbd5e1",
+            backgroundColor: accountType === "seller" ? "#eef2ff" : "#ffffff",
+            color: accountType === "seller" ? "#4f46e5" : "#64748b",
+            fontWeight: 700,
+            fontSize: "0.85rem",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          <Store size={17} />
+          <span>Đối tác Người bán</span>
+        </button>
       </div>
 
       {errorMessage && (
@@ -76,117 +186,134 @@ export const RegisterPage: React.FC = () => {
           backgroundColor: "#fef2f2",
           border: "1px solid #fecaca",
           color: "#dc2626",
-          padding: "12px 16px",
+          padding: "10px 14px",
           borderRadius: "8px",
-          marginBottom: "20px",
-          fontSize: "0.9rem",
+          marginBottom: "16px",
+          fontSize: "0.85rem",
         }}>
           {errorMessage}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {/* Full Name */}
         <div>
-          <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-            Họ và tên *
-          </label>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <span style={{ position: "absolute", left: "12px", color: "#9ca3af" }}>
-              <User size={18} />
-            </span>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Họ và tên đầy đủ *"
+            required
+            style={{
+              width: "100%",
+              padding: "11px 14px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "0.92rem",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        {/* Username */}
+        <div>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Tên đăng nhập *"
+            required
+            autoCapitalize="none"
+            style={{
+              width: "100%",
+              padding: "11px 14px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "0.92rem",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        {/* Email (Gmail) */}
+        <div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Địa chỉ Gmail (ví dụ: name@gmail.com) *"
+            required
+            style={{
+              width: "100%",
+              padding: "11px 14px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "0.92rem",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        {/* Phone */}
+        <div>
+          <input
+            type="tel"
+            value={phoneNumber}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+              setPhoneNumber(val);
+            }}
+            placeholder="Số điện thoại liên hệ (10 chữ số) *"
+            required
+            maxLength={10}
+            style={{
+              width: "100%",
+              padding: "11px 14px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "0.92rem",
+              outline: "none",
+            }}
+          />
+        </div>
+
+        {/* Extra fields if Seller */}
+        {accountType === "seller" && (
+          <div>
             <input
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Nguyễn Văn A"
+              value={shopName}
+              onChange={(e) => setShopName(e.target.value)}
+              placeholder="Tên gian hàng / Doanh nghiệp dự kiến *"
               required
               style={{
                 width: "100%",
-                padding: "10px 12px 10px 38px",
+                padding: "11px 14px",
                 borderRadius: "8px",
-                border: "1px solid #d1d5db",
-                fontSize: "0.95rem",
+                border: "1px solid #818cf8",
+                backgroundColor: "#f8fafc",
+                fontSize: "0.92rem",
                 outline: "none",
               }}
             />
           </div>
-        </div>
-
-        {/* Email */}
-        <div>
-          <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-            Email *
-          </label>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <span style={{ position: "absolute", left: "12px", color: "#9ca3af" }}>
-              <Mail size={18} />
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@gmail.com"
-              required
-              style={{
-                width: "100%",
-                padding: "10px 12px 10px 38px",
-                borderRadius: "8px",
-                border: "1px solid #d1d5db",
-                fontSize: "0.95rem",
-                outline: "none",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Phone number */}
-        <div>
-          <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-            Số điện thoại
-          </label>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <span style={{ position: "absolute", left: "12px", color: "#9ca3af" }}>
-              <Phone size={18} />
-            </span>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="0912345678"
-              style={{
-                width: "100%",
-                padding: "10px 12px 10px 38px",
-                borderRadius: "8px",
-                border: "1px solid #d1d5db",
-                fontSize: "0.95rem",
-                outline: "none",
-              }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* Password */}
         <div>
-          <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-            Mật khẩu *
-          </label>
           <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <span style={{ position: "absolute", left: "12px", color: "#9ca3af" }}>
-              <Lock size={18} />
-            </span>
             <input
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder="Mật khẩu (tối thiểu 6 ký tự) *"
               required
               style={{
                 width: "100%",
-                padding: "10px 40px 10px 38px",
+                padding: "11px 42px 11px 14px",
                 borderRadius: "8px",
-                border: "1px solid #d1d5db",
-                fontSize: "0.95rem",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.92rem",
                 outline: "none",
               }}
             />
@@ -196,13 +323,7 @@ export const RegisterPage: React.FC = () => {
               style={{
                 position: "absolute",
                 right: "12px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#9ca3af",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
+                color: "#64748b",
               }}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -210,66 +331,77 @@ export const RegisterPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Confirm password */}
+        {/* Confirm Password */}
         <div>
-          <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
-            Xác nhận mật khẩu *
-          </label>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <span style={{ position: "absolute", left: "12px", color: "#9ca3af" }}>
-              <Lock size={18} />
-            </span>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Nhập lại mật khẩu"
-              required
-              style={{
-                width: "100%",
-                padding: "10px 12px 10px 38px",
-                borderRadius: "8px",
-                border: "1px solid #d1d5db",
-                fontSize: "0.95rem",
-                outline: "none",
-              }}
-            />
-          </div>
+          <input
+            type={showPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Xác nhận lại mật khẩu *"
+            required
+            style={{
+              width: "100%",
+              padding: "11px 14px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              fontSize: "0.92rem",
+              outline: "none",
+            }}
+          />
         </div>
 
-        {/* Submit */}
+        {/* Big Submit Button (Indigo) */}
         <button
           type="submit"
           disabled={loading}
           style={{
-            marginTop: "8px",
-            padding: "12px",
-            backgroundColor: loading ? "#93c5fd" : "#2563eb",
+            width: "100%",
+            padding: "13px",
+            backgroundColor: loading ? "#94a3b8" : "#4f46e5",
             color: "#ffffff",
-            border: "none",
             borderRadius: "8px",
+            fontWeight: 800,
             fontSize: "1rem",
-            fontWeight: 600,
-            cursor: loading ? "not-allowed" : "pointer",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "8px",
-            transition: "background-color 0.2s",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
+            marginTop: "6px",
           }}
         >
-          <UserPlus size={20} />
-          <span>{loading ? "Đang tạo tài khoản..." : "Đăng ký"}</span>
+          {loading ? "ĐANG TẠO TÀI KHOẢN..." : (accountType === "seller" ? "ĐĂNG KÝ MỞ GIAN HÀNG" : "ĐĂNG KÝ NGAY")}
         </button>
-      </form>
 
-      <div style={{ marginTop: "24px", textAlign: "center", fontSize: "0.92rem", color: "#6b7280" }}>
-        Đã có tài khoản?{" "}
-        <Link to={ROUTES.LOGIN} style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-          Đăng nhập
-        </Link>
-      </div>
+        {/* Disclaimer */}
+        <p style={{
+          fontSize: "0.72rem",
+          color: "#94a3b8",
+          textAlign: "center",
+          lineHeight: 1.4,
+          margin: "4px 0 0",
+        }}>
+          Bằng việc đăng ký, bạn xác nhận đã đọc và đồng ý với Điều khoản dịch vụ & Chính sách bảo mật của E-Warehouse.
+        </p>
+
+        {/* Switch to Login */}
+        <div style={{
+          textAlign: "center",
+          fontSize: "0.85rem",
+          color: "#64748b",
+          paddingTop: "6px",
+        }}>
+          Bạn đã có tài khoản?{" "}
+          <Link
+            to={ROUTES.LOGIN}
+            style={{
+              color: "#4f46e5",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Đăng nhập
+          </Link>
+        </div>
+      </form>
     </div>
   );
 };
-
