@@ -71,4 +71,21 @@ public class AuthController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Đổi Refresh Token lấy Access Token và Refresh Token mới (đồng thời tải lại quyền mới nhất từ DB)
+    /// </summary>
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Refresh(
+        [FromBody] RefreshTokenRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var result = await _authService.RefreshTokenAsync(model, ipAddress, cancellationToken);
+        return Ok(new { success = true, data = result, message = "Làm mới phiên đăng nhập thành công!" });
+    }
 }

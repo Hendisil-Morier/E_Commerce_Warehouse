@@ -1,6 +1,7 @@
 using ECommerceWarehouse.Application.Contracts.Persistence;
 using ECommerceWarehouse.Application.Services;
 using ECommerceWarehouse.Infrastructure.Data;
+using ECommerceWarehouse.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +22,7 @@ public static class DependencyInjection
                 mySqlOptions => mySqlOptions.EnableRetryOnFailure(3)
             ));
 
+        services.AddScoped<ISellerRepository, SellerRepository>();
         services.AddScoped<IUnitOfWork, ECommerceWarehouse.Infrastructure.UnitOfWork.UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
         return services;

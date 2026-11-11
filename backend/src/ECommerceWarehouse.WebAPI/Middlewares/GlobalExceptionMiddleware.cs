@@ -1,16 +1,30 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
+using ECommerceWarehouse.Domain.Exceptions;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 
 namespace ECommerceWarehouse.WebAPI.Middlewares;
 
+/// <summary>
+/// Middleware toàn cục chuyển đổi mọi exception chưa xử lý thành ProblemDetails chuẩn RFC 7807 kèm trường "code" và "traceId".
+/// </summary>
 public class GlobalExceptionMiddleware
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
 
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    public GlobalExceptionMiddleware(
+        RequestDelegate next,
+        ILogger<GlobalExceptionMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -30,45 +44,146 @@ public class GlobalExceptionMiddleware
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        context.Response.ContentType = "application/json";
-        var statusCode = HttpStatusCode.InternalServerError;
-        var message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.";
+        var problemDetails = BuildProblemDetails(context, exception);
 
-        // 1. Bắt lỗi Concurrency (2 người cùng mua món hàng cuối cùng trên bảng Inventory/Orders)
-        if (exception is DbUpdateConcurrencyException)
+        if ((problemDetails.Status ?? StatusCodes.Status500InternalServerError) >= StatusCodes.Status500InternalServerError)
         {
-            statusCode = HttpStatusCode.Conflict; // 409 Conflict
-            message = "Dữ liệu tồn kho hoặc đơn hàng vừa được thay đổi bởi giao dịch khác. Vui lòng thử lại.";
-        }
-        // 2. Bắt lỗi Trigger MySQL (SIGNAL SQLSTATE '45000' -> Error Number 1644)
-        else if (exception.InnerException is MySqlException mySqlEx && (mySqlEx.Number == 1644 || mySqlEx.SqlState == "45000"))
-        {
-            statusCode = HttpStatusCode.BadRequest; // 400 Bad Request
-            message = mySqlEx.Message; // Lấy nguyên văn thông báo tiếng Việt từ Trigger
-        }
-        else if (exception is UnauthorizedAccessException)
-        {
-            statusCode = HttpStatusCode.Unauthorized;
-            message = exception.Message;
-        }
-        else if (exception is ArgumentException or InvalidOperationException)
-        {
-            statusCode = HttpStatusCode.BadRequest;
-            message = exception.Message;
+            _logger.LogError(exception, "Unhandled server exception. TraceId: {TraceId}", problemDetails.Extensions["traceId"]);
         }
         else
         {
-            _logger.LogError(exception, "Unhandled Exception");
+            _logger.LogWarning("Handled business/client exception {Code}: {Message}",
+                problemDetails.Extensions["code"], exception.Message);
         }
 
-        context.Response.StatusCode = (int)statusCode;
-        var payload = JsonSerializer.Serialize(new
-        {
-            success = false,
-            message,
-            statusCode = (int)statusCode
-        });
+        context.Response.ContentType = "application/problem+json; charset=utf-8";
+        context.Response.StatusCode = problemDetails.Status ?? (int)HttpStatusCode.InternalServerError;
 
+        var payload = JsonSerializer.Serialize(problemDetails, JsonOptions);
         await context.Response.WriteAsync(payload);
+    }
+
+    private static ProblemDetails BuildProblemDetails(HttpContext context, Exception exception)
+    {
+        var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+
+        int status;
+        string code;
+        string title;
+        string detail;
+        IDictionary<string, string[]>? errors = null;
+
+        switch (exception)
+        {
+            case ValidationException validationEx:
+                status = StatusCodes.Status400BadRequest;
+                code = ErrorCodes.ValidationError;
+                title = "Dữ liệu chưa hợp lệ";
+                detail = "Dữ liệu chưa hợp lệ, vui lòng kiểm tra lại.";
+                errors = validationEx.Errors
+                    .GroupBy(e => ToCamelCase(e.PropertyName))
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.ErrorMessage).Distinct().ToArray());
+                break;
+
+            case NotFoundException notFoundEx:
+                status = StatusCodes.Status404NotFound;
+                code = notFoundEx.Code;
+                title = "Không tìm thấy tài nguyên";
+                detail = notFoundEx.Message;
+                break;
+
+            case BusinessException businessEx:
+                status = businessEx.HttpStatus;
+                code = businessEx.Code;
+                title = GetDefaultTitleForStatus(status);
+                detail = businessEx.Message;
+                break;
+
+            case DbUpdateConcurrencyException:
+                status = StatusCodes.Status409Conflict;
+                code = ErrorCodes.ConcurrencyConflict;
+                title = "Xung đột dữ liệu đồng thời";
+                detail = "Dữ liệu vừa được người khác cập nhật, vui lòng tải lại.";
+                break;
+
+            case UnauthorizedAccessException unauthorizedEx:
+                status = StatusCodes.Status401Unauthorized;
+                code = ErrorCodes.Unauthorized;
+                title = "Chưa xác thực";
+                detail = string.IsNullOrWhiteSpace(unauthorizedEx.Message)
+                    ? "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn."
+                    : unauthorizedEx.Message;
+                break;
+
+            default:
+                var mySqlTriggerEx = FindMySqlTriggerException(exception);
+                if (mySqlTriggerEx != null)
+                {
+                    status = StatusCodes.Status409Conflict;
+                    code = ErrorCodes.BusinessRuleViolation;
+                    title = "Vi phạm quy tắc nghiệp vụ";
+                    detail = mySqlTriggerEx.Message;
+                }
+                else
+                {
+                    status = StatusCodes.Status500InternalServerError;
+                    code = ErrorCodes.InternalError;
+                    title = "Lỗi hệ thống";
+                    detail = "Có lỗi hệ thống, vui lòng thử lại sau.";
+                }
+                break;
+        }
+
+        var problem = new ProblemDetails
+        {
+            Type = $"https://httpstatuses.com/{status}",
+            Title = title,
+            Status = status,
+            Detail = detail
+        };
+
+        problem.Extensions["code"] = code;
+        problem.Extensions["traceId"] = traceId;
+
+        if (errors != null)
+        {
+            problem.Extensions["errors"] = errors;
+        }
+
+        return problem;
+    }
+
+    private static MySqlException? FindMySqlTriggerException(Exception? ex)
+    {
+        while (ex != null)
+        {
+            if (ex is MySqlException mySqlEx &&
+                (mySqlEx.Number == 1644 || string.Equals(mySqlEx.SqlState, "45000", StringComparison.Ordinal)))
+            {
+                return mySqlEx;
+            }
+            ex = ex.InnerException;
+        }
+
+        return null;
+    }
+
+    private static string GetDefaultTitleForStatus(int status) => status switch
+    {
+        StatusCodes.Status400BadRequest => "Yêu cầu không hợp lệ",
+        StatusCodes.Status401Unauthorized => "Chưa xác thực",
+        StatusCodes.Status403Forbidden => "Không có quyền truy cập",
+        StatusCodes.Status404NotFound => "Không tìm thấy tài nguyên",
+        StatusCodes.Status409Conflict => "Vi phạm quy tắc nghiệp vụ",
+        _ => "Lỗi xử lý yêu cầu"
+    };
+
+    private static string ToCamelCase(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "general";
+        if (name.Length == 1) return name.ToLowerInvariant();
+        return char.ToLowerInvariant(name[0]) + name[1..];
     }
 }

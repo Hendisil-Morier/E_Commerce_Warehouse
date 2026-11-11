@@ -4,8 +4,10 @@ import { ForbiddenPage } from "@/components/common/ForbiddenPage";
 import { PlaceholderPage } from "@/components/common/PlaceholderPage";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ROUTES } from "@/constants/routes";
+import { AdminSellersPage } from "@/features/admin/pages/AdminSellersPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
+import { BecomeSellerPage } from "@/features/seller/pages/BecomeSellerPage";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { MainLayout } from "@/layouts/MainLayout";
@@ -40,19 +42,11 @@ const router = createBrowserRouter([
         ],
       },
       {
-        element: <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} />,
+        element: <ProtectedRoute allowedRoles={[ROLES.CUSTOMER, ROLES.SELLER]} />,
         children: [
           {
             path: ROUTES.BECOME_SELLER,
-            element: (
-              <div style={{ padding: "36px 24px" }}>
-                <PlaceholderPage
-                  screenCode="S0"
-                  title="Đăng ký trở thành người bán"
-                  description="Biểu mẫu đăng ký mở tài khoản Seller (tên doanh nghiệp, mã số thuế, địa chỉ, mô tả) và theo dõi trạng thái duyệt."
-                />
-              </div>
-            ),
+            element: <BecomeSellerPage />,
           },
         ],
       },
@@ -335,13 +329,7 @@ const router = createBrowserRouter([
           },
           {
             path: "sellers",
-            element: (
-              <PlaceholderPage
-                screenCode="A2"
-                title="Duyệt đối tác người bán (Seller)"
-                description="Xem hồ sơ đăng ký mở bán và thực hiện Duyệt, Từ chối kèm lý do, hoặc Khóa tài khoản seller."
-              />
-            ),
+            element: <AdminSellersPage />,
           },
           {
             path: "products",

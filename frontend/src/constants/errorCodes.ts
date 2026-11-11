@@ -22,6 +22,7 @@ export const ERROR_CODES: Record<string, string> = {
   BUSINESS_RULE_VIOLATION: "Thao tác vi phạm quy tắc nghiệp vụ.",
 
   // 4. Mã theo module
+  SELLER_ALREADY_EXISTS: "Tài khoản này đã có hồ sơ người bán.",
   SELLER_NOT_APPROVED: "Tài khoản người bán chưa được duyệt.",
   PRODUCT_NOT_AVAILABLE: "Sản phẩm hiện không còn bán.",
   DUPLICATE_SKU: "SKU này đã tồn tại.",

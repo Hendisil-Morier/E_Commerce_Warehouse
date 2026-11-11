@@ -7,6 +7,9 @@ using ECommerceWarehouse.Application.Contracts.Persistence;
 using ECommerceWarehouse.Application.DTOs.Identity;
 using ECommerceWarehouse.Domain.Entities.Identity;
 using ECommerceWarehouse.Domain.Entities.Seller;
+using ECommerceWarehouse.Domain.Enums;
+using ECommerceWarehouse.Domain.Exceptions;
+using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -18,11 +21,16 @@ public class AuthService : IAuthService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IValidator<RefreshTokenRequestDto> _refreshTokenValidator;
 
-    public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration)
+    public AuthService(
+        IUnitOfWork unitOfWork,
+        IConfiguration configuration,
+        IValidator<RefreshTokenRequestDto> refreshTokenValidator)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
+        _refreshTokenValidator = refreshTokenValidator;
         _passwordHasher = new PasswordHasher<User>();
     }
 
@@ -99,14 +107,14 @@ public class AuthService : IAuthService
             userRolesList.Add("Customer");
         }
 
-        // 4. Nếu người dùng đăng ký dạng Seller -> Tạo hồ sơ Seller chờ Admin duyệt
+        // 4. Nếu người dùng đăng ký dạng Seller -> Tạo hồ sơ Seller chờ duyệt (Pending)
         if (string.Equals(model.AccountType, "seller", StringComparison.OrdinalIgnoreCase))
         {
             var seller = new Seller
             {
                 UserId = user.UserId,
                 BusinessName = !string.IsNullOrWhiteSpace(model.ShopName) ? model.ShopName : model.FullName,
-                Status = "Pending",
+                Status = SellerStatus.Pending,
                 CommissionRate = 5.00m,
                 CreatedAt = DateTime.UtcNow
             };
@@ -125,17 +133,7 @@ public class AuthService : IAuthService
         await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken);
         await _unitOfWork.SaveChangesAsync();
 
-        return new AuthResponseDto
-        {
-            UserId = user.UserId,
-            Username = user.Username,
-            FullName = user.FullName,
-            Email = user.Email,
-            Role = primaryRole,
-            Roles = userRolesList,
-            AccessToken = accessToken,
-            RefreshToken = refreshToken.TokenHash
-        };
+        return BuildAuthResponse(user, primaryRole, userRolesList, accessToken, refreshToken.TokenHash);
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto model, string ipAddress)
@@ -156,26 +154,8 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Email hoặc mật khẩu không chính xác.");
         }
 
-        // Truy vấn danh sách Role của tài khoản
-        var userRoles = await _unitOfWork.Repository<UserRole>().FindAsync(ur => ur.UserId == user.UserId);
-        var allRoles = await _unitOfWork.Repository<Role>().GetAllAsync();
-
-        var roleNames = (from ur in userRoles
-                         join r in allRoles on ur.RoleId equals r.RoleId
-                         select r.RoleName).ToList();
-
-        if (!roleNames.Any())
-        {
-            roleNames.Add("Customer");
-        }
-
-        // Xác định Role chủ đạo để điều hướng UI
-        string primaryRole = "Customer";
-        if (roleNames.Contains("Admin")) primaryRole = "Admin";
-        else if (roleNames.Contains("WarehouseManager")) primaryRole = "WarehouseManager";
-        else if (roleNames.Contains("WarehouseStaff")) primaryRole = "WarehouseStaff";
-        else if (roleNames.Contains("Seller")) primaryRole = "Seller";
-        else primaryRole = roleNames.First();
+        var roleNames = await GetUserRolesAsync(user.UserId);
+        var primaryRole = DeterminePrimaryRole(roleNames);
 
         var accessToken = GenerateJwtToken(user, roleNames);
         var refreshToken = GenerateRefreshToken(ipAddress, user.UserId);
@@ -183,6 +163,102 @@ public class AuthService : IAuthService
         await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken);
         await _unitOfWork.SaveChangesAsync();
 
+        return BuildAuthResponse(user, primaryRole, roleNames, accessToken, refreshToken.TokenHash);
+    }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(
+        RefreshTokenRequestDto model,
+        string ipAddress,
+        CancellationToken cancellationToken = default)
+    {
+        await _refreshTokenValidator.ValidateAndThrowAsync(model, cancellationToken);
+
+        var incomingToken = model.RefreshToken.Trim();
+        var matchingTokens = await _unitOfWork.Repository<RefreshToken>()
+            .FindAsync(rt => rt.TokenHash == incomingToken);
+        var existingToken = matchingTokens.FirstOrDefault();
+
+        var utcNow = DateTime.UtcNow;
+        if (existingToken == null || existingToken.RevokedAt != null || existingToken.ExpiresAt <= utcNow)
+        {
+            throw new BusinessException(
+                ErrorCodes.InvalidRefreshToken,
+                "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
+                401);
+        }
+
+        var user = await _unitOfWork.Repository<User>().GetByIdAsync(existingToken.UserId);
+        if (user == null)
+        {
+            throw new BusinessException(
+                ErrorCodes.InvalidRefreshToken,
+                "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
+                401);
+        }
+
+        if (!user.IsActive)
+        {
+            throw new BusinessException(
+                ErrorCodes.AccountLocked,
+                "Tài khoản của bạn đang bị khóa.",
+                403);
+        }
+
+        // Tải lại danh sách Role mới nhất từ UserRoles (ví dụ ngay sau khi Customer được duyệt thành Seller)
+        var roleNames = await GetUserRolesAsync(user.UserId);
+        var primaryRole = DeterminePrimaryRole(roleNames);
+
+        var accessToken = GenerateJwtToken(user, roleNames);
+        var newRefreshToken = GenerateRefreshToken(ipAddress, user.UserId);
+
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            existingToken.RevokedAt = utcNow;
+            existingToken.ReplacedByHash = newRefreshToken.TokenHash;
+
+            _unitOfWork.Repository<RefreshToken>().Update(existingToken);
+            await _unitOfWork.Repository<RefreshToken>().AddAsync(newRefreshToken);
+            await _unitOfWork.SaveChangesAsync(ct);
+        }, cancellationToken);
+
+        return BuildAuthResponse(user, primaryRole, roleNames, accessToken, newRefreshToken.TokenHash);
+    }
+
+    private async Task<List<string>> GetUserRolesAsync(long userId)
+    {
+        var userRoles = await _unitOfWork.Repository<UserRole>().FindAsync(ur => ur.UserId == userId);
+        var allRoles = await _unitOfWork.Repository<Role>().GetAllAsync();
+
+        var roleNames = (from ur in userRoles
+                         join r in allRoles on ur.RoleId equals r.RoleId
+                         select r.RoleName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!roleNames.Any())
+        {
+            roleNames.Add("Customer");
+        }
+
+        return roleNames;
+    }
+
+    private static string DeterminePrimaryRole(IReadOnlyCollection<string> roleNames)
+    {
+        if (roleNames.Contains("Admin")) return "Admin";
+        if (roleNames.Contains("WarehouseManager")) return "WarehouseManager";
+        if (roleNames.Contains("WarehouseStaff")) return "WarehouseStaff";
+        if (roleNames.Contains("Seller")) return "Seller";
+        return roleNames.FirstOrDefault() ?? "Customer";
+    }
+
+    private static AuthResponseDto BuildAuthResponse(
+        User user,
+        string primaryRole,
+        List<string> roleNames,
+        string accessToken,
+        string refreshToken)
+    {
         return new AuthResponseDto
         {
             UserId = user.UserId,
@@ -192,7 +268,7 @@ public class AuthService : IAuthService
             Role = primaryRole,
             Roles = roleNames,
             AccessToken = accessToken,
-            RefreshToken = refreshToken.TokenHash
+            RefreshToken = refreshToken
         };
     }
 

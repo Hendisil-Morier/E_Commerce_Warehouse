@@ -41,6 +41,7 @@ BE trả lỗi theo định dạng ở `api-conventions.md`. Trường `code` l�
 
 | code | Module | Khi nào | Thông báo gợi ý |
 |---|---|---|---|
+| `SELLER_ALREADY_EXISTS` 🆕 | Seller | Tài khoản đã có hồ sơ người bán (trừ trạng thái `Rejected` được phép gửi lại) | Tài khoản này đã có hồ sơ người bán. |
 | `SELLER_NOT_APPROVED` 🆕 | Seller | Seller chưa được duyệt mà tạo shop/sản phẩm | Tài khoản người bán chưa được duyệt. |
 | `PRODUCT_NOT_AVAILABLE` 🆕 | Catalog/Cart | Sản phẩm chưa duyệt hoặc đã ngừng bán | Sản phẩm hiện không còn bán. |
 | `DUPLICATE_SKU` 🆕 | Catalog | Trùng SKU | SKU này đã tồn tại. |

@@ -1,5 +1,6 @@
 using ECommerceWarehouse.Domain.Entities.Identity;
 using ECommerceWarehouse.Domain.Entities.Seller;
+using ECommerceWarehouse.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -88,13 +89,17 @@ public class SellerConfiguration : IEntityTypeConfiguration<Seller>
         builder.Property(x => x.TaxCode).HasMaxLength(20);
         builder.Property(x => x.Description).HasMaxLength(1000);
         builder.Property(x => x.CommissionRate).HasPrecision(5, 2).HasDefaultValue(5.00m);
-        builder.Property(x => x.Status).HasMaxLength(30).HasDefaultValue("Pending");
+        builder.Property(x => x.Status)
+               .HasConversion<string>()
+               .HasMaxLength(30)
+               .HasDefaultValue(SellerStatus.Pending);
         builder.Property(x => x.ApprovedAt).HasColumnType("datetime(3)");
+        builder.Property(x => x.RejectReason).HasMaxLength(500);
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(3)");
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(3)");
 
         builder.HasOne(x => x.User)
-               .WithOne()
+               .WithOne(u => u.Seller)
                .HasForeignKey<Seller>(x => x.UserId)
                .OnDelete(DeleteBehavior.Restrict);
     }

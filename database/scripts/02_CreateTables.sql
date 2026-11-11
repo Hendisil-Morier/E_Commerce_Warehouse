@@ -110,6 +110,7 @@ CREATE TABLE Sellers (
     CommissionRate  DECIMAL(5,2)  NOT NULL DEFAULT 5.00,        -- % hoa hồng sàn thu trên doanh thu
     Status          VARCHAR(30)   NOT NULL DEFAULT 'Pending',
     ApprovedAt      DATETIME(3)   NULL,
+    RejectReason    VARCHAR(500)  NULL,
     CreatedAt       DATETIME(3)   NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
     UpdatedAt       DATETIME(3)   NULL,
     CONSTRAINT PK_Sellers PRIMARY KEY (SellerId),

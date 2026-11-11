@@ -1,7 +1,9 @@
 using ECommerceWarehouse.Domain.Entities.Identity;
 using ECommerceWarehouse.Domain.Entities.Seller;
+using ECommerceWarehouse.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -13,16 +15,14 @@ public static class DataSeeder
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var configuration = scope.ServiceProvider.GetService<IConfiguration>();
         var logger = scope.ServiceProvider.GetService<ILogger<ApplicationDbContext>>();
 
         try
         {
-            // Kiểm tra kết nối tới Database trước
             if (!await context.Database.CanConnectAsync())
             {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(">>> [DataSeeder] Không thể kết nối đến MySQL. Bỏ qua bước seed dữ liệu.");
-                Console.ResetColor();
+                logger?.LogWarning("[DataSeeder] Không thể kết nối đến MySQL. Bỏ qua bước seed dữ liệu.");
                 return;
             }
 
@@ -43,19 +43,35 @@ public static class DataSeeder
                 await context.SaveChangesAsync();
             }
 
+            // 2. Lấy mật khẩu seed mẫu từ cấu hình dev (không ghi cứng mật khẩu thật trong code)
+            var seedPassword = configuration?["SeedSettings:DefaultPassword"];
+            if (string.IsNullOrWhiteSpace(seedPassword))
+            {
+                var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                if (!string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase))
+                {
+                    logger?.LogInformation("[DataSeeder] Bỏ qua seed tài khoản mẫu ngoài môi trường Development.");
+                    return;
+                }
+
+                // Hằng fallback chỉ dùng cho môi trường dev cục bộ khi chưa cấu hình SeedSettings
+                seedPassword = "DevSeed@123";
+            }
+
             var allRoles = await context.Roles.ToDictionaryAsync(r => r.RoleName, r => r.RoleId);
             var passwordHasher = new PasswordHasher<User>();
 
-            // 2. Seed 4 tài khoản mẫu cho 4 vai trò
+            // 3. Seed 5 tài khoản mẫu cho 4 vai trò (bao gồm manager1 & manager2 cho nghiệp vụ tách quyền kho)
             var demoUsers = new List<(string Email, string Username, string FullName, string RoleName)>
             {
-                ("admin@emarket.vn", "admin", "Quản trị viên Hệ thống", "Admin"),
-                ("warehouse@emarket.vn", "warehouse", "Nguyễn Văn Kho (Thủ kho)", "WarehouseManager"),
-                ("seller@emarket.vn", "seller", "Trần Thị Shop (Người bán)", "Seller"),
+                ("admin@gmail.com", "admin", "Quản trị viên Hệ thống", "Admin"),
+                ("manager1@gmail.com", "manager1", "Nguyễn Văn Kho 1 (Thủ kho 1)", "WarehouseManager"),
+                ("manager2@gmail.com", "manager2", "Trần Văn Kho 2 (Thủ kho 2)", "WarehouseManager"),
+                ("seller@gmail.com", "seller", "Trần Thị Shop (Người bán)", "Seller"),
                 ("customer@gmail.com", "customer", "Lê Hoàng Khách (Khách hàng)", "Customer"),
             };
 
-            int createdCount = 0;
+            var createdCount = 0;
             foreach (var (email, username, fullName, roleName) in demoUsers)
             {
                 if (!await context.Users.AnyAsync(u => u.Email == email || u.Username == username))
@@ -69,7 +85,7 @@ public static class DataSeeder
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
-                    user.PasswordHash = passwordHasher.HashPassword(user, "Demo@123");
+                    user.PasswordHash = passwordHasher.HashPassword(user, seedPassword);
 
                     await context.Users.AddAsync(user);
                     await context.SaveChangesAsync();
@@ -93,7 +109,7 @@ public static class DataSeeder
                             BusinessName = "Công ty TNHH Thiết Bị Số Modu+",
                             TaxCode = "0109988776",
                             Description = "Chuyên phân phối thiết bị công nghệ & gia dụng cao cấp.",
-                            Status = "Approved",
+                            Status = SellerStatus.Approved,
                             ApprovedAt = DateTime.UtcNow,
                             CommissionRate = 5.00m,
                             CreatedAt = DateTime.UtcNow
@@ -117,13 +133,14 @@ public static class DataSeeder
                 }
             }
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine(">>> [DataSeeder] Hoàn tất nạp dữ liệu mẫu vào CSDL (Mật khẩu: Demo@123).");
-            Console.ResetColor();
+            if (createdCount > 0)
+            {
+                logger?.LogInformation("[DataSeeder] Đã nạp {Count} tài khoản mẫu mới vào CSDL.", createdCount);
+            }
         }
         catch (Exception ex)
         {
-            logger?.LogWarning(ex, "Lỗi xảy ra trong quá trình seed dữ liệu ban đầu.");
+            logger?.LogWarning(ex, "[DataSeeder] Lỗi xảy ra trong quá trình seed dữ liệu ban đầu.");
         }
     }
 }

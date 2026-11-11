@@ -1,10 +1,51 @@
+using System.Diagnostics;
+using System.Text.Json.Serialization;
+using ECommerceWarehouse.Application;
+using ECommerceWarehouse.Domain.Exceptions;
 using ECommerceWarehouse.Infrastructure;
 using ECommerceWarehouse.Infrastructure.Data.Seed;
+using ECommerceWarehouse.WebAPI.Extensions;
+using ECommerceWarehouse.WebAPI.Middlewares;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(kvp => kvp.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => string.IsNullOrEmpty(kvp.Key)
+                        ? "general"
+                        : char.ToLowerInvariant(kvp.Key[0]) + kvp.Key[1..],
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+            var problem = new ProblemDetails
+            {
+                Type = "https://httpstatuses.com/400",
+                Title = "Dữ liệu chưa hợp lệ",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Dữ liệu chưa hợp lệ, vui lòng kiểm tra lại."
+            };
+            problem.Extensions["code"] = ErrorCodes.ValidationError;
+            problem.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+            problem.Extensions["errors"] = errors;
+
+            return new BadRequestObjectResult(problem)
+            {
+                ContentTypes = { "application/problem+json; charset=utf-8" }
+            };
+        };
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 
 // Cấu hình Swagger với nút Authorize cho JWT Bearer
@@ -44,8 +85,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Đăng ký Infrastructure (DbContext, UnitOfWork, AuthService...)
+// Đăng ký Application (FluentValidation Validators, Application Services...)
+builder.Services.AddApplication();
+
+// Đăng ký Infrastructure (DbContext, UnitOfWork, Repositories, AuthService...)
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Đăng ký JWT Bearer Authentication, Role Policies và ICurrentUser
+builder.Services.AddJwtAuthenticationAndPolicies(builder.Configuration);
 
 // Cấu hình CORS cho React Frontend
 builder.Services.AddCors(options =>
@@ -61,7 +108,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Tự động seed dữ liệu mẫu 4 tài khoản nếu chưa có
+// Tự động seed dữ liệu mẫu nếu chưa có
 await DataSeeder.SeedAsync(app.Services);
 
 // Chỉ bật Swagger/SwaggerUI ở môi trường Development, đặt trước UseAuthentication
@@ -78,6 +125,9 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/", () => Results.Redirect("/swagger"));
 }
 
+// Middleware xử lý lỗi toàn cục (ProblemDetails + code + traceId)
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 // CORS phải được áp dụng trước Authorization
 app.UseCors("AllowFrontend");
 
@@ -85,6 +135,7 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
 app.UseAuthentication();
 app.UseAuthorization();
 

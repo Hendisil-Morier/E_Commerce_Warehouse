@@ -6,6 +6,34 @@ interface ErrorPayload extends ProblemDetails {
   message?: string;
 }
 
+function toCamelCaseKey(key: string): string {
+  if (!key) return key;
+  return key.charAt(0).toLowerCase() + key.slice(1);
+}
+
+export function isHttpStatus(error: unknown, status: number): boolean {
+  return axios.isAxiosError(error) && error.response?.status === status;
+}
+
+export function getErrorCode(error: unknown): string | undefined {
+  if (!axios.isAxiosError<ErrorPayload>(error)) return undefined;
+  return error.response?.data?.code;
+}
+
+export function getFieldErrors(error: unknown): Record<string, string> {
+  if (!axios.isAxiosError<ErrorPayload>(error)) return {};
+  const rawErrors = error.response?.data?.errors;
+  if (!rawErrors || typeof rawErrors !== "object") return {};
+
+  const mapped: Record<string, string> = {};
+  for (const [key, messages] of Object.entries(rawErrors)) {
+    if (Array.isArray(messages) && messages.length > 0 && typeof messages[0] === "string") {
+      mapped[toCamelCaseKey(key)] = messages[0];
+    }
+  }
+  return mapped;
+}
+
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ErrorPayload>(error)) {
     if (!error.response) {
