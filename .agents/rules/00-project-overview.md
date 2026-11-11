@@ -1,7 +1,7 @@
 # Tổng quan dự án (đọc trước mọi tác vụ)
 
 ## Dự án
-Sàn thương mại điện tử **đa người bán** tích hợp **quản lý kho** (repo `Team-4`). Khách đặt một đơn có thể chứa hàng của nhiều seller; mỗi seller (hoặc kho sàn) soạn, đóng gói, xuất kho phần của mình. Nhóm 6 người: FE React, BE C# Web API.
+Sàn thương mại điện tử **đa người bán** tích hợp **quản lý kho** (repo `E_Commerce_Warehouse`). Khách đặt một đơn có thể chứa hàng của nhiều seller; mỗi seller (hoặc kho sàn) soạn, đóng gói, xuất kho phần của mình. Nhóm 6 người: FE React, BE C# Web API.
 
 ## Công nghệ
 - Backend: .NET 9 Web API, Clean Architecture, EF Core + Pomelo (MySQL 8.0.16+), FluentValidation, JWT.

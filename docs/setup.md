@@ -14,8 +14,8 @@ Làm theo thứ tự từ trên xuống. Mục nào ghi "kiểm tra lại" nghĩ
 ## 2. Lấy mã nguồn
 
 ```bash
-git clone <địa-chỉ-repo-Team-4>
-cd Team-4
+git clone <địa-chỉ-repo-E_Commerce_Warehouse>
+cd E_Commerce_Warehouse
 ```
 
 ## 3. Chạy cơ sở dữ liệu (Docker)
