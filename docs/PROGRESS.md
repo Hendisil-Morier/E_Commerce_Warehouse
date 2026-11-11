@@ -1,4 +1,4 @@
-# Tiến độ dự án Team-4
+# Tiến độ dự án E_Commerce_Warehouse
 
 Cập nhật lần cuối: 2026-11-11. Người phụ trách hiện tại: Frontend (làm một mình đến thời điểm này).
 
@@ -25,7 +25,7 @@ Cách dùng: mỗi lần làm xong một việc, đánh dấu ở mục tương 
 ## 2. Đã hoàn thành
 
 ### Nền tảng
-- [x] Dựng khung dự án theo Clean Architecture (backend) và cấu trúc `features/` (frontend), repo `Team-4`.
+- [x] Dựng khung dự án theo Clean Architecture (backend) và cấu trúc `features/` (frontend), repo `E_Commerce_Warehouse`.
 - [x] Chọn công nghệ: .NET 9 Web API, EF Core + Pomelo, FluentValidation, JWT; React 19 + TypeScript + Vite, React Router v7, TanStack Query, Zustand, Axios, pnpm.
 - [x] CORS cho frontend (cổng 5173, 5174, 3000).
 - [x] `DataSeeder` tạo sẵn 4 tài khoản mẫu (Customer, Seller, WarehouseManager, Admin) khi khởi động.
