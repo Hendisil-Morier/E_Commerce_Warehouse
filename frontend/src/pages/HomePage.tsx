@@ -1,1585 +1,1292 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Star,
-  Heart,
-  Plus,
-  Truck,
-  RotateCcw,
-  Headphones,
+  CreditCard,
   ShieldCheck,
-  Zap,
-  Sparkles,
-  ChevronRight,
-  Mail,
-  Check,
-  TrendingUp,
+  RotateCcw,
+  Truck,
+  Smartphone,
+  Laptop,
+  Shirt,
+  Home as HomeIcon,
+  Heart,
+  Coffee,
+  Store,
+  Package,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
-import { useAuthStore } from "@/stores/authStore";
 
-// Mock Products matching the image aesthetic
-interface Product {
+interface ProductItem {
   id: string;
   name: string;
-  category: string;
-  description: string;
-  price: number;
-  originalPrice?: number;
-  discountBadge?: string;
-  rating: number;
-  reviewsCount: number;
-  imageUrl: string;
-  stockLeft?: number;
+  shopName: string;
+  price: string;
+  variantsCount: number;
+  warehouseType: "Kho sàn" | "Kho người bán";
+  tag?: string;
+  bgColor: string;
 }
 
-const flashDeals: Product[] = [
+const productsList: ProductItem[] = [
   {
-    id: "fd-1",
-    name: "Soundcore Space One",
-    category: "Âm thanh",
-    description: "Chống ồn chủ động ANC, 40h pin",
-    price: 79.0,
-    originalPrice: 99.0,
-    discountBadge: "-20%",
-    rating: 4.8,
-    reviewsCount: 142,
-    stockLeft: 3,
-    imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
+    id: "p1",
+    name: "Tai nghe Bluetooth chống ồn",
+    shopName: "Phụ kiện Số",
+    price: "349.000₫",
+    variantsCount: 2,
+    warehouseType: "Kho sàn",
+    bgColor: "#e8f5f1",
   },
   {
-    id: "fd-2",
-    name: "Amazfit Active 2",
-    category: "Đồng hồ thông minh",
-    description: "Màn hình AMOLED, GPS chính xác",
-    price: 89.99,
-    originalPrice: 109.99,
-    discountBadge: "-18%",
-    rating: 4.7,
-    reviewsCount: 89,
-    stockLeft: 5,
-    imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80",
+    id: "p2",
+    name: "Ốp lưng điện thoại trong suốt",
+    shopName: "Phụ kiện Số",
+    price: "59.000₫",
+    variantsCount: 3,
+    warehouseType: "Kho sàn",
+    bgColor: "#f0f4f8",
   },
   {
-    id: "fd-3",
-    name: "JBL Flip 6 Portable",
-    category: "Loa di động",
-    description: "Kháng nước IP67, âm bass sâu",
-    price: 99.95,
-    originalPrice: 129.95,
-    discountBadge: "-23%",
-    rating: 4.9,
-    reviewsCount: 230,
-    stockLeft: 2,
-    imageUrl: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500&auto=format&fit=crop&q=80",
+    id: "p3",
+    name: "Chuột không dây êm, pin sạc",
+    shopName: "Góc Văn Phòng",
+    price: "189.000₫",
+    variantsCount: 4,
+    warehouseType: "Kho người bán",
+    bgColor: "#f5f0fb",
   },
   {
-    id: "fd-4",
-    name: "Everyday Knit Runner",
-    category: "Thời trang & Giày",
-    description: "Đệm êm thoáng khí cả ngày",
-    price: 114.0,
-    originalPrice: 145.0,
-    discountBadge: "-21%",
-    rating: 4.8,
-    reviewsCount: 74,
-    imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=80",
+    id: "p4",
+    name: "Áo thun cotton basic",
+    shopName: "Thể thao Xanh",
+    price: "129.000₫",
+    variantsCount: 12,
+    warehouseType: "Kho sàn",
+    bgColor: "#fff4ec",
   },
   {
-    id: "fd-5",
-    name: "Breva Mini Espresso",
-    category: "Thiết bị pha chế",
-    description: "Áp suất 15 bar, thiết kế retro",
-    price: 119.2,
-    originalPrice: 149.0,
-    discountBadge: "-20%",
-    rating: 4.6,
-    reviewsCount: 61,
-    imageUrl: "https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=500&auto=format&fit=crop&q=80",
-  },
-];
-
-const bestSellers: Product[] = [
-  {
-    id: "bs-1",
-    name: "Nothing Ear (a) Transparent",
-    category: "Tech",
-    description: "Âm thanh Hi-Res, kiểu dáng trong suốt",
-    price: 99.0,
-    rating: 4.9,
-    reviewsCount: 312,
-    imageUrl: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=80",
+    id: "p5",
+    name: "Giày chạy bộ nhẹ",
+    shopName: "Thể thao Xanh",
+    price: "549.000₫",
+    variantsCount: 6,
+    warehouseType: "Kho sàn",
+    tag: "Sắp hết hàng",
+    bgColor: "#eef7ee",
   },
   {
-    id: "bs-2",
-    name: "Transit Daypack Waterproof",
-    category: "Accessories",
-    description: "Vải chống thấm, ngăn laptop 16 inch",
-    price: 84.5,
-    rating: 4.8,
-    reviewsCount: 198,
-    imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=80",
+    id: "p6",
+    name: "Bình giữ nhiệt 500ml",
+    shopName: "Nhà Xinh",
+    price: "159.000₫",
+    variantsCount: 1,
+    warehouseType: "Kho sàn",
+    bgColor: "#eaf5f5",
   },
   {
-    id: "bs-3",
-    name: "Arc Ambient Table Lamp",
-    category: "Lifestyle",
-    description: "Ánh sáng ấm 3000K, dimmer cảm ứng",
-    price: 48.0,
-    rating: 4.7,
-    reviewsCount: 85,
-    imageUrl: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&auto=format&fit=crop&q=80",
+    id: "p7",
+    name: "Bộ chăn ga cotton",
+    shopName: "Nhà Xinh",
+    price: "690.000₫",
+    variantsCount: 4,
+    warehouseType: "Kho người bán",
+    bgColor: "#fbf3ea",
   },
   {
-    id: "bs-4",
-    name: "Instax Mini 12 Pastel",
-    category: "Tech",
-    description: "Chụp ảnh lấy liền, tự động phơi sáng",
-    price: 79.9,
-    rating: 4.9,
-    reviewsCount: 420,
-    imageUrl: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&auto=format&fit=crop&q=80",
+    id: "p8",
+    name: "Kem chống nắng SPF50",
+    shopName: "Tiệm Làm Đẹp",
+    price: "215.000₫",
+    variantsCount: 2,
+    warehouseType: "Kho sàn",
+    tag: "Flash Sale",
+    bgColor: "#f4f1fa",
+  },
+  {
+    id: "p9",
+    name: "Hạt điều rang muối 500g",
+    shopName: "Tiệm Hạt",
+    price: "135.000₫",
+    variantsCount: 3,
+    warehouseType: "Kho sàn",
+    bgColor: "#f1f6ed",
+  },
+  {
+    id: "p10",
+    name: "Cà phê rang xay 500g",
+    shopName: "Tiệm Hạt",
+    price: "175.000₫",
+    variantsCount: 5,
+    warehouseType: "Kho sàn",
+    bgColor: "#edf5f5",
   },
 ];
 
-const newArrivals: Product[] = [
+const featuredCategories = [
+  { name: "Điện thoại & Phụ kiện", icon: Smartphone, link: "/products?category=phone" },
+  { name: "Máy tính & Laptop", icon: Laptop, link: "/products?category=laptop" },
+  { name: "Thời trang", icon: Shirt, link: "/products?category=fashion" },
+  { name: "Nhà cửa & Đời sống", icon: HomeIcon, link: "/products?category=home" },
+  { name: "Sức khỏe & Làm đẹp", icon: Heart, link: "/products?category=beauty" },
+  { name: "Thực phẩm & Đồ uống", icon: Coffee, link: "/products?category=food" },
+];
+
+const featuredShops = [
   {
-    id: "na-1",
-    name: "Keychron K3 Pro Wireless",
-    category: "Bàn phím cơ",
-    description: "Low-profile, switch cơ học QMK/VIA",
-    price: 84.0,
-    rating: 4.9,
-    reviewsCount: 42,
-    imageUrl: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=80",
+    code: "PK",
+    name: "Phụ kiện Số",
+    category: "Điện thoại & Phụ kiện",
+    tag: "Giao từ kho sàn",
+    avatarBg: "#fce7f3",
+    avatarColor: "#db2777",
+    isWarehouse: true,
   },
   {
-    id: "na-2",
-    name: "Daybreak Thermal Bottle 750ml",
-    category: "Đời sống",
-    description: "Inox 316, giữ nhiệt nóng/lạnh 24h",
-    price: 32.5,
-    rating: 4.8,
-    reviewsCount: 38,
-    imageUrl: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=80",
+    code: "NX",
+    name: "Nhà Xinh",
+    category: "Nhà cửa & Đời sống",
+    tag: "Giao từ kho sàn",
+    avatarBg: "#ffedd5",
+    avatarColor: "#ea580c",
+    isWarehouse: true,
   },
   {
-    id: "na-3",
-    name: "Nomad MagSafe Stand 3-in-1",
-    category: "Phụ kiện",
-    description: "Sạc nhanh 15W cho iPhone, Apple Watch",
-    price: 119.0,
-    rating: 4.7,
-    reviewsCount: 53,
-    imageUrl: "https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=500&auto=format&fit=crop&q=80",
+    code: "TH",
+    name: "Tiệm Hạt",
+    category: "Thực phẩm & Đồ uống",
+    tag: "Giao từ kho sàn",
+    avatarBg: "#dcfce7",
+    avatarColor: "#16a34a",
+    isWarehouse: true,
   },
   {
-    id: "na-4",
-    name: "Transit Weekender Duffle",
-    category: "Túi du lịch",
-    description: "Chứa đồ 3 ngày, khóa YKK cao cấp",
-    price: 94.0,
-    rating: 4.9,
-    reviewsCount: 29,
-    imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=80",
+    code: "GV",
+    name: "Góc Văn Phòng",
+    category: "Máy tính & Laptop",
+    tag: "Kho riêng của shop",
+    avatarBg: "#ede9fe",
+    avatarColor: "#7c3aed",
+    isWarehouse: false,
   },
 ];
 
 export const HomePage: React.FC = () => {
-  const { user, isAuthenticated } = useAuthStore();
-  const [activeTab, setActiveTab] = useState("All");
-  const [emailInput, setEmailInput] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-
-  // Countdown timer for Flash Deals (08:52:16)
-  const [timeLeft, setTimeLeft] = useState({ hours: 8, minutes: 52, seconds: 16 });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (emailInput.trim()) {
-      setSubscribed(true);
-      setEmailInput("");
-    }
-  };
-
   return (
-    <div style={{ width: "100%", backgroundColor: "#ffffff" }}>
-      {/* Container wrapper */}
-      <div style={{ maxWidth: "1320px", margin: "0 auto", padding: "28px 24px" }}>
-        
-        {/* Logged in welcome greeting if authenticated */}
-        {isAuthenticated && user && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#f0fdf4",
-            border: "1px solid #bbf7d0",
-            padding: "12px 20px",
-            borderRadius: "12px",
-            marginBottom: "24px",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ fontSize: "1.2rem" }}>👋</span>
-              <span style={{ fontSize: "0.95rem", color: "#166534", fontWeight: 600 }}>
-                Chào mừng bạn trở lại, <strong>{user.fullName}</strong>!
-              </span>
-            </div>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <Link to={ROUTES.ORDERS} style={{ fontSize: "0.85rem", color: "#166534", textDecoration: "underline", fontWeight: 600 }}>
-                Xem đơn hàng của tôi
-              </Link>
-              <Link to={ROUTES.WAREHOUSE} style={{ fontSize: "0.85rem", color: "#166534", textDecoration: "underline", fontWeight: 600 }}>
-                Quản lý tồn kho
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* 1. HERO SECTION */}
-        <section style={{
-          display: "grid",
-          gridTemplateColumns: "1.1fr 1fr",
-          gap: "36px",
-          alignItems: "center",
-          backgroundColor: "#f8fafc",
-          borderRadius: "24px",
-          padding: "48px 48px",
-          border: "1px solid #f1f5f9",
-          marginBottom: "40px",
+    <div style={{
+      maxWidth: "1280px",
+      margin: "0 auto",
+      padding: "24px 20px 60px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "36px",
+      width: "100%",
+    }}>
+      {/* ========================================================
+          1. HERO SECTION (Split banner: Left Hero + Right 2 Cards)
+          ======================================================== */}
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "1.9fr 1fr",
+        gap: "20px",
+        alignItems: "stretch",
+      }}>
+        {/* Left Hero Card (Forest Green #0a3d31) */}
+        <div style={{
+          backgroundColor: "#072b22",
+          backgroundImage: "linear-gradient(145deg, #062b22 0%, #0a3d31 60%, #08342a 100%)",
+          borderRadius: "18px",
+          padding: "36px 36px 32px",
+          color: "#ffffff",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
           position: "relative",
           overflow: "hidden",
+          boxShadow: "0 4px 20px rgba(7, 43, 34, 0.15)",
         }}>
-          {/* Left Column: Headline & Value Proposition */}
-          <div>
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "6px 14px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "20px",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              color: "#4f46e5",
-              letterSpacing: "0.8px",
-              textTransform: "uppercase",
-              marginBottom: "20px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-            }}>
-              <Sparkles size={14} /> FOR EVERYDAY COMFORTS
-            </div>
+          {/* Subtle geometric circles in background */}
+          <div style={{
+            position: "absolute",
+            top: "-60px",
+            right: "220px",
+            width: "280px",
+            height: "280px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(52, 211, 153, 0.08) 0%, rgba(7, 43, 34, 0) 70%)",
+            pointerEvents: "none",
+          }} />
 
-            <h1 style={{
-              fontSize: "3.2rem",
-              fontWeight: 800,
-              color: "#0f172a",
-              lineHeight: 1.15,
-              letterSpacing: "-1.5px",
-              marginBottom: "18px",
-            }}>
-              Good things.<br />
-              Better living.
-            </h1>
-
-            <p style={{
-              fontSize: "1.08rem",
-              color: "#64748b",
-              lineHeight: 1.6,
-              marginBottom: "32px",
-              maxWidth: "480px",
-            }}>
-              Sản phẩm chuẩn mực, tinh tuyển cho đời sống hiện đại. Khám phá những thiết bị và đồ dùng giúp mỗi ngày của bạn trở nên trọn vẹn hơn.
-            </p>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px", flexWrap: "wrap" }}>
-              <Link
-                to={ROUTES.PRODUCTS}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "14px 28px",
-                  backgroundColor: "#4f46e5",
-                  color: "#ffffff",
-                  borderRadius: "24px",
-                  fontWeight: 600,
-                  fontSize: "0.95rem",
-                  boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <span>Khám phá ngay</span>
-                <ArrowRight size={18} />
-              </Link>
-
-              <a
-                href="#flash-deals"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "14px 24px",
-                  backgroundColor: "#ffffff",
-                  color: "#1e293b",
-                  borderRadius: "24px",
-                  fontWeight: 600,
-                  fontSize: "0.95rem",
-                  border: "1px solid #cbd5e1",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <span>Xem ưu đãi hot</span>
-                <ArrowRight size={16} />
-              </a>
-            </div>
-
-            {/* Social Proof */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.85rem", color: "#64748b" }}>
-              <div style={{ display: "flex", color: "#f59e0b" }}>
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={15} fill="#f59e0b" />
-                ))}
+          {/* Top content & Order simulation card */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1.2fr 1fr",
+            gap: "24px",
+            alignItems: "center",
+            position: "relative",
+            zIndex: 2,
+          }}>
+            {/* Left Texts */}
+            <div>
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                padding: "4px 12px",
+                borderRadius: "20px",
+                fontSize: "0.75rem",
+                color: "#a7f3d0",
+                fontWeight: 600,
+                marginBottom: "16px",
+              }}>
+                <span>🌐 Giao từ kho sàn</span>
               </div>
-              <span>Tin chọn bởi hơn <strong>20.000+</strong> khách hàng hài lòng</span>
+
+              <h1 style={{
+                fontSize: "2.4rem",
+                fontWeight: 800,
+                lineHeight: 1.15,
+                color: "#ffffff",
+                letterSpacing: "-0.5px",
+                marginBottom: "14px",
+              }}>
+                Mua từ nhiều shop,<br />trả một lần.
+              </h1>
+
+              <p style={{
+                color: "#cbd5e1",
+                fontSize: "0.86rem",
+                lineHeight: 1.55,
+                marginBottom: "24px",
+                maxWidth: "340px",
+              }}>
+                Giỏ hàng của nhiều người bán vào cùng một giỏ. Mỗi gói được đóng gói, quét kiểm và theo dõi riêng cho đến khi đến tay bạn.
+              </p>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <Link
+                  to={ROUTES.PRODUCTS}
+                  style={{
+                    backgroundColor: "#6ee7b7",
+                    color: "#064e3b",
+                    padding: "10px 20px",
+                    borderRadius: "30px",
+                    fontWeight: 700,
+                    fontSize: "0.88rem",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 2px 10px rgba(110, 231, 183, 0.4)",
+                    transition: "transform 0.15s, background-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#a7f3d0")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#6ee7b7")}
+                >
+                  <span>Mua sắm ngay</span>
+                  <ArrowRight size={15} />
+                </Link>
+
+                <Link
+                  to={ROUTES.SELLER}
+                  style={{
+                    backgroundColor: "transparent",
+                    color: "#ffffff",
+                    border: "1px solid rgba(255, 255, 255, 0.4)",
+                    padding: "10px 18px",
+                    borderRadius: "30px",
+                    fontWeight: 600,
+                    fontSize: "0.88rem",
+                    textDecoration: "none",
+                    transition: "background-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  Trở thành người bán
+                </Link>
+              </div>
+            </div>
+
+            {/* Right: Embedded "Đơn hàng của bạn" Card */}
+            <div style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              padding: "18px 18px 16px",
+              color: "#1e293b",
+              boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
+            }}>
+              {/* Card Header */}
+              <div style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                borderBottom: "1px solid #f1f5f9",
+                paddingBottom: "12px",
+                marginBottom: "12px",
+              }}>
+                <div>
+                  <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Đơn hàng của bạn</div>
+                  <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                    3 gói · thanh toán 1 lần
+                  </div>
+                </div>
+                <span style={{
+                  backgroundColor: "#d1fae5",
+                  color: "#065f46",
+                  fontSize: "0.7rem",
+                  fontWeight: 800,
+                  padding: "3px 8px",
+                  borderRadius: "6px",
+                }}>
+                  COD
+                </span>
+              </div>
+
+              {/* Package 1 */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 0",
+                borderBottom: "1px solid #f8fafc",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    backgroundColor: "#fce7f3",
+                    color: "#db2777",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                  }}>
+                    PK
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>Phụ kiện Số</div>
+                    <div style={{ fontSize: "0.72rem", color: "#64748b" }}>2 sản phẩm</div>
+                  </div>
+                </div>
+                <span style={{
+                  backgroundColor: "#f1f5f9",
+                  color: "#475569",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                }}>
+                  Đã xác nhận
+                </span>
+              </div>
+
+              {/* Package 2 */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 0",
+                borderBottom: "1px solid #f8fafc",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    backgroundColor: "#ffedd5",
+                    color: "#ea580c",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                  }}>
+                    NX
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>Nhà Xinh</div>
+                    <div style={{ fontSize: "0.72rem", color: "#64748b" }}>1 sản phẩm</div>
+                  </div>
+                </div>
+                <span style={{
+                  backgroundColor: "#fef3c7",
+                  color: "#d97706",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                }}>
+                  Đang soạn
+                </span>
+              </div>
+
+              {/* Package 3 */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 0 2px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{
+                    width: "30px",
+                    height: "30px",
+                    borderRadius: "50%",
+                    backgroundColor: "#dcfce7",
+                    color: "#16a34a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                  }}>
+                    TH
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>Tiệm Hạt</div>
+                    <div style={{ fontSize: "0.72rem", color: "#64748b" }}>2 sản phẩm</div>
+                  </div>
+                </div>
+                <span style={{
+                  backgroundColor: "#d1fae5",
+                  color: "#059669",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                }}>
+                  Đã giao đi
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Hero Visual Product Banner */}
+          {/* Bottom Indicators */}
           <div style={{
-            position: "relative",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            gap: "6px",
+            marginTop: "24px",
+            position: "relative",
+            zIndex: 2,
           }}>
-            <div style={{
-              width: "100%",
-              height: "380px",
-              borderRadius: "20px",
-              backgroundColor: "#f1f5f9",
-              position: "relative",
-              overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "inset 0 0 40px rgba(0,0,0,0.02)",
-            }}>
-              {/* Product Visual Image */}
-              <img
-                src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=80"
-                alt="Featured Hero Headphone"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  borderRadius: "20px",
-                }}
-              />
+            <div style={{ width: "24px", height: "4px", backgroundColor: "#6ee7b7", borderRadius: "4px" }} />
+            <div style={{ width: "6px", height: "4px", backgroundColor: "rgba(255,255,255,0.3)", borderRadius: "4px" }} />
+          </div>
+        </div>
 
-              {/* Floating promotional badge */}
+        {/* Right Stacked Cards (Card 1: Mở shop & Card 2: Theo dõi đơn) */}
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+          height: "100%",
+        }}>
+          {/* Card 1: Mở shop trên sàn */}
+          <div style={{
+            flex: 1,
+            backgroundColor: "#e8f5f1",
+            borderRadius: "18px",
+            padding: "26px 24px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            border: "1px solid #cce8e0",
+            transition: "transform 0.15s",
+          }}>
+            <div>
               <div style={{
-                position: "absolute",
-                bottom: "20px",
-                left: "20px",
-                backgroundColor: "rgba(255, 255, 255, 0.92)",
-                backdropFilter: "blur(8px)",
-                padding: "10px 16px",
-                borderRadius: "14px",
-                boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                border: "1px solid rgba(255,255,255,0.6)",
-              }}>
-                <div>
-                  <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>
-                    Ưu đãi độc quyền tuần này
-                  </div>
-                  <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
-                    Giảm giá lên đến 40%
-                  </div>
-                </div>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#4f46e5",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}>
-                  <ArrowRight size={15} />
-                </div>
-              </div>
-
-              {/* Slider Next button */}
-              <div style={{
-                position: "absolute",
-                right: "16px",
                 width: "36px",
                 height: "36px",
-                borderRadius: "50%",
-                backgroundColor: "#ffffff",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                borderRadius: "10px",
+                backgroundColor: "#059669",
+                color: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                cursor: "pointer",
-                color: "#1e293b",
+                marginBottom: "14px",
               }}>
-                <ChevronRight size={20} />
+                <Store size={20} />
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 2. VALUE PROPOSITION BAR (4 Key Guarantees) */}
-        <section style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "24px",
-          padding: "24px 0",
-          borderBottom: "1px solid #f1f5f9",
-          marginBottom: "48px",
-        }}>
-          {/* Item 1 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: "#eef2ff",
-              color: "#4f46e5",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}>
-              <Truck size={22} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
-                Miễn phí vận chuyển
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                Cho đơn hàng từ 500.000đ toàn quốc
-              </div>
-            </div>
-          </div>
-
-          {/* Item 2 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: "#f0fdf4",
-              color: "#16a34a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}>
-              <RotateCcw size={22} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
-                30 Ngày đổi trả linh hoạt
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                Đối soát kho tự động, hoàn tiền nhanh
-              </div>
-            </div>
-          </div>
-
-          {/* Item 3 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: "#fef3c7",
-              color: "#d97706",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}>
-              <Headphones size={22} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
-                Hỗ trợ chuyên nghiệp 24/7
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                Đội ngũ chăm sóc khách hàng tận tâm
-              </div>
-            </div>
-          </div>
-
-          {/* Item 4 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "12px",
-              backgroundColor: "#f3e8ff",
-              color: "#9333ea",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}>
-              <ShieldCheck size={22} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
-                Thanh toán an toàn 100%
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                Mã hóa chuẩn SSL, minh bạch tồn kho
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. FLASH DEALS / "GOOD DEALS. GONE SOON." */}
-        <section id="flash-deals" style={{ marginBottom: "56px" }}>
-          <div style={{
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-            gap: "16px",
-          }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                <Zap size={22} color="#4f46e5" fill="#4f46e5" />
-                <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.5px" }}>
-                  Good deals. Gone soon.
-                </h2>
-              </div>
-              <p style={{ color: "#64748b", fontSize: "0.92rem" }}>
-                Giá ưu đãi số lượng có hạn. Sản phẩm tự động giữ tồn kho khi hoàn tất đặt hàng.
+              <h3 style={{
+                fontSize: "1.1rem",
+                fontWeight: 800,
+                color: "#064e3b",
+                marginBottom: "8px",
+              }}>
+                Mở shop trên sàn
+              </h3>
+              <p style={{
+                fontSize: "0.82rem",
+                color: "#475569",
+                lineHeight: 1.5,
+              }}>
+                Đăng ký người bán, tạo shop và đưa sản phẩm lên bán.
               </p>
             </div>
-
-            {/* Countdown Clock banner */}
-            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                backgroundColor: "#eef2ff",
-                padding: "6px 14px",
-                borderRadius: "20px",
+            <Link
+              to={ROUTES.REGISTER}
+              style={{
+                color: "#059669",
+                fontWeight: 700,
                 fontSize: "0.85rem",
-                color: "#1e40af",
-                fontWeight: 600,
-              }}>
-                <span>Kết thúc sau:</span>
-                <span style={{
-                  backgroundColor: "#1e293b",
-                  color: "#ffffff",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  fontFamily: "monospace",
-                }}>
-                  {String(timeLeft.hours).padStart(2, "0")}
-                </span>
-                :
-                <span style={{
-                  backgroundColor: "#1e293b",
-                  color: "#ffffff",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  fontFamily: "monospace",
-                }}>
-                  {String(timeLeft.minutes).padStart(2, "0")}
-                </span>
-                :
-                <span style={{
-                  backgroundColor: "#1e293b",
-                  color: "#ffffff",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  fontFamily: "monospace",
-                }}>
-                  {String(timeLeft.seconds).padStart(2, "0")}
-                </span>
-              </div>
-
-              <Link
-                to={ROUTES.PRODUCTS}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  fontSize: "0.88rem",
-                  fontWeight: 600,
-                  color: "#4f46e5",
-                }}
-              >
-                <span>Xem tất cả ưu đãi</span>
-                <ArrowRight size={15} />
-              </Link>
-            </div>
-          </div>
-
-          {/* Product Cards Grid */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-            gap: "20px",
-          }}>
-            {flashDeals.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #f1f5f9",
-                  borderRadius: "16px",
-                  padding: "16px",
-                  position: "relative",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "all 0.25s ease",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.06)";
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
-                  e.currentTarget.style.borderColor = "#f1f5f9";
-                }}
-              >
-                {/* Image & Badges */}
-                <div style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "190px",
-                  backgroundColor: "#f8fafc",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "14px",
-                }}>
-                  {item.discountBadge && (
-                    <span style={{
-                      position: "absolute",
-                      top: "10px",
-                      left: "10px",
-                      backgroundColor: "#4f46e5",
-                      color: "#ffffff",
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      padding: "3px 8px",
-                      borderRadius: "6px",
-                      zIndex: 2,
-                    }}>
-                      {item.discountBadge}
-                    </span>
-                  )}
-
-                  <button
-                    title="Thêm vào yêu thích"
-                    style={{
-                      position: "absolute",
-                      top: "10px",
-                      right: "10px",
-                      width: "30px",
-                      height: "30px",
-                      borderRadius: "50%",
-                      backgroundColor: "#ffffff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#64748b",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-                      zIndex: 2,
-                    }}
-                  >
-                    <Heart size={16} />
-                  </button>
-
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      transition: "transform 0.3s ease",
-                    }}
-                  />
-                </div>
-
-                {/* Rating & Stock warning */}
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "6px",
-                  fontSize: "0.78rem",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#f59e0b" }}>
-                    <Star size={13} fill="#f59e0b" />
-                    <span style={{ fontWeight: 600, color: "#1e293b" }}>{item.rating}</span>
-                    <span style={{ color: "#94a3b8" }}>({item.reviewsCount})</span>
-                  </div>
-
-                  {item.stockLeft && (
-                    <span style={{ color: "#dc2626", fontWeight: 600, fontSize: "0.72rem" }}>
-                      Chỉ còn {item.stockLeft} sp
-                    </span>
-                  )}
-                </div>
-
-                {/* Title */}
-                <h3 style={{
-                  fontSize: "0.95rem",
-                  fontWeight: 700,
-                  color: "#0f172a",
-                  lineHeight: 1.3,
-                  marginBottom: "4px",
-                  minHeight: "2.5em",
-                }}>
-                  {item.name}
-                </h3>
-
-                <p style={{
-                  fontSize: "0.78rem",
-                  color: "#64748b",
-                  marginBottom: "14px",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>
-                  {item.description}
-                </p>
-
-                {/* Price & Add to Cart button */}
-                <div style={{
-                  marginTop: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}>
-                  <div>
-                    <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0f172a" }}>
-                      ${item.price.toFixed(2)}
-                    </div>
-                    {item.originalPrice && (
-                      <div style={{ fontSize: "0.78rem", color: "#94a3b8", textDecoration: "line-through" }}>
-                        ${item.originalPrice.toFixed(2)}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    title="Thêm vào giỏ hàng"
-                    style={{
-                      width: "34px",
-                      height: "34px",
-                      borderRadius: "50%",
-                      backgroundColor: "#f1f5f9",
-                      color: "#1e293b",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#4f46e5";
-                      e.currentTarget.style.color = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#f1f5f9";
-                      e.currentTarget.style.color = "#1e293b";
-                    }}
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 4. CATEGORY SHOWCASE ("A WORLD OF GOOD THINGS.") */}
-        <section style={{ marginBottom: "56px" }}>
-          <div style={{
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            marginBottom: "24px",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}>
-            <div>
-              <div style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "#64748b",
-                letterSpacing: "0.8px",
-                textTransform: "uppercase",
-                marginBottom: "4px",
-              }}>
-                FIND YOUR EVERYDAY
-              </div>
-              <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.5px" }}>
-                A world of good things.
-              </h2>
-            </div>
-
-            <Link
-              to={ROUTES.PRODUCTS}
-              style={{
+                textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "4px",
-                fontSize: "0.88rem",
-                fontWeight: 600,
-                color: "#4f46e5",
+                marginTop: "16px",
               }}
             >
-              <span>Xem tất cả danh mục</span>
-              <ArrowRight size={15} />
+              <span>Đăng ký bán hàng →</span>
             </Link>
           </div>
 
+          {/* Card 2: Theo dõi đơn hàng */}
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: "20px",
-          }}>
-            {/* Card 1: Electronics */}
-            <Link
-              to="/products?category=electronics"
-              style={{
-                backgroundColor: "#f8fafc",
-                borderRadius: "18px",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                border: "1px solid #f1f5f9",
-                transition: "all 0.25s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.06)";
-                e.currentTarget.style.transform = "translateY(-3px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div style={{
-                height: "180px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                marginBottom: "16px",
-                backgroundColor: "#e2e8f0",
-              }}>
-                <img
-                  src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=500&auto=format&fit=crop&q=80"
-                  alt="Electronics"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>
-                    Electronics
-                  </h3>
-                  <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    Plug into something better
-                  </p>
-                </div>
-                <ChevronRight size={18} color="#94a3b8" />
-              </div>
-            </Link>
-
-            {/* Card 2: Apparel */}
-            <Link
-              to="/products?category=apparel"
-              style={{
-                backgroundColor: "#f8fafc",
-                borderRadius: "18px",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                border: "1px solid #f1f5f9",
-                transition: "all 0.25s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.06)";
-                e.currentTarget.style.transform = "translateY(-3px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div style={{
-                height: "180px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                marginBottom: "16px",
-                backgroundColor: "#e2e8f0",
-              }}>
-                <img
-                  src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=500&auto=format&fit=crop&q=80"
-                  alt="Apparel"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>
-                    Apparel
-                  </h3>
-                  <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    Made for your every day
-                  </p>
-                </div>
-                <ChevronRight size={18} color="#94a3b8" />
-              </div>
-            </Link>
-
-            {/* Card 3: Accessories */}
-            <Link
-              to="/products?category=accessories"
-              style={{
-                backgroundColor: "#f8fafc",
-                borderRadius: "18px",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                border: "1px solid #f1f5f9",
-                transition: "all 0.25s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.06)";
-                e.currentTarget.style.transform = "translateY(-3px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div style={{
-                height: "180px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                marginBottom: "16px",
-                backgroundColor: "#e2e8f0",
-              }}>
-                <img
-                  src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&auto=format&fit=crop&q=80"
-                  alt="Accessories"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>
-                    Accessories
-                  </h3>
-                  <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    The details that make the look
-                  </p>
-                </div>
-                <ChevronRight size={18} color="#94a3b8" />
-              </div>
-            </Link>
-
-            {/* Card 4: Home Appliances */}
-            <Link
-              to="/products?category=home"
-              style={{
-                backgroundColor: "#f8fafc",
-                borderRadius: "18px",
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                border: "1px solid #f1f5f9",
-                transition: "all 0.25s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.06)";
-                e.currentTarget.style.transform = "translateY(-3px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
-            >
-              <div style={{
-                height: "180px",
-                borderRadius: "12px",
-                overflow: "hidden",
-                marginBottom: "16px",
-                backgroundColor: "#e2e8f0",
-              }}>
-                <img
-                  src="https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=500&auto=format&fit=crop&q=80"
-                  alt="Home Appliances"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", marginBottom: "2px" }}>
-                    Home Appliances
-                  </h3>
-                  <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    A fresh view on home
-                  </p>
-                </div>
-                <ChevronRight size={18} color="#94a3b8" />
-              </div>
-            </Link>
-          </div>
-        </section>
-
-        {/* 5. BEST SELLERS ("YOUR FAVORITES, FOR A REASON.") */}
-        <section style={{ marginBottom: "56px" }}>
-          <div style={{
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}>
-            <div>
-              <div style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "#64748b",
-                letterSpacing: "0.8px",
-                textTransform: "uppercase",
-                marginBottom: "4px",
-              }}>
-                TRIED, TESTED, REPEATED
-              </div>
-              <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.5px" }}>
-                Your favorites, for a reason.
-              </h2>
-            </div>
-
-            <Link
-              to={ROUTES.PRODUCTS}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                fontSize: "0.88rem",
-                fontWeight: 600,
-                color: "#4f46e5",
-              }}
-            >
-              <span>Xem danh sách bán chạy</span>
-              <ArrowRight size={15} />
-            </Link>
-          </div>
-
-          {/* Filter Tabs */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "24px", overflowX: "auto", paddingBottom: "4px" }}>
-            {["All", "Accessories", "Tech", "Lifestyle", "Home"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: "20px",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  backgroundColor: activeTab === tab ? "#1e293b" : "#f1f5f9",
-                  color: activeTab === tab ? "#ffffff" : "#475569",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {tab === "All" ? "Tất cả" : tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Best Sellers Grid */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: "20px",
-          }}>
-            {bestSellers
-              .filter((item) => activeTab === "All" || item.category === activeTab)
-              .map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #f1f5f9",
-                    borderRadius: "16px",
-                    padding: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                    transition: "all 0.25s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-3px)";
-                    e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,0.05)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
-                  }}
-                >
-                  <div style={{
-                    position: "relative",
-                    width: "100%",
-                    height: "210px",
-                    backgroundColor: "#f8fafc",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    marginBottom: "14px",
-                  }}>
-                    <button
-                      title="Yêu thích"
-                      style={{
-                        position: "absolute",
-                        top: "10px",
-                        right: "10px",
-                        width: "30px",
-                        height: "30px",
-                        borderRadius: "50%",
-                        backgroundColor: "#ffffff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#64748b",
-                        zIndex: 2,
-                      }}
-                    >
-                      <Heart size={16} />
-                    </button>
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", color: "#f59e0b", marginBottom: "4px" }}>
-                    <Star size={13} fill="#f59e0b" />
-                    <span style={{ fontWeight: 600, color: "#1e293b" }}>{item.rating}</span>
-                    <span style={{ color: "#94a3b8" }}>({item.reviewsCount})</span>
-                  </div>
-
-                  <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", marginBottom: "4px" }}>
-                    {item.name}
-                  </h3>
-                  <p style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "16px" }}>
-                    {item.description}
-                  </p>
-
-                  <div style={{
-                    marginTop: "auto",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}>
-                    <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
-                      ${item.price.toFixed(2)}
-                    </span>
-                    <button
-                      title="Thêm nhanh"
-                      style={{
-                        width: "34px",
-                        height: "34px",
-                        borderRadius: "50%",
-                        backgroundColor: "#f1f5f9",
-                        color: "#1e293b",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </section>
-
-        {/* 6. EDITORIAL SPLIT BANNER ("MAKE ROOM FOR BETTER.") */}
-        <section style={{
-          display: "grid",
-          gridTemplateColumns: "1.1fr 1fr",
-          borderRadius: "24px",
-          overflow: "hidden",
-          backgroundColor: "#0f172a",
-          marginBottom: "56px",
-          boxShadow: "0 15px 30px rgba(0,0,0,0.1)",
-        }}>
-          {/* Left Text */}
-          <div style={{
-            padding: "54px 48px",
+            flex: 1,
+            backgroundColor: "#fdf6ec",
+            borderRadius: "18px",
+            padding: "26px 24px",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
-          }}>
-            <div style={{
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              color: "#60a5fa",
-              letterSpacing: "0.8px",
-              textTransform: "uppercase",
-              marginBottom: "14px",
-            }}>
-              NEW HOME / WORK EDIT
-            </div>
-
-            <h2 style={{
-              fontSize: "2.6rem",
-              fontWeight: 800,
-              color: "#ffffff",
-              lineHeight: 1.15,
-              letterSpacing: "-1px",
-              marginBottom: "16px",
-            }}>
-              Make room for better.
-            </h2>
-
-            <p style={{
-              fontSize: "1.02rem",
-              color: "#94a3b8",
-              lineHeight: 1.6,
-              marginBottom: "32px",
-              maxWidth: "440px",
-            }}>
-              Bộ sưu tập góc làm việc và sinh hoạt tinh gọn. Tối ưu năng suất với thiết bị công thái học kết nối chuẩn xác từ hệ thống kho bãi trực tuyến.
-            </p>
-
-            <div>
-              <Link
-                to={ROUTES.PRODUCTS}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "12px 24px",
-                  backgroundColor: "#4f46e5",
-                  color: "#ffffff",
-                  borderRadius: "24px",
-                  fontWeight: 600,
-                  fontSize: "0.92rem",
-                }}
-              >
-                <span>Khám phá bộ sưu tập</span>
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Image */}
-          <div style={{ width: "100%", height: "100%", minHeight: "360px" }}>
-            <img
-              src="https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=1000&auto=format&fit=crop&q=80"
-              alt="Editorial Workspace Setup"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </div>
-        </section>
-
-        {/* 7. NEW ARRIVALS ("NEW IN. ALL YOU.") */}
-        <section style={{ marginBottom: "56px" }}>
-          <div style={{
-            display: "flex",
-            alignItems: "flex-end",
             justifyContent: "space-between",
-            marginBottom: "24px",
-            flexWrap: "wrap",
-            gap: "12px",
+            border: "1px solid #f6e6ce",
+            transition: "transform 0.15s",
           }}>
             <div>
               <div style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                color: "#64748b",
-                letterSpacing: "0.8px",
-                textTransform: "uppercase",
-                marginBottom: "4px",
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                backgroundColor: "#b45309",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "14px",
               }}>
-                FRESH FINDS, JUST LANDED
+                <Truck size={20} />
               </div>
-              <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.5px" }}>
-                New in. All you.
-              </h2>
+              <h3 style={{
+                fontSize: "1.1rem",
+                fontWeight: 800,
+                color: "#78350f",
+                marginBottom: "8px",
+              }}>
+                Theo dõi đơn hàng
+              </h3>
+              <p style={{
+                fontSize: "0.82rem",
+                color: "#713f12",
+                lineHeight: 1.5,
+              }}>
+                Xem trạng thái từng gói hàng và mã vận đơn.
+              </p>
             </div>
-
             <Link
-              to={ROUTES.PRODUCTS}
+              to={ROUTES.ORDERS}
               style={{
+                color: "#b45309",
+                fontWeight: 700,
+                fontSize: "0.85rem",
+                textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "4px",
-                fontSize: "0.88rem",
-                fontWeight: 600,
-                color: "#4f46e5",
+                marginTop: "16px",
               }}
             >
-              <span>Xem hàng mới cập nhật</span>
-              <ArrowRight size={15} />
+              <span>Tra cứu đơn →</span>
             </Link>
           </div>
+        </div>
+      </section>
 
-          {/* New Arrivals Grid */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: "20px",
-          }}>
-            {newArrivals.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #f1f5f9",
-                  borderRadius: "16px",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                  transition: "all 0.25s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,0.05)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.02)";
-                }}
-              >
-                <div style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "210px",
-                  backgroundColor: "#f8fafc",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  marginBottom: "14px",
-                }}>
-                  <span style={{
-                    position: "absolute",
-                    top: "10px",
-                    left: "10px",
-                    backgroundColor: "#0f172a",
-                    color: "#ffffff",
-                    fontSize: "0.7rem",
-                    fontWeight: 700,
-                    padding: "3px 8px",
-                    borderRadius: "6px",
-                    zIndex: 2,
-                  }}>
-                    MỚI VỀ
-                  </span>
-                  <button
-                    title="Yêu thích"
-                    style={{
-                      position: "absolute",
-                      top: "10px",
-                      right: "10px",
-                      width: "30px",
-                      height: "30px",
-                      borderRadius: "50%",
-                      backgroundColor: "#ffffff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#64748b",
-                      zIndex: 2,
-                    }}
-                  >
-                    <Heart size={16} />
-                  </button>
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", color: "#f59e0b", marginBottom: "4px" }}>
-                  <Star size={13} fill="#f59e0b" />
-                  <span style={{ fontWeight: 600, color: "#1e293b" }}>{item.rating}</span>
-                  <span style={{ color: "#94a3b8" }}>({item.reviewsCount})</span>
-                </div>
-
-                <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", marginBottom: "4px" }}>
-                  {item.name}
-                </h3>
-                <p style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "16px" }}>
-                  {item.description}
-                </p>
-
-                <div style={{
-                  marginTop: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}>
-                  <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
-                    ${item.price.toFixed(2)}
-                  </span>
-                  <button
-                    title="Thêm nhanh"
-                    style={{
-                      width: "34px",
-                      height: "34px",
-                      borderRadius: "50%",
-                      backgroundColor: "#f1f5f9",
-                      color: "#1e293b",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-      </div>
-
-      {/* 8. NEWSLETTER / VOUCHER SIGNUP BANNER ("GET 10% OFF YOUR FIRST ORDER.") */}
+      {/* ========================================================
+          2. GUARANTEES BAR (4 horizontal value points)
+          ======================================================== */}
       <section style={{
-        backgroundColor: "#4338ca",
-        color: "#ffffff",
-        padding: "56px 24px",
-        width: "100%",
+        backgroundColor: "#ffffff",
+        borderRadius: "14px",
+        padding: "18px 24px",
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: "20px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
       }}>
+        {/* Item 1 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            backgroundColor: "#e8f5f1",
+            color: "#059669",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <CreditCard size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#1e293b" }}>Thanh toán linh hoạt</div>
+            <div style={{ fontSize: "0.76rem", color: "#64748b" }}>COD hoặc thanh toán online</div>
+          </div>
+        </div>
+
+        {/* Item 2 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            backgroundColor: "#e8f5f1",
+            color: "#059669",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#1e293b" }}>Quét kiểm khi đóng gói</div>
+            <div style={{ fontSize: "0.76rem", color: "#64748b" }}>Đúng mã, đúng số lượng mới xuất kho</div>
+          </div>
+        </div>
+
+        {/* Item 3 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            backgroundColor: "#e8f5f1",
+            color: "#059669",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <RotateCcw size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#1e293b" }}>Trả hàng trong 7 ngày</div>
+            <div style={{ fontSize: "0.76rem", color: "#64748b" }}>Hàng hoàn được kiểm tra rõ ràng</div>
+          </div>
+        </div>
+
+        {/* Item 4 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            backgroundColor: "#e8f5f1",
+            color: "#059669",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <Truck size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.86rem", fontWeight: 700, color: "#1e293b" }}>Nhiều hãng vận chuyển</div>
+            <div style={{ fontSize: "0.76rem", color: "#64748b" }}>GHN, GHTK, Viettel Post, J&T, SPX</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          3. DANH MỤC NỔI BẬT (Featured Categories)
+          ======================================================== */}
+      <section>
         <div style={{
-          maxWidth: "1320px",
-          margin: "0 auto",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "32px",
+          marginBottom: "16px",
         }}>
-          <div>
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              backgroundColor: "rgba(255,255,255,0.15)",
-              padding: "4px 12px",
-              borderRadius: "20px",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              marginBottom: "12px",
-            }}>
-              <TrendingUp size={14} /> DÀNH CHO KHÁCH HÀNG MỚI
-            </div>
-            <h2 style={{ fontSize: "2.3rem", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.5px", marginBottom: "8px" }}>
-              Nhận ngay mã giảm 10% cho đơn hàng đầu tiên.
-            </h2>
-            <p style={{ color: "#bfdbfe", fontSize: "0.98rem", maxWidth: "560px" }}>
-              Cập nhật các sản phẩm mới nhất, ưu đãi thành viên độc quyền và thông tin xuất nhập kho thời gian thực.
-            </p>
-          </div>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
+            Danh mục nổi bật
+          </h2>
+          <Link
+            to={ROUTES.PRODUCTS}
+            style={{
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "#059669",
+              textDecoration: "none",
+            }}
+          >
+            Xem tất cả →
+          </Link>
+        </div>
 
-          <div>
-            {subscribed ? (
-              <div style={{
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gap: "14px",
+        }}>
+          {featuredCategories.map((cat, idx) => {
+            const IconComp = cat.icon;
+            return (
+              <Link
+                key={idx}
+                to={cat.link}
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "14px",
+                  padding: "20px 12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  textAlign: "center",
+                  border: "1px solid #e2e8f0",
+                  textDecoration: "none",
+                  gap: "12px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#059669";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 6px 14px rgba(5, 150, 105, 0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.02)";
+                }}
+              >
+                <div style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  backgroundColor: "#e8f5f1",
+                  color: "#059669",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  <IconComp size={22} />
+                </div>
+                <span style={{
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "#1e293b",
+                  lineHeight: 1.3,
+                }}>
+                  {cat.name}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ========================================================
+          4. GỢI Ý HÔM NAY (10 Products Grid - 2x5)
+          ======================================================== */}
+      <section>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "16px",
+        }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
+            Gợi ý hôm nay
+          </h2>
+          <Link
+            to={ROUTES.PRODUCTS}
+            style={{
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "#059669",
+              textDecoration: "none",
+            }}
+          >
+            Xem thêm →
+          </Link>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, 1fr)",
+          gap: "16px",
+        }}>
+          {productsList.map((prod) => (
+            <div
+              key={prod.id}
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "14px",
+                border: "1px solid #e2e8f0",
+                overflow: "hidden",
                 display: "flex",
+                flexDirection: "column",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#059669";
+                e.currentTarget.style.transform = "translateY(-3px)";
+                e.currentTarget.style.boxShadow = "0 8px 18px rgba(0,0,0,0.06)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#e2e8f0";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
+              }}
+            >
+              {/* Product Image Area matching design image */}
+              <div style={{
+                height: "140px",
+                backgroundColor: prod.bgColor,
+                display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: "10px",
-                backgroundColor: "rgba(255,255,255,0.18)",
-                padding: "16px 24px",
-                borderRadius: "30px",
+                justifyContent: "center",
+                color: "#64748b",
+                position: "relative",
               }}>
-                <Check size={20} color="#86efac" />
-                <span style={{ fontWeight: 600 }}>Cảm ơn bạn! Mã ưu đãi NEW10 đã được lưu cho tài khoản của bạn.</span>
+                <Package size={30} strokeWidth={1.5} color="#94a3b8" />
+                <span style={{ fontSize: "0.75rem", marginTop: "6px", color: "#64748b" }}>Ảnh sản phẩm</span>
+
+                {/* Optional tag */}
+                {prod.tag && (
+                  <span style={{
+                    position: "absolute",
+                    top: "8px",
+                    right: "8px",
+                    backgroundColor: "#ef4444",
+                    color: "#ffffff",
+                    fontSize: "0.68rem",
+                    fontWeight: 700,
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                  }}>
+                    {prod.tag}
+                  </span>
+                )}
               </div>
-            ) : (
-              <form onSubmit={handleSubscribe} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+
+              {/* Product Info */}
+              <div style={{
+                padding: "14px",
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                justifyContent: "space-between",
+                gap: "8px",
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: "0.85rem",
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    lineHeight: 1.35,
+                    marginBottom: "6px",
+                    minHeight: "36px",
+                  }}>
+                    {prod.name}
+                  </h3>
+
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "0.75rem",
+                    color: "#64748b",
+                    marginBottom: "8px",
+                  }}>
+                    <Store size={12} />
+                    <span>{prod.shopName}</span>
+                  </div>
+
+                  <div style={{
+                    fontSize: "1.05rem",
+                    fontWeight: 800,
+                    color: "#0f172a",
+                  }}>
+                    {prod.price}
+                  </div>
+                </div>
+
+                {/* Bottom badges */}
                 <div style={{
                   display: "flex",
                   alignItems: "center",
-                  backgroundColor: "#ffffff",
-                  borderRadius: "30px",
-                  padding: "6px 8px 6px 18px",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                  justifyContent: "space-between",
+                  paddingTop: "8px",
+                  borderTop: "1px solid #f1f5f9",
+                  fontSize: "0.72rem",
                 }}>
-                  <Mail size={18} color="#94a3b8" style={{ marginRight: "10px" }} />
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Nhập địa chỉ email của bạn..."
-                    required
-                    style={{
-                      border: "none",
-                      outline: "none",
-                      fontSize: "0.92rem",
-                      width: "280px",
-                      color: "#1e293b",
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    style={{
-                      backgroundColor: "#0f172a",
-                      color: "#ffffff",
-                      padding: "10px 20px",
-                      borderRadius: "24px",
-                      fontWeight: 600,
-                      fontSize: "0.88rem",
-                      transition: "background-color 0.2s",
-                    }}
-                  >
-                    Đăng ký ngay
-                  </button>
+                  <span style={{ color: "#94a3b8" }}>{prod.variantsCount} phân loại</span>
+
+                  <span style={{
+                    backgroundColor: prod.warehouseType === "Kho sàn" ? "#d1fae5" : "#f1f5f9",
+                    color: prod.warehouseType === "Kho sàn" ? "#065f46" : "#475569",
+                    fontWeight: 700,
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                  }}>
+                    {prod.warehouseType}
+                  </span>
                 </div>
-                <span style={{ fontSize: "0.75rem", color: "#93c5fd", paddingLeft: "16px" }}>
-                  Chúng tôi tôn trọng quyền riêng tư và cam kết không gửi thư rác.
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================
+          5. CỬA HÀNG NỔI BẬT (Featured Stores - 4 Cards)
+          ======================================================== */}
+      <section>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "16px",
+        }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
+            Cửa hàng nổi bật
+          </h2>
+          <Link
+            to={ROUTES.PRODUCTS}
+            style={{
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              color: "#059669",
+              textDecoration: "none",
+            }}
+          >
+            Khám phá shop →
+          </Link>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "16px",
+        }}>
+          {featuredShops.map((shop, idx) => (
+            <div
+              key={idx}
+              style={{
+                backgroundColor: "#ffffff",
+                borderRadius: "14px",
+                padding: "18px 16px",
+                border: "1px solid #e2e8f0",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#059669";
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 6px 14px rgba(5, 150, 105, 0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#e2e8f0";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.02)";
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "50%",
+                  backgroundColor: shop.avatarBg,
+                  color: shop.avatarColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  flexShrink: 0,
+                }}>
+                  {shop.code}
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                    {shop.name}
+                  </div>
+                  <div style={{ fontSize: "0.76rem", color: "#64748b" }}>
+                    {shop.category}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingTop: "10px",
+                borderTop: "1px solid #f1f5f9",
+              }}>
+                <span style={{
+                  fontSize: "0.72rem",
+                  color: shop.isWarehouse ? "#059669" : "#64748b",
+                  fontWeight: 600,
+                }}>
+                  {shop.tag}
                 </span>
-              </form>
-            )}
+
+                <button
+                  type="button"
+                  style={{
+                    backgroundColor: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    color: "#1e293b",
+                    padding: "4px 10px",
+                    borderRadius: "6px",
+                    fontSize: "0.76rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#059669";
+                    e.currentTarget.style.color = "#ffffff";
+                    e.currentTarget.style.borderColor = "#059669";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f8fafc";
+                    e.currentTarget.style.color = "#1e293b";
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                  }}
+                >
+                  Xem shop
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================
+          6. DÀNH CHO NGƯỜI BÁN (Seller Banner - Full Dark Green Card)
+          ======================================================== */}
+      <section style={{
+        backgroundColor: "#072b22",
+        backgroundImage: "linear-gradient(145deg, #062b22 0%, #0a3d31 60%, #08342a 100%)",
+        borderRadius: "18px",
+        padding: "36px 40px",
+        color: "#ffffff",
+        display: "grid",
+        gridTemplateColumns: "1.1fr 1.6fr",
+        gap: "40px",
+        alignItems: "center",
+        boxShadow: "0 6px 20px rgba(7, 43, 34, 0.15)",
+      }}>
+        {/* Left Column: Heading & CTA */}
+        <div>
+          <span style={{
+            fontSize: "0.75rem",
+            fontWeight: 800,
+            color: "#34d399",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            display: "inline-block",
+            marginBottom: "10px",
+          }}>
+            DÀNH CHO NGƯỜI BÁN
+          </span>
+
+          <h2 style={{
+            fontSize: "1.9rem",
+            fontWeight: 800,
+            lineHeight: 1.25,
+            color: "#ffffff",
+            marginBottom: "14px",
+          }}>
+            Bán hàng trên sàn, kho lo phần còn lại
+          </h2>
+
+          <p style={{
+            color: "#cbd5e1",
+            fontSize: "0.88rem",
+            lineHeight: 1.6,
+            marginBottom: "24px",
+          }}>
+            Gửi hàng vào kho sàn một lần. Đơn hàng được soạn, đóng gói, quét kiểm và giao đi thay bạn.
+          </p>
+
+          <Link
+            to={ROUTES.REGISTER}
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#064e3b",
+              padding: "11px 24px",
+              borderRadius: "8px",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              textDecoration: "none",
+              display: "inline-block",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#e8f5f1";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#ffffff";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            Đăng ký bán hàng
+          </Link>
+        </div>
+
+        {/* Right Column: 4 Process Steps in dark boxes */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "14px",
+        }}>
+          {/* Step 1 */}
+          <div style={{
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "12px",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}>
+            <div style={{
+              width: "24px",
+              height: "24px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+              fontWeight: 800,
+            }}>
+              1
+            </div>
+            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#ffffff" }}>
+              Đăng ký và chờ duyệt
+            </div>
+            <div style={{ fontSize: "0.74rem", color: "#cbd5e1", lineHeight: 1.4 }}>
+              Quản trị viên xét duyệt hồ sơ người bán.
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div style={{
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "12px",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}>
+            <div style={{
+              width: "24px",
+              height: "24px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+              fontWeight: 800,
+            }}>
+              2
+            </div>
+            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#ffffff" }}>
+              Tạo shop, đăng sản phẩm
+            </div>
+            <div style={{ fontSize: "0.74rem", color: "#cbd5e1", lineHeight: 1.4 }}>
+              Thêm biến thể, giá và chờ duyệt sản phẩm.
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div style={{
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "12px",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}>
+            <div style={{
+              width: "24px",
+              height: "24px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+              fontWeight: 800,
+            }}>
+              3
+            </div>
+            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#ffffff" }}>
+              Gửi hàng vào kho sàn
+            </div>
+            <div style={{ fontSize: "0.74rem", color: "#cbd5e1", lineHeight: 1.4 }}>
+              Kho nhận hàng, nhập kho và cập nhật tồn.
+            </div>
+          </div>
+
+          {/* Step 4 (spanning width or grid item) */}
+          <div style={{
+            gridColumn: "span 3",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderRadius: "12px",
+            padding: "14px 18px",
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+          }}>
+            <div style={{
+              width: "26px",
+              height: "26px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.78rem",
+              fontWeight: 800,
+              flexShrink: 0,
+            }}>
+              4
+            </div>
+            <div>
+              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#ffffff", marginRight: "8px" }}>
+                Sàn đóng gói và giao:
+              </span>
+              <span style={{ fontSize: "0.78rem", color: "#cbd5e1" }}>
+                Theo dõi đơn và doanh thu ngay trên kênh người bán.
+              </span>
+            </div>
           </div>
         </div>
       </section>

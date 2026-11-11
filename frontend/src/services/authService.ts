@@ -18,5 +18,12 @@ export const authService = {
     );
     return response.data.data;
   },
-};
 
+  async refresh(refreshToken: string): Promise<AuthResponse> {
+    const response = await axiosClient.post<ApiResponse<AuthResponse>>(
+      "/api/v1/Auth/refresh",
+      { refreshToken }
+    );
+    return response.data.data;
+  },
+};

@@ -9,6 +9,8 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/authStore";
+import { getErrorMessage } from "@/utils/errorHandler";
+import { getDefaultRouteForUser } from "@/utils/roleUtils";
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -90,19 +92,9 @@ export const RegisterPage: React.FC = () => {
       });
 
       setAuth(data);
-
-      if (accountType === "seller") {
-        navigate(ROUTES.SELLER);
-      } else {
-        navigate(ROUTES.HOME);
-      }
+      navigate(getDefaultRouteForUser(data), { replace: true });
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const response = (err as { response?: { data?: { message?: string } } }).response;
-        setErrorMessage(response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại!");
-      } else {
-        setErrorMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại sau!");
-      }
+      setErrorMessage(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -144,9 +136,9 @@ export const RegisterPage: React.FC = () => {
             gap: "8px",
             padding: "10px",
             borderRadius: "8px",
-            border: accountType === "customer" ? "2px solid #4f46e5" : "1px solid #cbd5e1",
-            backgroundColor: accountType === "customer" ? "#eef2ff" : "#ffffff",
-            color: accountType === "customer" ? "#4f46e5" : "#64748b",
+            border: accountType === "customer" ? "2px solid #059669" : "1px solid #cbd5e1",
+            backgroundColor: accountType === "customer" ? "#e8f5f1" : "#ffffff",
+            color: accountType === "customer" ? "#059669" : "#64748b",
             fontWeight: 700,
             fontSize: "0.85rem",
             cursor: "pointer",
@@ -167,9 +159,9 @@ export const RegisterPage: React.FC = () => {
             gap: "8px",
             padding: "10px",
             borderRadius: "8px",
-            border: accountType === "seller" ? "2px solid #4f46e5" : "1px solid #cbd5e1",
-            backgroundColor: accountType === "seller" ? "#eef2ff" : "#ffffff",
-            color: accountType === "seller" ? "#4f46e5" : "#64748b",
+            border: accountType === "seller" ? "2px solid #059669" : "1px solid #cbd5e1",
+            backgroundColor: accountType === "seller" ? "#e8f5f1" : "#ffffff",
+            color: accountType === "seller" ? "#059669" : "#64748b",
             fontWeight: 700,
             fontSize: "0.85rem",
             cursor: "pointer",
@@ -290,7 +282,7 @@ export const RegisterPage: React.FC = () => {
                 width: "100%",
                 padding: "11px 14px",
                 borderRadius: "8px",
-                border: "1px solid #818cf8",
+                border: "1px solid #059669",
                 backgroundColor: "#f8fafc",
                 fontSize: "0.92rem",
                 outline: "none",
@@ -350,22 +342,30 @@ export const RegisterPage: React.FC = () => {
           />
         </div>
 
-        {/* Big Submit Button (Indigo) */}
+        {/* Big Submit Button (Emerald Green #059669) */}
         <button
           type="submit"
           disabled={loading}
           style={{
             width: "100%",
             padding: "13px",
-            backgroundColor: loading ? "#94a3b8" : "#4f46e5",
+            backgroundColor: loading ? "#94a3b8" : "#059669",
             color: "#ffffff",
             borderRadius: "8px",
             fontWeight: 800,
             fontSize: "1rem",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
-            boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
+            boxShadow: "0 4px 14px rgba(5, 150, 105, 0.35)",
             marginTop: "6px",
+            cursor: loading ? "not-allowed" : "pointer",
+            transition: "background-color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            if (!loading) e.currentTarget.style.backgroundColor = "#047857";
+          }}
+          onMouseLeave={(e) => {
+            if (!loading) e.currentTarget.style.backgroundColor = "#059669";
           }}
         >
           {loading ? "ĐANG TẠO TÀI KHOẢN..." : (accountType === "seller" ? "ĐĂNG KÝ MỞ GIAN HÀNG" : "ĐĂNG KÝ NGAY")}
@@ -379,7 +379,7 @@ export const RegisterPage: React.FC = () => {
           lineHeight: 1.4,
           margin: "4px 0 0",
         }}>
-          Bằng việc đăng ký, bạn xác nhận đã đọc và đồng ý với Điều khoản dịch vụ & Chính sách bảo mật của E-Warehouse.
+          Bằng việc đăng ký, bạn xác nhận đã đọc và đồng ý với Điều khoản dịch vụ & Chính sách bảo mật của Tên sàn.
         </p>
 
         {/* Switch to Login */}
@@ -393,7 +393,7 @@ export const RegisterPage: React.FC = () => {
           <Link
             to={ROUTES.LOGIN}
             style={{
-              color: "#4f46e5",
+              color: "#059669",
               fontWeight: 700,
               textDecoration: "none",
             }}

@@ -1,5 +1,6 @@
 using ECommerceWarehouse.Application.DTOs.Identity;
 using ECommerceWarehouse.Application.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerceWarehouse.WebAPI.Controllers.Identity;
@@ -15,7 +16,18 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    /// <summary>
+    /// Đăng ký tài khoản mới (Customer hoặc Seller)
+    /// </summary>
+    /// <param name="model">Dữ liệu đăng ký</param>
+    /// <returns>Thông tin tài khoản và JWT token</returns>
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto model)
     {
         try
@@ -30,7 +42,18 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Đăng nhập tài khoản hệ thống bằng Email hoặc Username
+    /// </summary>
+    /// <param name="model">Thông tin đăng nhập</param>
+    /// <returns>Thông tin tài khoản và JWT token</returns>
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto model)
     {
         try

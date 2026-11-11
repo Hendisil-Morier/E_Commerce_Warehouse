@@ -1,25 +1,27 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ShoppingBag,
   ShoppingCart,
-  Heart,
   User,
   LogOut,
   Search,
   ChevronDown,
-  Truck,
-  Sparkles,
-  Headphones,
+  Menu,
+  Smartphone,
   Laptop,
   Shirt,
-  Watch,
+  Home,
+  Heart,
   Coffee,
-  Flame,
-  Store,
+  Package,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/authStore";
+import {
+  ROLES,
+  getDefaultRouteForUser,
+  hasRole,
+} from "@/utils/roleUtils";
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -33,211 +35,298 @@ export const Header: React.FC = () => {
   };
 
   const categories = [
-    { name: "Đồ điện tử & Công nghệ", icon: Laptop, tag: "Hot", link: "/products?category=electronics" },
-    { name: "Thời trang & May mặc", icon: Shirt, tag: "", link: "/products?category=apparel" },
-    { name: "Phụ kiện cao cấp", icon: Watch, tag: "New", link: "/products?category=accessories" },
-    { name: "Thiết bị gia dụng", icon: Coffee, tag: "", link: "/products?category=home" },
-    { name: "Âm thanh & Giải trí", icon: Headphones, tag: "", link: "/products?category=audio" },
+    { name: "Điện thoại & Phụ kiện", icon: Smartphone, link: "/products?category=phone" },
+    { name: "Máy tính & Laptop", icon: Laptop, link: "/products?category=laptop" },
+    { name: "Thời trang", icon: Shirt, link: "/products?category=fashion" },
+    { name: "Nhà cửa & Đời sống", icon: Home, link: "/products?category=home" },
+    { name: "Sức khỏe & Làm đẹp", icon: Heart, link: "/products?category=beauty" },
+    { name: "Thực phẩm & Đồ uống", icon: Coffee, link: "/products?category=food" },
   ];
 
   return (
     <header style={{
       backgroundColor: "#ffffff",
-      borderBottom: "1px solid #e2e8f0",
       position: "sticky",
       top: 0,
       zIndex: 50,
       width: "100%",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
     }}>
-      {/* Top Bar / Announcement ticker */}
+      {/* 1. Top Bar (Dark Forest Green matching the design image) */}
       <div style={{
-        backgroundColor: "#f8fafc",
-        borderBottom: "1px solid #f1f5f9",
+        backgroundColor: "#072b22",
         padding: "6px 24px",
         fontSize: "0.8rem",
-        color: "#64748b",
+        color: "#cbd5e1",
       }}>
         <div style={{
-          maxWidth: "1320px",
+          maxWidth: "1280px",
           margin: "0 auto",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            {/* Shopee-style Kênh Người Bán link right on topbar */}
+          {/* Top Left Links */}
+          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            {isAuthenticated && hasRole(user, ROLES.SELLER) && (
+              <Link
+                to={ROUTES.SELLER}
+                style={{
+                  color: "#6ee7b7",
+                  textDecoration: "none",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#6ee7b7")}
+              >
+                Kênh người bán
+              </Link>
+            )}
+
+            {isAuthenticated &&
+              hasRole(user, ROLES.CUSTOMER) &&
+              !hasRole(user, ROLES.SELLER) && (
+                <Link
+                  to={ROUTES.BECOME_SELLER}
+                  style={{
+                    color: "#e2e8f0",
+                    textDecoration: "none",
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+                >
+                  Trở thành người bán
+                </Link>
+              )}
+
+            {isAuthenticated && hasRole(user, ROLES.WAREHOUSE_MANAGER) && (
+              <Link
+                to={ROUTES.WAREHOUSE}
+                style={{
+                  color: "#6ee7b7",
+                  textDecoration: "none",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#6ee7b7")}
+              >
+                Quản lý kho
+              </Link>
+            )}
+
+            {isAuthenticated && hasRole(user, ROLES.ADMIN) && (
+              <Link
+                to={ROUTES.ADMIN}
+                style={{
+                  color: "#6ee7b7",
+                  textDecoration: "none",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#6ee7b7")}
+              >
+                Trang quản trị
+              </Link>
+            )}
+
             <Link
-              to={ROUTES.SELLER}
+              to={ROUTES.ORDERS}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-                color: "#4f46e5",
-                fontWeight: 700,
+                color: "#e2e8f0",
                 textDecoration: "none",
+                fontSize: "0.78rem",
+                fontWeight: 500,
+                transition: "color 0.2s",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#e2e8f0")}
             >
-              <Store size={14} />
-              <span>Kênh Người Bán</span>
+              Theo dõi đơn hàng
             </Link>
 
-            <span style={{ color: "#cbd5e1" }}>|</span>
-
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#334155", fontWeight: 500 }}>
-              <Sparkles size={14} color="#6366f1" /> Chào mừng bạn đến với Hệ sinh thái Thương mại & Kho bãi E-Warehouse!
-            </span>
+            <a
+              href="#support"
+              style={{
+                color: "#e2e8f0",
+                textDecoration: "none",
+                fontSize: "0.78rem",
+                fontWeight: 500,
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+            >
+              Hỗ trợ khách hàng
+            </a>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <Truck size={14} color="#4f46e5" /> Hotline: <strong style={{ color: "#0f172a" }}>1900 6868</strong>
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", color: "#334155" }}>
-              <span>🇻🇳 VN / VND</span>
-              <ChevronDown size={13} />
-            </div>
+          {/* Top Right Auth / User */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            {isAuthenticated && user ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span style={{ color: "#a7f3d0", fontSize: "0.8rem" }}>
+                  Xin chào, <strong>{user.fullName}</strong> ({user.role || "Customer"})
+                </span>
+                <span style={{ color: "#334155" }}>|</span>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#f87171",
+                    fontSize: "0.78rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: 0,
+                  }}
+                >
+                  <LogOut size={13} />
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <Link
+                  to={ROUTES.REGISTER}
+                  style={{
+                    color: "#e2e8f0",
+                    textDecoration: "none",
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+                >
+                  Đăng ký
+                </Link>
+                <span style={{ color: "#334155" }}>|</span>
+                <Link
+                  to={ROUTES.LOGIN}
+                  style={{
+                    color: "#e2e8f0",
+                    textDecoration: "none",
+                    fontSize: "0.78rem",
+                    fontWeight: 500,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#e2e8f0")}
+                >
+                  Đăng nhập
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Header Bar */}
+      {/* 2. Main Header Bar (Logo + Search Input + Cart + Account) */}
       <div style={{
-        maxWidth: "1320px",
+        maxWidth: "1280px",
         margin: "0 auto",
-        padding: "14px 24px",
+        padding: "16px 24px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: "24px",
+        gap: "32px",
       }}>
-        {/* Logo */}
+        {/* Logo matching image: Green badge with icon + "Tên sàn" / "E-Warehouse" */}
         <Link to={ROUTES.HOME} style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "10px",
           textDecoration: "none",
-          userSelect: "none",
+          flexShrink: 0,
         }}>
           <div style={{
-            backgroundColor: "#4f46e5",
-            color: "#ffffff",
-            padding: "6px 12px",
-            borderRadius: "8px",
+            width: "38px",
+            height: "38px",
+            borderRadius: "50%",
+            backgroundColor: "#059669",
             display: "flex",
             alignItems: "center",
-            fontWeight: 800,
-            fontSize: "1.2rem",
-            letterSpacing: "-0.5px",
+            justifyContent: "center",
+            color: "#ffffff",
+            boxShadow: "0 2px 6px rgba(5, 150, 105, 0.3)",
           }}>
-            modu<span style={{ color: "#c7d2fe" }}>+</span>
+            <Package size={22} strokeWidth={2.4} />
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{
-              fontSize: "1.28rem",
+              fontSize: "1.35rem",
               fontWeight: 800,
-              color: "#0f172a",
+              color: "#064e3b",
               lineHeight: 1.1,
-              letterSpacing: "-0.5px",
+              letterSpacing: "-0.3px",
             }}>
-              E-Warehouse
+              Tên sàn
             </span>
-            <span style={{ fontSize: "0.72rem", color: "#64748b", letterSpacing: "0.2px" }}>
-              Smart Living & Logistics
+            <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 500 }}>
+              Kho vận & Sàn TMĐT
             </span>
           </div>
         </Link>
 
-        {/* Global Search Input */}
+        {/* Global Search Input with Green Search Button */}
         <div style={{
           flex: 1,
-          maxWidth: "560px",
-          position: "relative",
+          maxWidth: "680px",
           display: "flex",
           alignItems: "center",
+          border: "1.5px solid #059669",
+          borderRadius: "8px",
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
         }}>
-          <Search size={18} color="#94a3b8" style={{ position: "absolute", left: "14px" }} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm hơn 50.000+ sản phẩm, danh mục, phụ kiện..."
+            placeholder="Tìm sản phẩm, shop..."
             style={{
-              width: "100%",
-              padding: "11px 80px 11px 42px",
-              borderRadius: "24px",
-              border: "1px solid #cbd5e1",
-              backgroundColor: "#f8fafc",
+              flex: 1,
+              padding: "10px 16px",
+              border: "none",
+              outline: "none",
               fontSize: "0.9rem",
               color: "#1e293b",
-              outline: "none",
-              transition: "all 0.2s ease",
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = "#4f46e5";
-              e.currentTarget.style.backgroundColor = "#ffffff";
-              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = "#cbd5e1";
-              e.currentTarget.style.backgroundColor = "#f8fafc";
-              e.currentTarget.style.boxShadow = "none";
             }}
           />
-          <span style={{
-            position: "absolute",
-            right: "12px",
-            fontSize: "0.75rem",
-            backgroundColor: "#e2e8f0",
-            color: "#64748b",
-            padding: "2px 8px",
-            borderRadius: "6px",
-            fontWeight: 600,
-            pointerEvents: "none",
-          }}>
-            ⌘K
-          </span>
+          <button
+            type="button"
+            style={{
+              backgroundColor: "#064e3b",
+              border: "none",
+              color: "#ffffff",
+              padding: "0 20px",
+              height: "42px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#064e3b")}
+          >
+            <Search size={19} />
+          </button>
         </div>
 
-        {/* Actions & User State */}
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {/* Wishlist */}
-          <Link
-            to="/wishlist"
-            title="Sản phẩm yêu thích"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#475569",
-              textDecoration: "none",
-              padding: "8px",
-              borderRadius: "50%",
-              backgroundColor: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              position: "relative",
-            }}
-          >
-            <Heart size={19} />
-            <span style={{
-              position: "absolute",
-              top: "-3px",
-              right: "-3px",
-              backgroundColor: "#ef4444",
-              color: "#ffffff",
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              borderRadius: "50%",
-              width: "16px",
-              height: "16px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              3
-            </span>
-          </Link>
-
-          {/* Cart */}
+        {/* Right side: Cart & Account */}
+        <div style={{ display: "flex", alignItems: "center", gap: "24px", flexShrink: 0 }}>
+          {/* Cart Icon with badge */}
           <Link
             to={ROUTES.CART}
             title="Giỏ hàng"
@@ -245,230 +334,166 @@ export const Header: React.FC = () => {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              color: "#0f172a",
+              color: "#1e293b",
               textDecoration: "none",
-              padding: "8px 14px",
-              borderRadius: "20px",
-              backgroundColor: "#f1f5f9",
-              fontWeight: 600,
-              fontSize: "0.88rem",
+              position: "relative",
+              padding: "6px",
             }}
           >
-            <ShoppingCart size={18} color="#4f46e5" />
-            <span>Giỏ hàng</span>
-            <span style={{
-              backgroundColor: "#4f46e5",
-              color: "#ffffff",
-              fontSize: "0.75rem",
-              fontWeight: 700,
-              borderRadius: "50%",
-              width: "20px",
-              height: "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              2
-            </span>
+            <div style={{ position: "relative" }}>
+              <ShoppingCart size={24} color="#064e3b" />
+              <span style={{
+                position: "absolute",
+                top: "-8px",
+                right: "-10px",
+                backgroundColor: "#ef4444",
+                color: "#ffffff",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                borderRadius: "50%",
+                width: "18px",
+                height: "18px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                2
+              </span>
+            </div>
           </Link>
 
-          {/* User state */}
+          {/* Account Icon + Text */}
           {isAuthenticated && user ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{
+            <Link
+              to={getDefaultRouteForUser(user)}
+              style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                padding: "5px 12px",
-                backgroundColor: "#f1f5f9",
-                borderRadius: "20px",
+                textDecoration: "none",
+                color: "#1e293b",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+              }}
+            >
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                backgroundColor: "#e8f5f1",
+                border: "1.5px solid #059669",
+                color: "#059669",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+                fontSize: "0.85rem",
               }}>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#4f46e5",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
-                }}>
-                  {user.fullName.charAt(0).toUpperCase()}
-                </div>
-                <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1e293b" }}>
-                  {user.fullName}
-                </span>
+                {user.fullName.charAt(0).toUpperCase()}
               </div>
-
-              <button
-                onClick={handleLogout}
-                title="Đăng xuất"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "6px 10px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  backgroundColor: "#ffffff",
-                  color: "#ef4444",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                <LogOut size={15} />
-                <span>Thoát</span>
-              </button>
-            </div>
+              <span>Tài khoản</span>
+            </Link>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Link
-                to={ROUTES.LOGIN}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 14px",
-                  borderRadius: "20px",
-                  color: "#1e293b",
-                  textDecoration: "none",
-                  fontSize: "0.88rem",
-                  fontWeight: 600,
-                  border: "1px solid #cbd5e1",
-                }}
-              >
-                <User size={16} />
-                <span>Đăng nhập</span>
-              </Link>
-
-              <Link
-                to={ROUTES.REGISTER}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "20px",
-                  backgroundColor: "#4f46e5",
-                  color: "#ffffff",
-                  textDecoration: "none",
-                  fontSize: "0.88rem",
-                  fontWeight: 600,
-                  boxShadow: "0 2px 8px rgba(79, 70, 229, 0.3)",
-                }}
-              >
-                Đăng ký
-              </Link>
-            </div>
+            <Link
+              to={ROUTES.LOGIN}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                textDecoration: "none",
+                color: "#1e293b",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+              }}
+            >
+              <User size={21} color="#064e3b" />
+              <span>Tài khoản</span>
+            </Link>
           )}
         </div>
       </div>
 
-      {/* Sub-navbar / Categories bar */}
+      {/* 3. Sub-navbar / Category Bar */}
       <div style={{
-        borderTop: "1px solid #f1f5f9",
+        borderTop: "1px solid #e2e8f0",
+        borderBottom: "1px solid #e2e8f0",
         backgroundColor: "#ffffff",
-        position: "relative",
       }}>
         <div style={{
-          maxWidth: "1320px",
+          maxWidth: "1280px",
           margin: "0 auto",
           padding: "0 24px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          height: "46px",
+          height: "44px",
+          gap: "28px",
         }}>
-          {/* Left: Category toggle & quick links */}
-          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-            <button
-              onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "6px 14px",
-                backgroundColor: showCategoryMenu ? "#1e293b" : "#f1f5f9",
-                color: showCategoryMenu ? "#ffffff" : "#1e293b",
-                borderRadius: "6px",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                transition: "all 0.2s ease",
-              }}
-            >
-              <ShoppingBag size={16} />
-              <span>Tất cả danh mục</span>
-              <ChevronDown
-                size={14}
-                style={{
-                  transform: showCategoryMenu ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 0.2s ease",
-                }}
-              />
-            </button>
+          {/* Left: Tất cả danh mục button */}
+          <button
+            onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "none",
+              border: "none",
+              color: "#059669",
+              fontSize: "0.88rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: "4px 8px",
+              borderRadius: "6px",
+            }}
+          >
+            <Menu size={18} />
+            <span>Tất cả danh mục</span>
+            <ChevronDown size={14} style={{ transform: showCategoryMenu ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+          </button>
 
-            <nav style={{ display: "flex", alignItems: "center", gap: "20px", fontSize: "0.88rem", fontWeight: 500 }}>
-              <Link to={ROUTES.PRODUCTS} style={{ color: "#334155", display: "flex", alignItems: "center", gap: "6px" }}>
-                <Laptop size={15} color="#64748b" /> Đồ điện tử
-              </Link>
-              <Link to={ROUTES.PRODUCTS} style={{ color: "#334155", display: "flex", alignItems: "center", gap: "6px" }}>
-                <Shirt size={15} color="#64748b" /> Thời trang
-              </Link>
-              <Link to={ROUTES.PRODUCTS} style={{ color: "#334155", display: "flex", alignItems: "center", gap: "6px" }}>
-                <Watch size={15} color="#64748b" /> Phụ kiện
-              </Link>
-              <Link to={ROUTES.PRODUCTS} style={{ color: "#334155", display: "flex", alignItems: "center", gap: "6px" }}>
-                <Coffee size={15} color="#64748b" /> Thiết bị gia dụng
-              </Link>
+          {/* Center Category Links */}
+          <nav style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "24px",
+            fontSize: "0.86rem",
+            fontWeight: 500,
+            overflowX: "auto",
+            flex: 1,
+          }}>
+            {categories.map((cat, idx) => (
               <Link
-                to={ROUTES.PRODUCTS}
+                key={idx}
+                to={cat.link}
                 style={{
-                  color: "#dc2626",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
+                  color: "#334155",
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                  transition: "color 0.2s",
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#059669")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#334155")}
               >
-                <Flame size={15} /> Flash Sale -40%
+                {cat.name}
               </Link>
-            </nav>
-          </div>
+            ))}
+          </nav>
 
-          {/* Right: Track order & Warehouse portals */}
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: "0.85rem" }}>
-            <Link
-              to={ROUTES.ORDERS}
-              style={{
-                color: "#475569",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontWeight: 500,
-              }}
-            >
-              <Truck size={15} color="#4f46e5" />
-              <span>Tra cứu đơn hàng</span>
-            </Link>
-
-            <span style={{ color: "#cbd5e1" }}>|</span>
-
-            <Link
-              to={ROUTES.WAREHOUSE}
-              style={{
-                color: "#0f766e",
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span>Vào Cổng Quản Lý Kho →</span>
-            </Link>
-          </div>
+          {/* Right link: Warehouse portal */}
+          <Link
+            to={ROUTES.WAREHOUSE}
+            style={{
+              color: "#059669",
+              textDecoration: "none",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Cổng Kho Bãi →
+          </Link>
         </div>
 
-        {/* Dropdown Mega-Menu Panel */}
+        {/* Category Dropdown */}
         {showCategoryMenu && (
           <div style={{
             position: "absolute",
@@ -476,22 +501,20 @@ export const Header: React.FC = () => {
             left: 0,
             right: 0,
             backgroundColor: "#ffffff",
-            boxShadow: "0 15px 30px rgba(15, 23, 42, 0.08)",
-            borderTop: "1px solid #f1f5f9",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
             borderBottom: "1px solid #e2e8f0",
-            padding: "24px 0",
+            padding: "20px 24px",
             zIndex: 40,
           }}>
             <div style={{
-              maxWidth: "1320px",
+              maxWidth: "1280px",
               margin: "0 auto",
-              padding: "0 24px",
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "24px",
+              gridTemplateColumns: "repeat(6, 1fr)",
+              gap: "16px",
             }}>
               {categories.map((cat, idx) => {
-                const IconComponent = cat.icon;
+                const IconComp = cat.icon;
                 return (
                   <Link
                     key={idx}
@@ -499,40 +522,40 @@ export const Header: React.FC = () => {
                     onClick={() => setShowCategoryMenu(false)}
                     style={{
                       display: "flex",
-                      alignItems: "flex-start",
-                      gap: "12px",
-                      padding: "12px 14px",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "16px 12px",
                       borderRadius: "10px",
                       backgroundColor: "#f8fafc",
-                      border: "1px solid #f1f5f9",
-                      transition: "all 0.2s ease",
+                      border: "1px solid #e2e8f0",
+                      textDecoration: "none",
+                      color: "#1e293b",
+                      gap: "10px",
+                      transition: "all 0.2s",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#eef2ff";
-                      e.currentTarget.style.borderColor = "#c7d2fe";
+                      e.currentTarget.style.backgroundColor = "#e8f5f1";
+                      e.currentTarget.style.borderColor = "#059669";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "#f8fafc";
-                      e.currentTarget.style.borderColor = "#f1f5f9";
+                      e.currentTarget.style.borderColor = "#e2e8f0";
                     }}
                   >
                     <div style={{
-                      padding: "8px",
-                      backgroundColor: "#ffffff",
-                      borderRadius: "8px",
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
-                      color: "#4f46e5",
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "50%",
+                      backgroundColor: "#e8f5f1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#059669",
                     }}>
-                      <IconComponent size={20} />
+                      <IconComp size={22} />
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: "0.92rem", color: "#1e293b", marginBottom: "4px" }}>
-                        {cat.name}
-                      </div>
-                      <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                        Hàng sẵn kho, bảo hành chính hãng
-                      </div>
-                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{cat.name}</span>
                   </Link>
                 );
               })}

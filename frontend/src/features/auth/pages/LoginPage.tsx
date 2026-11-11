@@ -9,6 +9,8 @@ import {
 import { ROUTES } from "@/constants/routes";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/authStore";
+import { getErrorMessage } from "@/utils/errorHandler";
+import { getDefaultRouteForUser } from "@/utils/roleUtils";
 import type { AuthResponse } from "@/types/auth";
 
 export const LoginPage: React.FC = () => {
@@ -23,21 +25,18 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Điều hướng thông minh theo Role
-  const redirectByRole = (role: string) => {
-    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+  // Điều hướng thông minh theo Role (ưu tiên: quay lại trang trước đó, hoặc Admin > WarehouseManager > Seller > Customer)
+  const redirectByRole = (userData: Pick<AuthResponse, "role" | "roles">) => {
+    const fromState = (
+      location.state as { from?: { pathname?: string; search?: string } } | null
+    )?.from;
 
-    if (from && from !== ROUTES.LOGIN) {
-      navigate(from);
-    } else if (role === "Admin") {
-      navigate(ROUTES.ADMIN);
-    } else if (role === "WarehouseManager" || role === "WarehouseStaff") {
-      navigate(ROUTES.WAREHOUSE);
-    } else if (role === "Seller") {
-      navigate(ROUTES.SELLER);
-    } else {
-      navigate(ROUTES.HOME);
+    if (fromState?.pathname && fromState.pathname !== ROUTES.LOGIN) {
+      navigate(`${fromState.pathname}${fromState.search || ""}`, { replace: true });
+      return;
     }
+
+    navigate(getDefaultRouteForUser(userData), { replace: true });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,7 +56,7 @@ export const LoginPage: React.FC = () => {
       // 1. Gọi API Backend thật
       const data = await authService.login({ email: cleanEmail, password: cleanPass });
       setAuth(data);
-      redirectByRole(data.role || "Customer");
+      redirectByRole(data);
     } catch (err: unknown) {
       // 2. Dự phòng đăng nhập cho tài khoản thử nghiệm khi backend chưa chạy hoặc chưa seed DB
       const isDemoPass = cleanPass === "Demo@123" || cleanPass === "123456" || cleanPass.toLowerCase() === "demo@123";
@@ -74,7 +73,7 @@ export const LoginPage: React.FC = () => {
           refreshToken: "demo-refresh-token-customer",
         };
         setAuth(mockData);
-        redirectByRole("Customer");
+        redirectByRole(mockData);
         return;
       }
 
@@ -90,7 +89,7 @@ export const LoginPage: React.FC = () => {
           refreshToken: "demo-refresh-token-seller",
         };
         setAuth(mockData);
-        redirectByRole("Seller");
+        redirectByRole(mockData);
         return;
       }
 
@@ -106,7 +105,7 @@ export const LoginPage: React.FC = () => {
           refreshToken: "demo-refresh-token-warehouse",
         };
         setAuth(mockData);
-        redirectByRole("WarehouseManager");
+        redirectByRole(mockData);
         return;
       }
 
@@ -122,19 +121,12 @@ export const LoginPage: React.FC = () => {
           refreshToken: "demo-refresh-token-admin",
         };
         setAuth(mockData);
-        redirectByRole("Admin");
+        redirectByRole(mockData);
         return;
       }
 
-      // Thông báo lỗi nếu sai thông tin
-      if (err && typeof err === "object" && "response" in err) {
-        const response = (err as { response?: { data?: { message?: string } } }).response;
-        setErrorMessage(response?.data?.message || "Email hoặc mật khẩu không chính xác.");
-      } else {
-        setErrorMessage(
-          "Không thể kết nối đến máy chủ Backend (http://localhost:5126). Vui lòng thử lại sau!"
-        );
-      }
+      // Thông báo lỗi qua getErrorMessage theo chuẩn ProblemDetails.code
+      setErrorMessage(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -153,7 +145,7 @@ export const LoginPage: React.FC = () => {
       refreshToken: "demo-refresh-google-token",
     };
     setAuth(mockGoogleUser);
-    redirectByRole("Customer");
+    redirectByRole(mockGoogleUser);
   };
 
   return (
@@ -216,8 +208,8 @@ export const LoginPage: React.FC = () => {
                 transition: "all 0.2s",
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = "#4f46e5";
-                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.15)";
+                e.currentTarget.style.borderColor = "#059669";
+                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(5, 150, 105, 0.15)";
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = "#cbd5e1";
@@ -248,8 +240,8 @@ export const LoginPage: React.FC = () => {
                 transition: "all 0.2s",
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = "#4f46e5";
-                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.15)";
+                e.currentTarget.style.borderColor = "#059669";
+                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(5, 150, 105, 0.15)";
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = "#cbd5e1";
@@ -295,7 +287,7 @@ export const LoginPage: React.FC = () => {
             }}
           >
             {staySignedIn ? (
-              <CheckSquare size={17} color="#4f46e5" />
+              <CheckSquare size={17} color="#059669" />
             ) : (
               <Square size={17} color="#94a3b8" />
             )}
@@ -307,7 +299,7 @@ export const LoginPage: React.FC = () => {
             href="#forgot"
             style={{
               fontSize: "0.85rem",
-              color: "#4f46e5",
+              color: "#059669",
               fontWeight: 600,
               textDecoration: "none",
             }}
@@ -316,30 +308,30 @@ export const LoginPage: React.FC = () => {
           </a>
         </div>
 
-        {/* Big Submit Button (Indigo) */}
+        {/* Big Submit Button (Emerald Green #059669) */}
         <button
           type="submit"
           disabled={loading}
           style={{
             width: "100%",
             padding: "13px",
-            backgroundColor: loading ? "#94a3b8" : "#4f46e5",
+            backgroundColor: loading ? "#94a3b8" : "#059669",
             color: "#ffffff",
             borderRadius: "8px",
             fontWeight: 800,
             fontSize: "1rem",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
-            boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
+            boxShadow: "0 4px 14px rgba(5, 150, 105, 0.35)",
             transition: "background-color 0.2s",
             marginTop: "6px",
             cursor: loading ? "not-allowed" : "pointer",
           }}
           onMouseEnter={(e) => {
-            if (!loading) e.currentTarget.style.backgroundColor = "#4338ca";
+            if (!loading) e.currentTarget.style.backgroundColor = "#047857";
           }}
           onMouseLeave={(e) => {
-            if (!loading) e.currentTarget.style.backgroundColor = "#4f46e5";
+            if (!loading) e.currentTarget.style.backgroundColor = "#059669";
           }}
         >
           {loading ? "ĐANG ĐĂNG NHẬP..." : "ĐĂNG NHẬP"}
@@ -404,7 +396,7 @@ export const LoginPage: React.FC = () => {
           lineHeight: 1.4,
           margin: "6px 0 0",
         }}>
-          Bằng việc đăng nhập, bạn đồng ý với Điều khoản dịch vụ & Chính sách bảo mật của E-Warehouse.
+          Bằng việc đăng nhập, bạn đồng ý với Điều khoản dịch vụ & Chính sách bảo mật của Tên sàn.
         </p>
 
         {/* Switch to Register */}
@@ -414,11 +406,11 @@ export const LoginPage: React.FC = () => {
           color: "#64748b",
           paddingTop: "6px",
         }}>
-          Bạn mới biết đến E-Warehouse?{" "}
+          Bạn mới biết đến Tên sàn?{" "}
           <Link
             to={ROUTES.REGISTER}
             style={{
-              color: "#4f46e5",
+              color: "#059669",
               fontWeight: 700,
               textDecoration: "none",
             }}
