@@ -1,111 +1,188 @@
-# Tiến độ dự án E-Commerce Warehouse (Cập nhật 11/11/2026)
+# Tiến độ dự án Team-4
 
-Tài liệu tổng hợp toàn bộ những hạng mục **đã hoàn thành**, **trạng thái kiểm chứng**, và **các bước tiếp theo** tính đến thời điểm hiện tại để cả nhóm nắm rõ tiến độ đồng bộ giữa Tài liệu, Database, Backend và Frontend.
+Cập nhật lần cuối: 2026-11-11. Người phụ trách hiện tại: Frontend (làm một mình đến thời điểm này).
+
+Quy ước: `[x]` đã xong · `[ ]` chưa làm · `[~]` đang làm · `[?]` **chưa chắc, cần xác nhận** (sửa lại thành `[x]` hoặc `[ ]`).
+
+Cách dùng: mỗi lần làm xong một việc, đánh dấu ở mục tương ứng và thêm một dòng vào **Nhật ký** ở cuối file (ngày, việc, nhánh/PR).
 
 ---
 
-## 1. Tài liệu & Quy ước chung (`docs/`, `.agents/rules/`)
+## 1. Tóm tắt nhanh
 
-| Hạng mục | Trạng thái | Nội dung chính |
+| Hạng mục | Trạng thái |
+|---|---|
+| Khung dự án, cấu trúc thư mục | Xong |
+| Xác thực (Auth): đăng ký, đăng nhập, JWT, refresh token | Xong |
+| Giao diện Storefront: trang chủ, đăng nhập, đăng ký | Xong |
+| Swagger | Xong (còn dọn đoạn vá tạm, xem mục 5) |
+| Khung 3 khu vực Seller/Warehouse/Admin (Bước 1) | Chưa làm |
+| Màn hình nghiệp vụ Seller, Warehouse, Admin | Chưa làm |
+| Giao diện Customer còn lại (danh sách/chi tiết sản phẩm, giỏ hàng, đặt hàng...) | Chưa làm |
+
+---
+
+## 2. Đã hoàn thành
+
+### Nền tảng
+- [x] Dựng khung dự án theo Clean Architecture (backend) và cấu trúc `features/` (frontend), repo `Team-4`.
+- [x] Chọn công nghệ: .NET 9 Web API, EF Core + Pomelo, FluentValidation, JWT; React 19 + TypeScript + Vite, React Router v7, TanStack Query, Zustand, Axios, pnpm.
+- [x] CORS cho frontend (cổng 5173, 5174, 3000).
+- [x] `DataSeeder` tạo sẵn 4 tài khoản mẫu (Customer, Seller, WarehouseManager, Admin) khi khởi động.
+
+### Xác thực (Auth)
+- [x] Backend: đăng ký, đăng nhập, access token JWT, refresh token.
+- [x] Frontend: giao diện đăng nhập, đăng ký cho người dùng.
+
+### Giao diện Customer (Storefront)
+- [x] Trang chủ (thanh trên, header có tìm kiếm và giỏ hàng, menu danh mục, hero, lưới sản phẩm, shop nổi bật, kêu gọi bán hàng, chân trang).
+- [x] Trang đăng nhập và đăng ký.
+
+### Công cụ và môi trường
+- [x] Swagger chạy được, có nút Authorize cho JWT Bearer (chỉ bật ở môi trường Development).
+- [x] Đã xác định quy ước API, mã lỗi, vai trò và phạm vi (xem mục 4).
+
+---
+
+## 3. Cần xác nhận (mình không biết bạn đã làm chưa)
+
+- [?] Cơ sở dữ liệu MySQL: đã chạy 6 file `database/scripts/01..06_*.sql` thành công trên MySQL thật chưa (bản này chưa được chạy thử trên MySQL thật khi viết). Kiểm tra: 39 bảng, bảng `Roles` có 6 dòng.
+- [?] Docker: đã có `docker-compose.yml`, `.env.example`, `backend/Dockerfile` trong repo và chạy được `docker compose up -d` chưa.
+- [?] Bộ tài liệu `docs/` (README, setup, git-workflow, business-rules, roles-and-permissions, api-conventions, error-codes, ui-guidelines, ui-screens-by-role, agent-prompts-fe) đã được chép vào repo và commit chưa.
+- [?] Thư mục `.agents/rules/` (4 file luật cho Antigravity) đã nằm ở gốc repo chưa, và tên thư mục đúng (`.agents` hay `.agent`) chưa.
+- [?] Axios client: đã tự gắn token và tự refresh khi gặp 401 chưa.
+- [?] `ProtectedRoute`: đã kiểm tra theo role chưa, hay mới kiểm tra đã đăng nhập.
+- [?] Bản đồ route ở frontend hiện có những trang nào ngoài trang chủ, đăng nhập, đăng ký.
+- [?] Hàm xử lý lỗi theo `ProblemDetails.code` (`errorCodes.ts`, `getErrorMessage`) đã có chưa.
+- [?] Nhánh Git đang dùng, và nhánh `develop` đã tạo chưa.
+
+---
+
+## 4. Quyết định đã chốt
+
+| Quyết định | Nội dung |
+|---|---|
+| Nền tảng | Chỉ web desktop (1280/1440px), không làm mobile |
+| Vai trò | 4 vai trò: Customer, Seller, WarehouseManager, Admin (bỏ WarehouseStaff, CustomerSupport) |
+| Kho | Chỉ dùng **kho sàn**; seller không có kho riêng, chỉ xem tồn hàng của mình |
+| Tách quyền | Người tạo phiếu kho không được tự xác nhận; cần **2 tài khoản WM** (`manager1`, `manager2`) |
+| Cơ sở dữ liệu | Database-first: script SQL là nguồn sự thật, không dùng EF Migrations |
+| Làm sau | Điều chuyển kho, kiểm kê, báo cáo/dashboard doanh thu, đánh giá, wishlist, thanh toán online thật |
+| Còn mở | Lỗi nghiệp vụ dùng 409 hay 422 (đang ghi 409); danh sách `code` lỗi cuối cùng |
+
+---
+
+## 5. Việc tồn đọng nhỏ (dọn dẹp)
+
+- [ ] Dọn đoạn middleware vá chuỗi `3.0.4` → `3.0.1` trong `Program.cs`: ghim `Microsoft.OpenApi` về 1.6.x rồi xóa middleware (xem prompt đã soạn); không dùng `SerializeAsV2`.
+- [ ] Bọc `app.UseHttpsRedirection()` trong `if (!app.Environment.IsDevelopment())` để hết cảnh báo cổng HTTPS.
+- [ ] Nhờ BE seed thêm tài khoản `manager2`.
+- [ ] Nhờ BE thêm `[ProducesResponseType]` cho các endpoint để Swagger hiện đủ mã lỗi.
+- [ ] Chốt 409 hay 422 với bạn BE.
+
+---
+
+## 6. Tiến độ màn hình Frontend
+
+### Customer (Storefront)
+| Màn hình | Trạng thái | Ghi chú |
 |---|---|---|
-| Tài liệu dự án ([`docs/README.md`](README.md), [`setup.md`](setup.md), [`git-workflow.md`](git-workflow.md)) | ✅ Hoàn thành | Hướng dẫn cài đặt môi trường, luồng Git/PR và định hướng đọc tài liệu cho thành viên mới. |
-| Luật nghiệp vụ & Phân quyền ([`business-rules.md`](business-rules.md), [`roles-and-permissions.md`](roles-and-permissions.md)) | ✅ Hoàn thành | Chốt phạm vi MVP 4 vai trò (`Customer`, `Seller`, `WarehouseManager`, `Admin`), quy tắc kho sàn (`Platform`), tách quyền duyệt phiếu (`SELF_APPROVAL_NOT_ALLOWED`). |
-| Hợp đồng API & Mã lỗi ([`api-conventions.md`](api-conventions.md), [`error-codes.md`](error-codes.md)) | ✅ Hoàn thành | Quy ước REST `/api/v1/...`, cấu trúc `ProblemDetails` kèm trường `code` cố định và bảng ánh xạ mã lỗi. |
-| Đặc tả giao diện FE ([`ui-guidelines.md`](ui-guidelines.md), [`ui-screens-by-role.md`](ui-screens-by-role.md)) | ✅ Hoàn thành | Bộ quy chuẩn thiết kế desktop (1280px/1440px), 3 trạng thái bắt buộc và đặc tả chi tiết màn hình S0–S9 (Seller), W1–W9 (Warehouse), A1–A8 (Admin). |
-| Bộ quy tắc phát triển (`.agents/rules/`) | ✅ Hoàn thành | Quy tắc kiến trúc Backend (.NET 9 Clean Architecture), Frontend (React 19 + TS strict), quy tắc tồn kho/đơn hàng. |
+| Trang chủ | [x] | |
+| Đăng nhập, đăng ký | [x] | |
+| Danh sách sản phẩm `/products` | [ ] | |
+| Chi tiết sản phẩm `/products/:id` | [ ] | |
+| Trang shop `/shops/:id` | [ ] | |
+| Giỏ hàng | [ ] | |
+| Đặt hàng (checkout) | [ ] | |
+| Lịch sử đơn, chi tiết đơn, hủy đơn | [ ] | |
+| Theo dõi vận đơn | [ ] | |
+| Yêu cầu trả hàng | [ ] | |
+| Hồ sơ, sổ địa chỉ | [ ] | |
+| Đăng ký làm seller `/become-seller` (S0) | [ ] | Bước 3 |
 
----
-
-## 2. Cơ sở dữ liệu (`database/`)
-
-| Hạng mục | Trạng thái | Chi tiết |
+### Seller (`/seller`)
+| Màn hình | Trạng thái | Bước |
 |---|---|---|
-| Thiết kế CSDL (`database/documentation/DatabaseDesign.md`) | ✅ Hoàn thành | Thiết kế đầy đủ **39 bảng**, sơ đồ quan hệ và từ điển dữ liệu cho MySQL. |
-| Bộ script SQL khởi tạo (`database/scripts/`) | ✅ Hoàn thành | Gồm 6 script chạy tuần tự: `01_CreateDatabase.sql`, `02_CreateTables.sql`, `03_CreateForeignKeys.sql`, `04_CreateIndexes.sql`, `05_TriggersAndViews.sql`, `06_SeedData.sql`. |
+| Khung layout, menu, phân quyền route | [ ] | 1 |
+| S1 Tổng quan | [ ] | 9 |
+| S2 Shop | [ ] | 4 |
+| S3 Danh sách sản phẩm | [ ] | 4 |
+| S4 Tạo/sửa sản phẩm và biến thể | [ ] | 4 |
+| S5 Danh sách đơn hàng | [ ] | 6 |
+| S6 Chi tiết đơn con | [ ] | 6 |
+| S7 Tồn kho (chỉ xem) | [ ] | 9 |
+| S8 Trả hàng | [ ] | 8 |
+| S9 Hồ sơ | [ ] | 9 |
+
+### Warehouse (`/warehouse`)
+| Màn hình | Trạng thái | Bước |
+|---|---|---|
+| Khung layout, menu, phân quyền route | [ ] | 1 |
+| W1 Tổng quan | [ ] | 9 |
+| W2 Kho và vị trí | [ ] | 5 |
+| W3 Tồn kho | [ ] | 5 |
+| W4 Thẻ kho | [ ] | 5 |
+| W5 Phiếu nhập | [ ] | 5 |
+| W6 Phiếu xuất | [ ] | 7 |
+| W7 Soạn hàng, quét mã | [ ] | 7 |
+| W8 Vận đơn | [ ] | 7 |
+| W9 Hàng trả về | [ ] | 8 |
+
+### Admin (`/admin`)
+| Màn hình | Trạng thái | Bước |
+|---|---|---|
+| Khung layout, menu, phân quyền route | [ ] | 1 |
+| A1 Tổng quan | [ ] | 9 |
+| A2 Duyệt seller | [ ] | 3 |
+| A3 Duyệt sản phẩm | [ ] | 4 |
+| A4 Đơn hàng (chỉ xem) | [ ] | 9 |
+| A5 Trả hàng | [ ] | 8 |
+| A6 Hoàn tiền | [ ] | 8 |
+| A7 Người dùng | [ ] | 10 |
+| A8 Danh mục | [ ] | 10 |
+
+### Hạ tầng Frontend
+| Việc | Trạng thái | Bước |
+|---|---|---|
+| Component dùng chung (Table, StatusBadge, Modal, Toast, ScanInput...) | [ ] | 2 |
+| MSW để mock API khi BE chưa xong | [ ] | 2b |
+| Rà soát chất lượng cuối | [ ] | 11 |
 
 ---
 
-## 3. Backend (.NET 9 — `backend/`)
+## 7. Tiến độ API Backend (để FE biết khi nào bỏ mock)
 
-### 3.1. Kiến trúc & Dữ liệu nền
-- **Clean Architecture 4 tầng:** `Domain` → `Application` → `Infrastructure` → `WebAPI`.
-- **Domain Entities (`ECommerceWarehouse.Domain/Entities/`):** Đã mô hình hóa các phân hệ `Catalog`, `Customer`, `Identity`, `Order`, `Review`, `Seller`, `Warehouse`.
-- **Infrastructure (`ECommerceWarehouse.Infrastructure/`):** Kết nối MySQL qua EF Core + Pomelo (`Pomelo.EntityFrameworkCore.MySql 9.0.0`), triển khai `GenericRepository` và `UnitOfWork`.
-- **Health Check (`HealthController`):** Endpoint `GET /api/health` kiểm tra trạng thái API.
+Cập nhật theo bảng endpoint trong `api-conventions.md`. Đánh `[x]` khi endpoint đã chạy được trên Swagger.
 
-### 3.2. Module Identity & Authentication
-- **Endpoint hiện có (`AuthController`):**
-  - `POST /api/v1/Auth/register` — Đăng ký tài khoản mới (`Customer` hoặc `Seller`).
-  - `POST /api/v1/Auth/login` — Đăng nhập bằng Email hoặc Username, trả về thông tin user + JWT `accessToken` và `refreshToken`.
-- **Seed dữ liệu mẫu tự động (`DataSeeder.cs`):** Tự động nạp 6 vai trò và 4 tài khoản mẫu khi khởi chạy (mật khẩu chung `Demo@123`):
-  - **Admin:** `admin@emarket.vn` / username `admin`
-  - **WarehouseManager:** `warehouse@emarket.vn` / username `warehouse`
-  - **Seller:** `seller@emarket.vn` / username `seller` (tự động tạo kèm bản ghi Seller `Approved` và Shop mẫu)
-  - **Customer:** `customer@gmail.com` / username `customer`
+| Module | Trạng thái | Ghi chú |
+|---|---|---|
+| Identity: register, login, refresh, logout | [x] | Xong |
+| Identity: `users/me`, địa chỉ | [?] | Hỏi BE |
+| Seller và Shop | [ ] | |
+| Catalog (categories, products, variants, duyệt) | [ ] | |
+| Giỏ hàng, đơn hàng | [ ] | |
+| Thanh toán, hoàn tiền | [ ] | |
+| Kho (warehouses, inventory, receipts, issues, scan) | [ ] | |
+| Vận chuyển, trả hàng | [ ] | |
 
-### 3.3. Swagger / OpenAPI (Mới hoàn thiện)
-- Cấu hình **Swashbuckle.AspNetCore 6.9.0** và ghim trực tiếp **Microsoft.OpenApi 1.6.14** trong `ECommerceWarehouse.WebAPI.csproj` (khắc phục triệt để lỗi OpenAPI version `3.0.4` không tương thích Swagger UI mà không cần `<NoWarn>` hay middleware vá chuỗi).
-- Xuất chuẩn `"openapi": "3.0.1"`, tích hợp nút **Authorize (JWT Bearer)**.
-- Chỉ bật Swagger/SwaggerUI ở môi trường `Development` (đặt trước `UseAuthentication`), trang gốc `/` tự chuyển hướng về `/swagger`, bọc `UseHttpsRedirection()` trong `!IsDevelopment()`.
-- Gắn `[ProducesResponseType]` (kèm `ProblemDetails` cho 400, 401, 403, 404, 409) vào `AuthController` làm mẫu cho các controller sau.
-- **Kết quả kiểm tra:** `dotnet build` đạt `0` lỗi, `0` cảnh báo; `GET /swagger/v1/swagger.json` trả `"openapi": "3.0.1"`, UI `/swagger` và nút Authorize hoạt động bình thường.
+Các API chưa có trong tài liệu (⚠️) đang chờ BE: xem `docs/ui-screens-by-role.md` mục 6.
 
 ---
 
-## 4. Frontend (React 19 + TypeScript + Vite — `frontend/`)
+## 8. Việc kế tiếp
 
-### 4.1. Giao diện Storefront & Authentication
-- **Hệ thống màu sắc & Design Token (`src/index.css`):** Đồng bộ bảng màu Forest Green (`#072b22`, `#0a3d31`), Emerald (`#059669`), Warm Peach (`#fdf6ec`), Dark Footer (`#0a1420`).
-- **Storefront Layout (`MainLayout.tsx`, `Header.tsx`, `HomePage.tsx`):**
-  - Trang chủ `HomePage.tsx` hoàn chỉnh bố cục theo thiết kế: Hero section, thẻ mô phỏng đơn tổng tách theo shop, 2 thẻ CTA, thanh cam kết 4 tiêu chí, 6 danh mục nổi bật, lưới 10 sản phẩm gợi ý, 4 shop nổi bật, banner mời người bán và quy trình 4 bước.
-  - `ProductsPage.tsx` và `OrdersPage.tsx` hiện đang là trang khung sơ bộ chờ tích hợp dữ liệu thật.
-- **Đăng nhập & Đăng ký (`AuthLayout.tsx`, `LoginPage.tsx`, `RegisterPage.tsx`):**
-  - Bỏ nút đăng nhập nhanh theo role và QR code; giữ form tài khoản/mật khẩu (nút "Quên?" đặt ngay dòng dưới ô mật khẩu) + đăng nhập Google.
-  - Bổ sung trường **Tên đăng nhập (`username`)** khi đăng ký.
-  - Validate đầu vào chặt chẽ khi đăng ký: bắt buộc Gmail hợp lệ (`@gmail.com`) và số điện thoại 10 chữ số đúng các đầu số nhà mạng Việt Nam quy định.
-  - Có tài khoản demo dự phòng trong `LoginPage` đồng bộ với `DataSeeder`.
-
-### 4.2. Khung 3 khu vực quản lý, Phân quyền & Xử lý lỗi (Mới hoàn thành)
-- **Xử lý lỗi chuẩn hóa & Axios Interceptor:**
-  - `src/types/api.ts`: Khai báo type `ProblemDetails`.
-  - `src/constants/errorCodes.ts` & `src/utils/errorHandler.ts`: Bảng ánh xạ toàn bộ mã lỗi sang tiếng Việt và hàm `getErrorMessage(error)` (ưu tiên `code` → `detail` → `message` → fallback).
-  - `src/lib/axios.ts` & `src/services/authService.ts`: Bổ sung response interceptor bắt `401` để tự gọi `/api/v1/Auth/refresh` 1 lần (có hàng đợi tránh gọi trùng), thất bại thì đăng xuất về `/login`; bắt `403` chuyển sang `/forbidden`.
-- **Phân quyền Route & Điều hướng đa vai trò:**
-  - `src/utils/roleUtils.ts`: Dùng đúng chuỗi role DB (`Customer`, `Seller`, `WarehouseManager`, `Admin`); ưu tiên điều hướng sau đăng nhập theo thứ tự `Admin` (`/admin`) → `WarehouseManager` (`/warehouse`) → `Seller` (`/seller`) → `Customer` (`/`).
-  - `ProtectedRoute.tsx` & `ForbiddenPage.tsx`: Chưa đăng nhập → `/login` (lưu `from` để quay về sau khi đăng nhập); sai role → trang **403 Không đủ quyền**.
-  - `Header.tsx`: Chỉ hiển thị nút **"Kênh người bán"** khi tài khoản có role `Seller`; hiện "Trở thành người bán" (`/become-seller`) với `Customer`; hỗ trợ liên kết chuyển khu vực khi user có nhiều role.
-- **3 Layout & Menu cấu hình bằng dữ liệu:**
-  - Dùng chung khung nền `DashboardLayout.tsx` + `Sidebar.tsx` cho `SellerLayout.tsx` (`/seller`), `WarehouseLayout.tsx` (`/warehouse`), `AdminLayout.tsx` (`/admin`).
-  - Cấu hình menu tập trung trong `src/constants/navigation.ts` (không viết `if` rải rác):
-    - **Seller (7 mục):** Tổng quan, Shop, Sản phẩm, Đơn hàng, Tồn kho, Trả hàng, Hồ sơ.
-    - **Warehouse (8 mục):** Tổng quan, Kho và vị trí, Tồn kho, Thẻ kho, Phiếu nhập, Phiếu xuất, Vận đơn, Hàng trả về.
-    - **Admin (8 mục):** Tổng quan, Seller, Sản phẩm, Đơn hàng, Trả hàng, Hoàn tiền, Người dùng, Danh mục.
-- **Khung Route đầy đủ (`routes.ts`, `AppRouter.tsx`, `PlaceholderPage.tsx`):**
-  - Đã đăng ký toàn bộ route màn hình trong `ui-screens-by-role.md`: `/become-seller` (S0), Seller (`S1–S9`), Warehouse (`W1–W9`), Admin (`A1–A8`), trỏ về `PlaceholderPage` ("Đang xây dựng").
-- **Kết quả kiểm tra FE:**
-  - `pnpm build` (`tsc -b && vite build`): Thành công, `0` lỗi TypeScript; quét mã nguồn xác nhận `0` `any`, `0` `console.log`.
-  - Lưu ý môi trường lint: `pnpm lint` hiện lỗi do xung đột dependency có sẵn trong `frontend/package.json` (`typescript@7.0.2` chưa được `typescript-eslint@8.72.1` hỗ trợ).
+1. Xác nhận các mục `[?]` ở mục 3.
+2. **Bước 1:** khung 3 khu vực (layout, menu theo role, `ProtectedRoute`, route placeholder).
+3. **Bước 2:** component dùng chung; **Bước 2b:** MSW nếu BE chưa xong API.
+4. Tiếp tục theo `docs/agent-prompts-fe.md` (Bước 3 đến Bước 11).
 
 ---
 
-## 5. Việc cần làm tiếp theo (Cho các bước sau)
+## 9. Nhật ký làm việc
 
-### Backend (.NET 9)
-1. Bổ sung global exception middleware chuyển exception thành chuẩn `ProblemDetails` + `code` (theo `docs/error-codes.md` và `docs/api-conventions.md`).
-2. Bổ sung endpoint `POST /api/v1/Auth/refresh` và `POST /api/v1/Auth/logout`.
-3. Triển khai API theo thứ tự ưu tiên luồng dữ liệu:
-   - Đăng ký/Duyệt Seller (`/sellers`, `/admin/sellers`).
-   - Catalog (Shop, Danh mục, Sản phẩm, Biến thể, Duyệt sản phẩm).
-   - Warehouse (Kho, Vị trí kệ, Phiếu nhập, Tồn kho, Thẻ kho).
-   - Đơn hàng, Thanh toán, Phiếu xuất, Vận đơn, Trả hàng & Hoàn tiền.
+Mỗi lần làm xong một việc, thêm một dòng ở **trên cùng** (mới nhất lên đầu).
 
-### Frontend (React + TypeScript)
-1. **Bộ UI Component dùng chung (`components/ui/`, `components/common/`):** `Button`, `Input`, `Select`, `Modal`, `ConfirmDialog`, `Table` (có phân trang), `StatusBadge`, `Toast`, `Skeleton`, `EmptyState`, `ErrorState`, `Pagination`, hàm `formatCurrency` & `formatDate`.
-2. **Triển khai màn hình theo lộ trình `ui-screens-by-role.md` mục 5:**
-   - **Bước 2:** S0 (`/become-seller`) + A2 (`/admin/sellers`).
-   - **Bước 3:** S2 (`/seller/shops`), S3–S4 (`/seller/products`) + A3 (`/admin/products`).
-   - **Bước 4:** W2–W5 (Kho/vị trí, Phiếu nhập, Tồn kho, Thẻ kho).
-   - **Bước 5:** S5–S6 (Đơn hàng shop) + W6–W8 (Phiếu xuất, Soạn hàng quét mã, Vận đơn).
-   - **Bước 6:** S8, W9, A5–A6 (Trả hàng & Hoàn tiền).
-   - **Bước 7–8:** S1/W1/A1 Tổng quan, A4, S7, S9, A7, A8 và hoàn thiện các trang Storefront thật (`/products`, `/cart`, `/orders`).
-
+| Ngày | Việc đã làm | Nhánh / PR |
+|---|---|---|
+| 2026-11-11 | Hoàn thiện Swagger (nút Authorize JWT, bật ở Development); chốt phạm vi 4 vai trò, kho sàn, 2 tài khoản WM; có đặc tả màn hình và bộ prompt cho agent | |
+| (trước đó) | Hoàn thiện Auth (BE) và giao diện đăng nhập, đăng ký; làm trang chủ Storefront; dựng khung dự án | |
