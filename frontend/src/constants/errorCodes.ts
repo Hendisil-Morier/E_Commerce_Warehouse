@@ -24,8 +24,10 @@ export const ERROR_CODES: Record<string, string> = {
   // 4. Mã theo module
   SELLER_ALREADY_EXISTS: "Tài khoản này đã có hồ sơ người bán.",
   SELLER_NOT_APPROVED: "Tài khoản người bán chưa được duyệt.",
+  SHOP_NAME_ALREADY_EXISTS: "Tên shop đã tồn tại trong tài khoản của bạn.",
   PRODUCT_NOT_AVAILABLE: "Sản phẩm hiện không còn bán.",
   DUPLICATE_SKU: "SKU này đã tồn tại.",
+  DUPLICATE_BARCODE: "Mã vạch (barcode) này đã tồn tại.",
   PAYMENT_ALREADY_PROCESSED: "Giao dịch đã được xử lý trước đó.",
   REFUND_EXCEEDS_PAID: "Số tiền hoàn vượt quá số đã thanh toán.",
   RETURN_NOT_ELIGIBLE: "Chỉ có thể thực hiện với đơn đã giao.",

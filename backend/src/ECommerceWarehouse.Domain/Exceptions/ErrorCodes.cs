@@ -30,8 +30,10 @@ public static class ErrorCodes
     // 4. Mã theo module
     public const string SellerAlreadyExists = "SELLER_ALREADY_EXISTS";
     public const string SellerNotApproved = "SELLER_NOT_APPROVED";
+    public const string ShopNameAlreadyExists = "SHOP_NAME_ALREADY_EXISTS";
     public const string ProductNotAvailable = "PRODUCT_NOT_AVAILABLE";
     public const string DuplicateSku = "DUPLICATE_SKU";
+    public const string DuplicateBarcode = "DUPLICATE_BARCODE";
     public const string PaymentAlreadyProcessed = "PAYMENT_ALREADY_PROCESSED";
     public const string RefundExceedsPaid = "REFUND_EXCEEDS_PAID";
     public const string ReturnNotEligible = "RETURN_NOT_ELIGIBLE";

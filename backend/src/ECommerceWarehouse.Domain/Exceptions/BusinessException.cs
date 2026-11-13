@@ -37,11 +37,17 @@ public class BusinessException : Exception
     public static BusinessException SellerNotApproved(string? message = null)
         => new(ErrorCodes.SellerNotApproved, message ?? "Tài khoản người bán chưa được duyệt.");
 
+    public static BusinessException ShopNameAlreadyExists(string? message = null)
+        => new(ErrorCodes.ShopNameAlreadyExists, message ?? "Bạn đã có một shop với tên này.");
+
     public static BusinessException ProductNotAvailable(string? message = null)
         => new(ErrorCodes.ProductNotAvailable, message ?? "Sản phẩm hiện không còn bán.");
 
     public static BusinessException DuplicateSku(string? message = null)
         => new(ErrorCodes.DuplicateSku, message ?? "Mã SKU này đã tồn tại.");
+
+    public static BusinessException DuplicateBarcode(string? message = null)
+        => new(ErrorCodes.DuplicateBarcode, message ?? "Mã vạch (Barcode) này đã tồn tại.");
 
     public static BusinessException RefundExceedsPaid(string? message = null)
         => new(ErrorCodes.RefundExceedsPaid, message ?? "Tổng số tiền hoàn vượt quá số tiền đã thanh toán.");

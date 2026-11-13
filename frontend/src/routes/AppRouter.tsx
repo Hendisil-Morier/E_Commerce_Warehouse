@@ -4,10 +4,14 @@ import { ForbiddenPage } from "@/components/common/ForbiddenPage";
 import { PlaceholderPage } from "@/components/common/PlaceholderPage";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ROUTES } from "@/constants/routes";
+import { AdminProductsPage } from "@/features/admin/pages/AdminProductsPage";
 import { AdminSellersPage } from "@/features/admin/pages/AdminSellersPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { BecomeSellerPage } from "@/features/seller/pages/BecomeSellerPage";
+import { SellerProductFormPage } from "@/features/seller/pages/SellerProductFormPage";
+import { SellerProductsPage } from "@/features/seller/pages/SellerProductsPage";
+import { SellerShopsPage } from "@/features/seller/pages/SellerShopsPage";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { MainLayout } from "@/layouts/MainLayout";
@@ -73,43 +77,19 @@ const router = createBrowserRouter([
           },
           {
             path: "shops",
-            element: (
-              <PlaceholderPage
-                screenCode="S2"
-                title="Quản lý shop"
-                description="Danh sách gian hàng của bạn, tạo mới và cập nhật thông tin cửa hàng."
-              />
-            ),
+            element: <SellerShopsPage />,
           },
           {
             path: "products",
-            element: (
-              <PlaceholderPage
-                screenCode="S3"
-                title="Danh sách sản phẩm"
-                description="Quản lý toàn bộ sản phẩm của shop, lọc theo trạng thái duyệt và tìm kiếm theo tên/SKU."
-              />
-            ),
+            element: <SellerProductsPage />,
           },
           {
             path: "products/new",
-            element: (
-              <PlaceholderPage
-                screenCode="S4"
-                title="Thêm sản phẩm mới"
-                description="Tạo thông tin sản phẩm, ảnh đại diện, biến thể SKU/giá và gửi duyệt lên sàn."
-              />
-            ),
+            element: <SellerProductFormPage />,
           },
           {
             path: "products/:id/edit",
-            element: (
-              <PlaceholderPage
-                screenCode="S4"
-                title="Chỉnh sửa sản phẩm"
-                description="Cập nhật thông tin sản phẩm, biến thể và gửi duyệt lại nếu sản phẩm bị từ chối."
-              />
-            ),
+            element: <SellerProductFormPage />,
           },
           {
             path: "orders",
@@ -333,13 +313,7 @@ const router = createBrowserRouter([
           },
           {
             path: "products",
-            element: (
-              <PlaceholderPage
-                screenCode="A3"
-                title="Duyệt sản phẩm"
-                description="Kiểm duyệt thông tin, hình ảnh, biến thể sản phẩm từ shop trước khi hiển thị công khai trên sàn."
-              />
-            ),
+            element: <AdminProductsPage />,
           },
           {
             path: "orders",

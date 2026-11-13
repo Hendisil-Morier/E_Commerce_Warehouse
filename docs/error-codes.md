@@ -43,8 +43,10 @@ BE trả lỗi theo định dạng ở `api-conventions.md`. Trường `code` l�
 |---|---|---|---|
 | `SELLER_ALREADY_EXISTS` 🆕 | Seller | Tài khoản đã có hồ sơ người bán (trừ trạng thái `Rejected` được phép gửi lại) | Tài khoản này đã có hồ sơ người bán. |
 | `SELLER_NOT_APPROVED` 🆕 | Seller | Seller chưa được duyệt mà tạo shop/sản phẩm | Tài khoản người bán chưa được duyệt. |
+| `SHOP_NAME_ALREADY_EXISTS` 🆕 | Catalog | Seller tạo hoặc đổi tên shop trùng với shop khác của chính mình | Bạn đã có một shop với tên này. |
 | `PRODUCT_NOT_AVAILABLE` 🆕 | Catalog/Cart | Sản phẩm chưa duyệt hoặc đã ngừng bán | Sản phẩm hiện không còn bán. |
 | `DUPLICATE_SKU` 🆕 | Catalog | Trùng SKU | SKU này đã tồn tại. |
+| `DUPLICATE_BARCODE` 🆕 | Catalog | Trùng mã vạch (Barcode) giữa các biến thể | Mã vạch này đã tồn tại. |
 | `PAYMENT_ALREADY_PROCESSED` 🆕 | Payment | Callback lặp (đã xử lý) | (Không hiện cho người dùng) |
 | `REFUND_EXCEEDS_PAID` 🆕 | Payment | Tổng hoàn tiền vượt số đã thanh toán | Số tiền hoàn vượt quá số đã thanh toán. |
 | `RETURN_NOT_ELIGIBLE` 🆕 | Returns/Reviews | Đơn con chưa `Delivered` hoặc không phải khách đã mua | Chỉ có thể thực hiện với đơn đã giao. |

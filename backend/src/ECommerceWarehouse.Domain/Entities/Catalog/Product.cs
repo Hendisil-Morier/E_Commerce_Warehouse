@@ -1,4 +1,5 @@
 using ECommerceWarehouse.Domain.Entities.Seller;
+using ECommerceWarehouse.Domain.Enums;
 
 namespace ECommerceWarehouse.Domain.Entities.Catalog;
 
@@ -9,7 +10,8 @@ public class Product
     public long CategoryId { get; set; }
     public string ProductName { get; set; } = null!;
     public string? Description { get; set; }
-    public string ProductStatus { get; set; } = "Draft"; // Draft, PendingReview, Active, Inactive, Rejected
+    public ProductStatus ProductStatus { get; set; } = ProductStatus.Draft;
+    public string? RejectReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

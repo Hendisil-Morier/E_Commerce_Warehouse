@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/lib/axios";
+
 const VND_NUMBER_FORMAT = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0,
 });
@@ -59,5 +61,25 @@ export function formatDate(
 
   const includeTime = options?.includeTime ?? true;
   return includeTime ? DATE_TIME_FORMAT.format(date) : DATE_ONLY_FORMAT.format(date);
+}
+
+/**
+ * Chuẩn hóa URL ảnh tương đối `/uploads/...` từ backend sang URL đầy đủ theo `API_BASE_URL`.
+ */
+export function resolveAssetUrl(url: string | null | undefined): string {
+  const trimmed = url?.trim();
+  if (!trimmed) return "";
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return "";
+  }
+
+  const base = API_BASE_URL.replace(/\/+$/, "");
+  const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${base}${path}`;
 }
 

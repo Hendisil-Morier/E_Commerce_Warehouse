@@ -1,12 +1,15 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 using ECommerceWarehouse.Application;
+using ECommerceWarehouse.Application.Contracts.Services;
 using ECommerceWarehouse.Domain.Exceptions;
 using ECommerceWarehouse.Infrastructure;
 using ECommerceWarehouse.Infrastructure.Data.Seed;
 using ECommerceWarehouse.WebAPI.Extensions;
 using ECommerceWarehouse.WebAPI.Middlewares;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -88,8 +91,8 @@ builder.Services.AddSwaggerGen(options =>
 // Đăng ký Application (FluentValidation Validators, Application Services...)
 builder.Services.AddApplication();
 
-// Đăng ký Infrastructure (DbContext, UnitOfWork, Repositories, AuthService...)
-builder.Services.AddInfrastructure(builder.Configuration);
+// Đăng ký Infrastructure (DbContext, UnitOfWork, Repositories, AuthService, Storage...)
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.ContentRootPath);
 
 // Đăng ký JWT Bearer Authentication, Role Policies và ICurrentUser
 builder.Services.AddJwtAuthenticationAndPolicies(builder.Configuration);
@@ -128,8 +131,33 @@ if (app.Environment.IsDevelopment())
 // Middleware xử lý lỗi toàn cục (ProblemDetails + code + traceId)
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// CORS phải được áp dụng trước Authorization
+// CORS phải được áp dụng trước Authorization và StaticFiles
 app.UseCors("AllowFrontend");
+
+// Phục vụ file tĩnh an toàn chỉ cho thư mục ảnh upload đã cấu hình
+var fileStorageOptions = app.Services.GetRequiredService<FileStorageOptions>();
+Directory.CreateDirectory(fileStorageOptions.ResolvedRootPath);
+var imageContentTypeProvider = new FileExtensionContentTypeProvider(
+    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [".jpg"] = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".png"] = "image/png",
+        [".webp"] = "image/webp"
+    });
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(fileStorageOptions.ResolvedRootPath),
+    RequestPath = fileStorageOptions.NormalizedRequestPath,
+    ContentTypeProvider = imageContentTypeProvider,
+    ServeUnknownFileTypes = false,
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.XContentTypeOptions = "nosniff";
+        ctx.Context.Response.Headers.CacheControl = "public,max-age=604800";
+    }
+});
 
 if (!app.Environment.IsDevelopment())
 {

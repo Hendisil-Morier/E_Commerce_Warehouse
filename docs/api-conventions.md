@@ -87,21 +87,25 @@ Ký hiệu quyền: 🌐 công khai · 🔐 đã đăng nhập · C = Customer �
 | GET | `/sellers/me` | S | Hồ sơ seller của tôi |
 | GET | `/admin/sellers?status=Pending` | A | Danh sách chờ duyệt |
 | POST | `/admin/sellers/{id}/approve` · `/reject` · `/suspend` | A | Duyệt / từ chối / khóa |
-| GET / POST / PUT | `/seller/shops[/{id}]` | S | Quản lý shop của mình |
+| GET / POST | `/seller/shops` | S | Danh sách / tạo shop của mình |
+| GET / PUT | `/seller/shops/{id}` | S | Xem chi tiết / sửa shop của mình |
+| GET | `/shops/{id}` | 🌐 | Xem thông tin công khai của shop đang hoạt động |
 
 ### Catalog
 
 | Method | URL | Quyền | Mô tả |
 |---|---|---|---|
 | GET | `/categories` | 🌐 | Cây danh mục |
-| GET | `/products?categoryId&q&page` | 🌐 | Danh sách đang bán (kèm `inStock`) |
-| GET | `/products/{id}` | 🌐 | Chi tiết, biến thể, ảnh, tồn khả dụng |
-| GET / POST | `/seller/products` | S | Sản phẩm của shop mình / tạo mới (Draft) |
-| PUT | `/seller/products/{id}` | S | Sửa sản phẩm |
-| POST | `/seller/products/{id}/submit` | S | Gửi duyệt (Draft → PendingReview) |
-| POST | `/seller/products/{id}/variants` · PUT `/seller/variants/{id}` | S | Quản lý biến thể (SKU, giá) |
-| GET | `/admin/products?status=PendingReview` | A | Hàng đợi duyệt |
-| POST | `/admin/products/{id}/approve` · `/reject` | A | Duyệt / từ chối |
+| POST | `/seller/uploads/images` | S | Tải ảnh sản phẩm/shop lên máy chủ (`multipart/form-data`, jpg/png/webp) |
+| GET | `/products?categoryId&shopId&q&minPrice&maxPrice&inStockOnly&sort&page&pageSize` | 🌐 | Danh sách đang bán (`Active`, kèm `minPrice`, `maxPrice`, ảnh đại diện, `inStock`, `availableQuantity`; hỗ trợ `sort=-createdAt\|price\|-price`) |
+| GET | `/products/{id}` | 🌐 | Chi tiết sản phẩm đang bán, ảnh, shop, các biến thể active kèm giá và tồn khả dụng (`availableQuantity`, `inStock`) |
+| GET / POST | `/seller/products` | S | Sản phẩm của shop mình (`status`, `shopId`, `q`) / tạo mới (Draft) |
+| GET / PUT | `/seller/products/{id}` | S | Xem chi tiết / sửa sản phẩm (không sửa khi `PendingReview`) |
+| POST | `/seller/products/{id}/submit` | S | Gửi duyệt (`Draft` / `Rejected` → `PendingReview`) |
+| POST | `/seller/products/{id}/variants` · PUT `/seller/variants/{id}` | S | Quản lý biến thể (SKU, barcode, giá) |
+| GET | `/admin/products` | A | Hàng đợi duyệt sản phẩm (`status`, `shopId`, `categoryId`, `q`) |
+| GET | `/admin/products/{id}` | A | Xem chi tiết sản phẩm trước khi duyệt/từ chối |
+| POST | `/admin/products/{id}/approve` · `/reject` | A | Duyệt (`→ Active`) / từ chối kèm lý do (`→ Rejected`) |
 
 ### Giỏ hàng và đơn hàng
 
