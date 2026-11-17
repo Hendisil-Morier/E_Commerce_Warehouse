@@ -14,8 +14,15 @@ import {
   Coffee,
   Store,
   Package,
+  Layers,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
+import {
+  useCategoriesTree,
+  usePublicProducts,
+} from "@/features/catalog/hooks/usePublicCatalog";
+import { ProductCard } from "@/features/catalog/components/ProductCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface ProductItem {
   id: string;
@@ -172,6 +179,11 @@ const featuredShops = [
 ];
 
 export const HomePage: React.FC = () => {
+  const { data: realCategories = [], isLoading: isLoadingCategories } = useCategoriesTree();
+  const { data: realProducts, isLoading: isLoadingProducts } = usePublicProducts({
+    pageSize: 10,
+    sort: "-createdAt",
+  });
   return (
     <div style={{
       maxWidth: "1280px",
@@ -735,12 +747,31 @@ export const HomePage: React.FC = () => {
           gridTemplateColumns: "repeat(6, 1fr)",
           gap: "14px",
         }}>
-          {featuredCategories.map((cat, idx) => {
-            const IconComp = cat.icon;
-            return (
-              <Link
+          {isLoadingCategories ? (
+            Array.from({ length: 6 }).map((_, idx) => (
+              <div
                 key={idx}
-                to={cat.link}
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "14px",
+                  padding: "20px 12px",
+                  border: "1px solid #e2e8f0",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                }}
+              >
+                <div style={{ marginBottom: "10px" }}>
+                  <Skeleton width={48} height={48} variant="circle" />
+                </div>
+                <Skeleton width="70%" height={16} />
+              </div>
+            ))
+          ) : realCategories.length > 0 ? (
+            realCategories.slice(0, 6).map((cat) => (
+              <Link
+                key={cat.categoryId}
+                to={`/products?categoryId=${cat.categoryId}`}
                 style={{
                   backgroundColor: "#ffffff",
                   borderRadius: "14px",
@@ -776,7 +807,7 @@ export const HomePage: React.FC = () => {
                   alignItems: "center",
                   justifyContent: "center",
                 }}>
-                  <IconComp size={22} />
+                  <Layers size={22} />
                 </div>
                 <span style={{
                   fontSize: "0.82rem",
@@ -784,11 +815,56 @@ export const HomePage: React.FC = () => {
                   color: "#1e293b",
                   lineHeight: 1.3,
                 }}>
-                  {cat.name}
+                  {cat.categoryName}
                 </span>
               </Link>
-            );
-          })}
+            ))
+          ) : (
+            featuredCategories.map((cat, idx) => {
+              const IconComp = cat.icon;
+              return (
+                <Link
+                  key={idx}
+                  to={cat.link}
+                  style={{
+                    backgroundColor: "#ffffff",
+                    borderRadius: "14px",
+                    padding: "20px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    textAlign: "center",
+                    border: "1px solid #e2e8f0",
+                    textDecoration: "none",
+                    gap: "12px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    backgroundColor: "#e8f5f1",
+                    color: "#059669",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <IconComp size={22} />
+                  </div>
+                  <span style={{
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "#1e293b",
+                    lineHeight: 1.3,
+                  }}>
+                    {cat.name}
+                  </span>
+                </Link>
+              );
+            })
+          )}
         </div>
       </section>
 
@@ -818,134 +894,120 @@ export const HomePage: React.FC = () => {
           </Link>
         </div>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
-          gap: "16px",
-        }}>
-          {productsList.map((prod) => (
-            <div
-              key={prod.id}
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "14px",
-                border: "1px solid #e2e8f0",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#059669";
-                e.currentTarget.style.transform = "translateY(-3px)";
-                e.currentTarget.style.boxShadow = "0 8px 18px rgba(0,0,0,0.06)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e2e8f0";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.03)";
-              }}
-            >
-              {/* Product Image Area matching design image */}
-              <div style={{
-                height: "140px",
-                backgroundColor: prod.bgColor,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#64748b",
-                position: "relative",
-              }}>
-                <Package size={30} strokeWidth={1.5} color="#94a3b8" />
-                <span style={{ fontSize: "0.75rem", marginTop: "6px", color: "#64748b" }}>Ảnh sản phẩm</span>
-
-                {/* Optional tag */}
-                {prod.tag && (
-                  <span style={{
-                    position: "absolute",
-                    top: "8px",
-                    right: "8px",
-                    backgroundColor: "#ef4444",
-                    color: "#ffffff",
-                    fontSize: "0.68rem",
-                    fontWeight: 700,
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                  }}>
-                    {prod.tag}
-                  </span>
-                )}
-              </div>
-
-              {/* Product Info */}
-              <div style={{
-                padding: "14px",
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-                justifyContent: "space-between",
-                gap: "8px",
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    lineHeight: 1.35,
-                    marginBottom: "6px",
-                    minHeight: "36px",
-                  }}>
-                    {prod.name}
-                  </h3>
-
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontSize: "0.75rem",
-                    color: "#64748b",
-                    marginBottom: "8px",
-                  }}>
-                    <Store size={12} />
-                    <span>{prod.shopName}</span>
-                  </div>
-
-                  <div style={{
-                    fontSize: "1.05rem",
-                    fontWeight: 800,
-                    color: "#0f172a",
-                  }}>
-                    {prod.price}
-                  </div>
+        {isLoadingProducts ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            gap: "16px",
+          }}>
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div
+                key={idx}
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "14px",
+                  padding: "12px",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div style={{ borderRadius: "8px", overflow: "hidden" }}>
+                  <Skeleton width="100%" height={140} variant="rect" />
                 </div>
-
-                {/* Bottom badges */}
-                <div style={{
+                <div style={{ marginTop: "12px" }}>
+                  <Skeleton width="80%" height={16} />
+                </div>
+                <div style={{ marginTop: "8px" }}>
+                  <Skeleton width="50%" height={20} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : realProducts && realProducts.items.length > 0 ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            gap: "16px",
+          }}>
+            {realProducts.items.slice(0, 10).map((prod) => (
+              <ProductCard key={prod.productId} product={prod} />
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            gap: "16px",
+          }}>
+            {productsList.map((prod) => (
+              <div
+                key={prod.id}
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "14px",
+                  border: "1px solid #e2e8f0",
+                  overflow: "hidden",
                   display: "flex",
+                  flexDirection: "column",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <div style={{
+                  height: "140px",
+                  backgroundColor: prod.bgColor,
+                  display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingTop: "8px",
-                  borderTop: "1px solid #f1f5f9",
-                  fontSize: "0.72rem",
+                  justifyContent: "center",
+                  color: "#64748b",
+                  position: "relative",
                 }}>
-                  <span style={{ color: "#94a3b8" }}>{prod.variantsCount} phân loại</span>
-
-                  <span style={{
-                    backgroundColor: prod.warehouseType === "Kho sàn" ? "#d1fae5" : "#f1f5f9",
-                    color: prod.warehouseType === "Kho sàn" ? "#065f46" : "#475569",
-                    fontWeight: 700,
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                  }}>
-                    {prod.warehouseType}
-                  </span>
+                  <Package size={30} strokeWidth={1.5} color="#94a3b8" />
+                  <span style={{ fontSize: "0.75rem", marginTop: "6px", color: "#64748b" }}>Ảnh sản phẩm</span>
+                </div>
+                <div style={{
+                  padding: "14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  flex: 1,
+                  justifyContent: "space-between",
+                  gap: "8px",
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      lineHeight: 1.35,
+                      marginBottom: "6px",
+                      minHeight: "36px",
+                    }}>
+                      {prod.name}
+                    </h3>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "0.75rem",
+                      color: "#64748b",
+                      marginBottom: "8px",
+                    }}>
+                      <Store size={12} />
+                      <span>{prod.shopName}</span>
+                    </div>
+                    <div style={{
+                      fontSize: "1.05rem",
+                      fontWeight: 800,
+                      color: "#0f172a",
+                    }}>
+                      {prod.price}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ========================================================

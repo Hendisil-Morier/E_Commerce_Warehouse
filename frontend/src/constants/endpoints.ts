@@ -39,5 +39,12 @@ export const API_ENDPOINTS = {
     APPROVE: (productId: number) => `/api/v1/admin/products/${productId}/approve`,
     REJECT: (productId: number) => `/api/v1/admin/products/${productId}/reject`,
   },
+  PUBLIC_PRODUCTS: {
+    BASE: "/api/v1/products",
+    BY_ID: (productId: number) => `/api/v1/products/${productId}`,
+  },
+  PUBLIC_SHOPS: {
+    BY_ID: (shopId: number) => `/api/v1/shops/${shopId}`,
+  },
 } as const;
 

@@ -7,16 +7,12 @@ import {
   Search,
   ChevronDown,
   Menu,
-  Smartphone,
-  Laptop,
-  Shirt,
-  Home,
-  Heart,
-  Coffee,
   Package,
+  Layers,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/authStore";
+import { useCategoriesTree } from "@/features/catalog/hooks/usePublicCatalog";
 import {
   ROLES,
   getDefaultRouteForUser,
@@ -28,20 +24,21 @@ export const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: realCategories = [] } = useCategoriesTree();
 
   const handleLogout = () => {
     logout();
     navigate(ROUTES.LOGIN);
   };
 
-  const categories = [
-    { name: "Điện thoại & Phụ kiện", icon: Smartphone, link: "/products?category=phone" },
-    { name: "Máy tính & Laptop", icon: Laptop, link: "/products?category=laptop" },
-    { name: "Thời trang", icon: Shirt, link: "/products?category=fashion" },
-    { name: "Nhà cửa & Đời sống", icon: Home, link: "/products?category=home" },
-    { name: "Sức khỏe & Làm đẹp", icon: Heart, link: "/products?category=beauty" },
-    { name: "Thực phẩm & Đồ uống", icon: Coffee, link: "/products?category=food" },
-  ];
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate(ROUTES.PRODUCTS);
+    }
+  };
 
   return (
     <header style={{
@@ -278,22 +275,25 @@ export const Header: React.FC = () => {
         </Link>
 
         {/* Global Search Input with Green Search Button */}
-        <div style={{
-          flex: 1,
-          maxWidth: "680px",
-          display: "flex",
-          alignItems: "center",
-          border: "1.5px solid #059669",
-          borderRadius: "8px",
-          overflow: "hidden",
-          backgroundColor: "#ffffff",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-        }}>
+        <form
+          onSubmit={handleSearchSubmit}
+          style={{
+            flex: 1,
+            maxWidth: "680px",
+            display: "flex",
+            alignItems: "center",
+            border: "1.5px solid #059669",
+            borderRadius: "8px",
+            overflow: "hidden",
+            backgroundColor: "#ffffff",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+          }}
+        >
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm sản phẩm, shop..."
+            placeholder="Tìm kiếm sản phẩm, danh mục..."
             style={{
               flex: 1,
               padding: "10px 16px",
@@ -304,7 +304,7 @@ export const Header: React.FC = () => {
             }}
           />
           <button
-            type="button"
+            type="submit"
             style={{
               backgroundColor: "#064e3b",
               border: "none",
@@ -319,10 +319,11 @@ export const Header: React.FC = () => {
             }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#064e3b")}
+            title="Tìm kiếm"
           >
             <Search size={19} />
           </button>
-        </div>
+        </form>
 
         {/* Right side: Cart & Account */}
         <div style={{ display: "flex", alignItems: "center", gap: "24px", flexShrink: 0 }}>
@@ -460,10 +461,23 @@ export const Header: React.FC = () => {
             overflowX: "auto",
             flex: 1,
           }}>
-            {categories.map((cat, idx) => (
+            <Link
+              to={ROUTES.PRODUCTS}
+              style={{
+                color: "#334155",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                fontWeight: 600,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#059669")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#334155")}
+            >
+              Tất cả sản phẩm
+            </Link>
+            {realCategories.slice(0, 7).map((cat) => (
               <Link
-                key={idx}
-                to={cat.link}
+                key={cat.categoryId}
+                to={`/products?categoryId=${cat.categoryId}`}
                 style={{
                   color: "#334155",
                   textDecoration: "none",
@@ -473,7 +487,7 @@ export const Header: React.FC = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#059669")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#334155")}
               >
-                {cat.name}
+                {cat.categoryName}
               </Link>
             ))}
           </nav>
@@ -510,55 +524,52 @@ export const Header: React.FC = () => {
               maxWidth: "1280px",
               margin: "0 auto",
               display: "grid",
-              gridTemplateColumns: "repeat(6, 1fr)",
+              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
               gap: "16px",
             }}>
-              {categories.map((cat, idx) => {
-                const IconComp = cat.icon;
-                return (
-                  <Link
-                    key={idx}
-                    to={cat.link}
-                    onClick={() => setShowCategoryMenu(false)}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      padding: "16px 12px",
-                      borderRadius: "10px",
-                      backgroundColor: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      textDecoration: "none",
-                      color: "#1e293b",
-                      gap: "10px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#e8f5f1";
-                      e.currentTarget.style.borderColor = "#059669";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#f8fafc";
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                    }}
-                  >
-                    <div style={{
-                      width: "44px",
-                      height: "44px",
-                      borderRadius: "50%",
-                      backgroundColor: "#e8f5f1",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#059669",
-                    }}>
-                      <IconComp size={22} />
-                    </div>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{cat.name}</span>
-                  </Link>
-                );
-              })}
+              {realCategories.map((cat) => (
+                <Link
+                  key={cat.categoryId}
+                  to={`/products?categoryId=${cat.categoryId}`}
+                  onClick={() => setShowCategoryMenu(false)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    textAlign: "center",
+                    padding: "16px 12px",
+                    borderRadius: "10px",
+                    backgroundColor: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    textDecoration: "none",
+                    color: "#1e293b",
+                    gap: "10px",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#e8f5f1";
+                    e.currentTarget.style.borderColor = "#059669";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f8fafc";
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                  }}
+                >
+                  <div style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    backgroundColor: "#e8f5f1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#059669",
+                  }}>
+                    <Layers size={20} />
+                  </div>
+                  <span style={{ fontSize: "0.86rem", fontWeight: 600 }}>{cat.categoryName}</span>
+                </Link>
+              ))}
             </div>
           </div>
         )}

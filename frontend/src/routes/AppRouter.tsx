@@ -20,6 +20,8 @@ import { WarehouseLayout } from "@/layouts/WarehouseLayout";
 import { HomePage } from "@/pages/HomePage";
 import { OrdersPage } from "@/pages/OrdersPage";
 import { ProductsPage } from "@/pages/ProductsPage";
+import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage";
+import { ShopDetailPage } from "@/features/catalog/pages/ShopDetailPage";
 import { ROLES } from "@/utils/roleUtils";
 
 const router = createBrowserRouter([
@@ -35,6 +37,14 @@ const router = createBrowserRouter([
       {
         path: ROUTES.PRODUCTS,
         element: <ProductsPage />,
+      },
+      {
+        path: ROUTES.PRODUCT_DETAIL,
+        element: <ProductDetailPage />,
+      },
+      {
+        path: ROUTES.SHOP_DETAIL,
+        element: <ShopDetailPage />,
       },
       {
         element: <ProtectedRoute />,

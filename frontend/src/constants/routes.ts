@@ -6,6 +6,7 @@ export const ROUTES = {
   FORBIDDEN: "/forbidden",
   PRODUCTS: "/products",
   PRODUCT_DETAIL: "/products/:id",
+  SHOP_DETAIL: "/shops/:id",
   CART: "/cart",
   ORDERS: "/orders",
   BECOME_SELLER: "/become-seller",

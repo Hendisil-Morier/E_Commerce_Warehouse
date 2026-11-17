@@ -91,11 +91,11 @@ Cách dùng: mỗi lần làm xong một việc, đánh dấu ở mục tương 
 ### Customer (Storefront)
 | Màn hình | Trạng thái | Ghi chú |
 |---|---|---|
-| Trang chủ | [x] | |
+| Trang chủ | [x] | STT 5 (kết nối API real catalog & categories) |
 | Đăng nhập, đăng ký | [x] | |
-| Danh sách sản phẩm `/products` | [ ] | |
-| Chi tiết sản phẩm `/products/:id` | [ ] | |
-| Trang shop `/shops/:id` | [ ] | |
+| Danh sách sản phẩm `/products` | [x] | STT 6 (cây danh mục, tìm kiếm fulltext, lọc giá, URL filters) |
+| Chi tiết sản phẩm `/products/:id` | [x] | STT 6 (gallery, chọn biến thể đổi giá/SKU/tồn kho) |
+| Trang shop `/shops/:id` | [x] | STT 6 (thông tin shop & danh sách sản phẩm) |
 | Giỏ hàng | [ ] | |
 | Đặt hàng (checkout) | [ ] | |
 | Lịch sử đơn, chi tiết đơn, hủy đơn | [ ] | |
@@ -188,6 +188,7 @@ Mỗi lần làm xong một việc, thêm một dòng ở **trên cùng** (mới
 
 | Ngày | Việc đã làm | Nhánh / PR |
 |---|---|---|
+| 2026-11-17 | **TV2 – Vương (STT 5 & STT 6):** Hoàn thiện Storefront & Customer Catalog: `HomePage` kết nối API danh mục thật và sản phẩm Active; trang danh sách `/products` lọc cây danh mục đa tầng, tìm kiếm FULLTEXT, lọc giá, phân trang, URL filters; trang chi tiết `/products/:id` thư viện ảnh và đổi biến thể cập nhật giá/SKU/tồn khả dụng; trang shop `/shops/:id`; tách component `ProductCard` dùng chung; `pnpm run build` thành công. | `feature/vuong` |
 | 2026-11-12 | **FE Bước 4:** Triển khai `S2` (`SellerShopsPage`, `ShopFormModal`), `S3` (`SellerProductsPage`), `S4` (`SellerProductFormPage`, `ProductImagesEditor` hỗ trợ upload file thật & URL/ảnh đại diện/thứ tự, `ProductVariantsEditor` cho xóa dòng ở chế độ tạo mới và lưu trực tiếp + công tắc `isActive` khi sửa), `A3` (`AdminProductsPage`, `AdminProductsTable`, `AdminProductDetailDrawer`, `ProductModerationConfirmDialog`); thêm `catalog.service.ts`, `resolveAssetUrl`; `pnpm build` (`tsc -b && vite build`) thành công (`2330 modules`). (Chưa commit). | `feature/namnh-full` |
 | 2026-11-12 | **BE Bước 4c:** Hoàn thiện Public Catalog (`ProductsController`: `GET /api/v1/products`, `GET /api/v1/products/{id}` đọc tồn khả dụng từ view `vw_VariantAvailability`), `PublicProductQueryValidator`, unit tests `PublicCatalogProductServiceTests` (`124/124` passed), cập nhật `docs/api-conventions.md` và probe thực tế qua WebAPI + MySQL. (Chưa commit). | `feature/namnh-full` |
 | 2026-11-12 | **BE Bước 4b:** Triển khai quản lý sản phẩm, biến thể và kiểm duyệt (`SellerProductsController`, `SellerVariantsController`, `AdminProductsController`, `SellerProductService`, `AdminProductService`, `ProductRepository`, validators) kèm unit tests (`119/119` passed). (Chưa commit). | `feature/namnh-full` |
