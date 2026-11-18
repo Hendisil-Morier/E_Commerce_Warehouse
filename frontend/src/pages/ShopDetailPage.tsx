@@ -195,3 +195,4 @@ export const ShopDetailPage: React.FC = () => {
     </div>
   );
 };
+

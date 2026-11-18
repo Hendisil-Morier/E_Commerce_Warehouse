@@ -1,4 +1,4 @@
-﻿/* Stylesheet dÃƒÂ¹ng chung cho bÃ¡Â»â„¢ component UI & Common */
+/* Stylesheet dÃƒÂ¹ng chung cho bÃ¡Â»â„¢ component UI & Common */
 
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--color-primary);
@@ -1555,4 +1555,45 @@
   height: 100%;
   object-fit: cover;
 }
+
+/* ==========================================================================
+   Toast Notifications
+   ========================================================================== */
+.ew-toast-stack {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  width: calc(100vw - 48px);
+  pointer-events: none;
+}
+
+.ew-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background-color: var(--color-white, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-left-width: 4px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+  animation: ew-toast-in 0.18s ease-out;
+}
+
+.ew-toast--success { border-left-color: var(--color-success, #16a34a); }
+.ew-toast--error { border-left-color: var(--color-danger, #ef4444); }
+.ew-toast--warning { border-left-color: var(--color-warning, #f59e0b); }
+.ew-toast--info { border-left-color: var(--color-info, #2563eb); }
+
+@keyframes ew-toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 

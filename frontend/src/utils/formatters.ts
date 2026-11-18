@@ -70,7 +70,7 @@ export function resolveAssetUrl(url: string | null | undefined): string {
   const trimmed = url?.trim();
   if (!trimmed) return "";
 
-  if (/^https?:\/\//i.test(trimmed)) {
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
     return trimmed;
   }
 

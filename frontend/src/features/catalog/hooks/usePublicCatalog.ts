@@ -30,3 +30,4 @@ export function usePublicShopDetailQuery(shopId: number | null) {
     enabled: shopId !== null && Number.isFinite(shopId) && shopId > 0,
   });
 }
+
