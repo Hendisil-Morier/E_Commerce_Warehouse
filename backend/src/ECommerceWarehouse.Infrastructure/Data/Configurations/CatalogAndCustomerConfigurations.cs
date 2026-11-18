@@ -1,5 +1,6 @@
 using ECommerceWarehouse.Domain.Entities.Catalog;
 using ECommerceWarehouse.Domain.Entities.Customer;
+using ECommerceWarehouse.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,7 +33,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasKey(x => x.ProductId);
         builder.Property(x => x.ProductName).HasMaxLength(250).IsRequired();
         builder.Property(x => x.Description).HasColumnType("text");
-        builder.Property(x => x.ProductStatus).HasMaxLength(30).HasDefaultValue("Draft");
+        builder.Property(x => x.ProductStatus)
+               .HasConversion<string>()
+               .HasMaxLength(30)
+               .HasDefaultValue(ProductStatus.Draft);
+        builder.Property(x => x.RejectReason).HasMaxLength(500);
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(3)");
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(3)");
 

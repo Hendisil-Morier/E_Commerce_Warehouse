@@ -84,3 +84,28 @@ INSERT IGNORE INTO WarehouseLocations (WarehouseId, LocationCode, StorageType, I
     (@platform_wh, 'INBOUND-01','Inbound',  0),
     (@platform_wh, 'RETURNS-01','Returns',  0),
     (@platform_wh, 'DAMAGED-01','Damaged',  0);
+
+-- ============================================================================
+-- 5. TÀI KHOẢN MẪU THỬ NGHIỆM 4 VAI TRÒ (Seed Data)
+--    Lưu ý: Bạn cũng có thể để ứng dụng tự động seed khi chạy API (DataSeeder.cs).
+--    Mật khẩu mặc định: Demo@123
+-- ============================================================================
+-- Tạo User mẫu (nếu chưa có)
+INSERT INTO Users (UserId, FullName, Email, PasswordHash, PhoneNumber, IsActive)
+VALUES 
+    (1, 'Quản trị viên Hệ thống', 'admin@emarket.vn', 'AQAAAAIAAYagAAAAENK8/demoHashAdmin1234567890abcdef...', '0988123456', 1),
+    (2, 'Nguyễn Văn Kho (Thủ kho)', 'warehouse@emarket.vn', 'AQAAAAIAAYagAAAAENK8/demoHashWarehouse123456...', '0988123456', 1),
+    (3, 'Trần Thị Shop (Người bán)', 'seller@emarket.vn', 'AQAAAAIAAYagAAAAENK8/demoHashSeller123456789...', '0988123456', 1),
+    (4, 'Lê Hoàng Khách (Khách hàng)', 'customer@gmail.com', 'AQAAAAIAAYagAAAAENK8/demoHashCustomer123456...', '0988123456', 1)
+ON DUPLICATE KEY UPDATE FullName = VALUES(FullName);
+
+-- Gán quyền vào bảng UserRoles
+INSERT IGNORE INTO UserRoles (UserId, RoleId)
+SELECT 1, RoleId FROM Roles WHERE RoleName = 'Admin'
+UNION ALL
+SELECT 2, RoleId FROM Roles WHERE RoleName = 'WarehouseManager'
+UNION ALL
+SELECT 3, RoleId FROM Roles WHERE RoleName = 'Seller'
+UNION ALL
+SELECT 4, RoleId FROM Roles WHERE RoleName = 'Customer';
+

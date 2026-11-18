@@ -1,4 +1,5 @@
 using ECommerceWarehouse.Domain.Entities.Identity;
+using ECommerceWarehouse.Domain.Enums;
 
 namespace ECommerceWarehouse.Domain.Entities.Seller;
 
@@ -10,8 +11,9 @@ public class Seller
     public string? TaxCode { get; set; }
     public string? Description { get; set; }
     public decimal CommissionRate { get; set; } = 5.00m;
-    public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected, Suspended
+    public SellerStatus Status { get; set; } = SellerStatus.Pending;
     public DateTime? ApprovedAt { get; set; }
+    public string? RejectReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

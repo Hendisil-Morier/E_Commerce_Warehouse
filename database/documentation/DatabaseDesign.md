@@ -483,6 +483,7 @@ Hồ sơ người bán (1 tài khoản = tối đa 1 hồ sơ). Admin duyệt tr
 | `CommissionRate` | `DECIMAL(5,2)` | NOT NULL | `5.00` |  | % hoa hồng sàn thu trên doanh thu của seller (0-100). |
 | `Status` | `VARCHAR(30)` | NOT NULL | `'Pending'` |  | Pending → Approved / Rejected; Approved → Suspended. Chỉ seller Approved mới được bán. |
 | `ApprovedAt` | `DATETIME(3)` | NULL |  |  |  |
+| `RejectReason` | `VARCHAR(500)` | NULL |  |  | Lý do từ chối hoặc đình chỉ hồ sơ người bán. |
 | `CreatedAt` | `DATETIME(3)` | NOT NULL | `UTC_TIMESTAMP(3)` |  | Thời điểm tạo (UTC). |
 | `UpdatedAt` | `DATETIME(3)` | NULL |  |  | Thời điểm cập nhật gần nhất (UTC); do ứng dụng gán. |
 

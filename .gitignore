@@ -482,3 +482,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Uploaded media files during local development/testing
+backend/src/ECommerceWarehouse.WebAPI/wwwroot/uploads/*
+!backend/src/ECommerceWarehouse.WebAPI/wwwroot/uploads/.gitkeep

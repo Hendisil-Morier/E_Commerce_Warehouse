@@ -2,9 +2,14 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using ECommerceWarehouse.Application.Contracts.Persistence;
 using ECommerceWarehouse.Application.DTOs.Identity;
 using ECommerceWarehouse.Domain.Entities.Identity;
+using ECommerceWarehouse.Domain.Entities.Seller;
+using ECommerceWarehouse.Domain.Enums;
+using ECommerceWarehouse.Domain.Exceptions;
+using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -16,58 +21,126 @@ public class AuthService : IAuthService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IValidator<RefreshTokenRequestDto> _refreshTokenValidator;
 
-    public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration)
+    public AuthService(
+        IUnitOfWork unitOfWork,
+        IConfiguration configuration,
+        IValidator<RefreshTokenRequestDto> refreshTokenValidator)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
+        _refreshTokenValidator = refreshTokenValidator;
         _passwordHasher = new PasswordHasher<User>();
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto model, string ipAddress)
     {
-        // Kiểm tra email đã tồn tại chưa
-        var existingUsers = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == model.Email);
+        // 1. Kiểm tra định dạng Gmail (@gmail.com)
+        if (string.IsNullOrWhiteSpace(model.Email) ||
+            !Regex.IsMatch(model.Email.Trim(), @"^[a-zA-Z0-9._%+-]+@gmail\.com$", RegexOptions.IgnoreCase))
+        {
+            throw new InvalidOperationException("Vui lòng nhập địa chỉ Gmail hợp lệ (@gmail.com, ví dụ: yourname@gmail.com).");
+        }
+
+        // 2. Kiểm tra số điện thoại (bắt buộc đúng 10 chữ số và các đầu số nhà mạng VN quy định)
+        if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+        {
+            throw new InvalidOperationException("Vui lòng nhập số điện thoại liên hệ.");
+        }
+
+        var cleanPhone = model.PhoneNumber.Trim().Replace(" ", "").Replace("-", "").Replace(".", "");
+        if (!Regex.IsMatch(cleanPhone, @"^(03[2-9]|05[2689]|07[06-9]|08[1-689]|09[0-46-9])\d{7}$"))
+        {
+            throw new InvalidOperationException("Số điện thoại không hợp lệ. Số điện thoại phải gồm đúng 10 chữ số và thuộc các đầu số nhà mạng hợp lệ (070, 076-079, 089, 090, 093, 032-039, 086, 096-098, 081-085, 088, 091, 094, 092, 052, 056, 058, 059, 099).");
+        }
+
+        // 3. Kiểm tra email đã tồn tại chưa
+        var cleanEmail = model.Email.Trim().ToLower();
+        var existingUsers = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == cleanEmail);
         if (existingUsers.Any())
         {
             throw new InvalidOperationException("Email này đã được sử dụng.");
         }
 
+        // 4. Kiểm tra tên đăng nhập (Username) nếu có nhập
+        if (!string.IsNullOrWhiteSpace(model.Username))
+        {
+            var cleanUsername = model.Username.Trim();
+            var existingUsername = await _unitOfWork.Repository<User>().FindAsync(u => u.Username == cleanUsername);
+            if (existingUsername.Any())
+            {
+                throw new InvalidOperationException("Tên đăng nhập này đã có người sử dụng. Vui lòng chọn tên khác!");
+            }
+        }
+
         var user = new User
         {
-            FullName = model.FullName,
-            Email = model.Email,
-            PhoneNumber = model.PhoneNumber,
+            FullName = model.FullName.Trim(),
+            Email = cleanEmail,
+            Username = !string.IsNullOrWhiteSpace(model.Username) ? model.Username.Trim() : null,
+            PhoneNumber = cleanPhone,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
-        // Mã hóa mật khẩu
+        // Mã hóa mật khẩu an toàn
         user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
 
         await _unitOfWork.Repository<User>().AddAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
-        // Tạo Token
-        var accessToken = GenerateJwtToken(user);
+        // 3. Gán Role mặc định (Customer)
+        var roles = await _unitOfWork.Repository<Role>().GetAllAsync();
+        var customerRole = roles.FirstOrDefault(r => r.RoleName == "Customer");
+
+        var userRolesList = new List<string>();
+
+        if (customerRole != null)
+        {
+            await _unitOfWork.Repository<UserRole>().AddAsync(new UserRole
+            {
+                UserId = user.UserId,
+                RoleId = customerRole.RoleId,
+                AssignedAt = DateTime.UtcNow
+            });
+            userRolesList.Add("Customer");
+        }
+
+        // 4. Nếu người dùng đăng ký dạng Seller -> Tạo hồ sơ Seller chờ duyệt (Pending)
+        if (string.Equals(model.AccountType, "seller", StringComparison.OrdinalIgnoreCase))
+        {
+            var seller = new Seller
+            {
+                UserId = user.UserId,
+                BusinessName = !string.IsNullOrWhiteSpace(model.ShopName) ? model.ShopName : model.FullName,
+                Status = SellerStatus.Pending,
+                CommissionRate = 5.00m,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Repository<Seller>().AddAsync(seller);
+            userRolesList.Add("SellerPending");
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+
+        var primaryRole = userRolesList.FirstOrDefault() ?? "Customer";
+
+        // 5. Tạo JWT & Refresh Token
+        var accessToken = GenerateJwtToken(user, userRolesList);
         var refreshToken = GenerateRefreshToken(ipAddress, user.UserId);
 
         await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken);
         await _unitOfWork.SaveChangesAsync();
 
-        return new AuthResponseDto
-        {
-            UserId = user.UserId,
-            FullName = user.FullName,
-            Email = user.Email,
-            AccessToken = accessToken,
-            RefreshToken = refreshToken.TokenHash // Trả về dạng raw hoặc hash tùy thiết kế
-        };
+        return BuildAuthResponse(user, primaryRole, userRolesList, accessToken, refreshToken.TokenHash);
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto model, string ipAddress)
     {
-        var users = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == model.Email);
+        // Cho phép đăng nhập bằng cả Email hoặc Tên đăng nhập (Username)
+        var users = await _unitOfWork.Repository<User>().FindAsync(u =>
+            u.Email == model.Email || (u.Username != null && u.Username == model.Email));
         var user = users.FirstOrDefault();
 
         if (user == null || !user.IsActive)
@@ -81,23 +154,125 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Email hoặc mật khẩu không chính xác.");
         }
 
-        var accessToken = GenerateJwtToken(user);
+        var roleNames = await GetUserRolesAsync(user.UserId);
+        var primaryRole = DeterminePrimaryRole(roleNames);
+
+        var accessToken = GenerateJwtToken(user, roleNames);
         var refreshToken = GenerateRefreshToken(ipAddress, user.UserId);
 
         await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken);
         await _unitOfWork.SaveChangesAsync();
 
+        return BuildAuthResponse(user, primaryRole, roleNames, accessToken, refreshToken.TokenHash);
+    }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(
+        RefreshTokenRequestDto model,
+        string ipAddress,
+        CancellationToken cancellationToken = default)
+    {
+        await _refreshTokenValidator.ValidateAndThrowAsync(model, cancellationToken);
+
+        var incomingToken = model.RefreshToken.Trim();
+        var matchingTokens = await _unitOfWork.Repository<RefreshToken>()
+            .FindAsync(rt => rt.TokenHash == incomingToken);
+        var existingToken = matchingTokens.FirstOrDefault();
+
+        var utcNow = DateTime.UtcNow;
+        if (existingToken == null || existingToken.RevokedAt != null || existingToken.ExpiresAt <= utcNow)
+        {
+            throw new BusinessException(
+                ErrorCodes.InvalidRefreshToken,
+                "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
+                401);
+        }
+
+        var user = await _unitOfWork.Repository<User>().GetByIdAsync(existingToken.UserId);
+        if (user == null)
+        {
+            throw new BusinessException(
+                ErrorCodes.InvalidRefreshToken,
+                "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
+                401);
+        }
+
+        if (!user.IsActive)
+        {
+            throw new BusinessException(
+                ErrorCodes.AccountLocked,
+                "Tài khoản của bạn đang bị khóa.",
+                403);
+        }
+
+        // Tải lại danh sách Role mới nhất từ UserRoles (ví dụ ngay sau khi Customer được duyệt thành Seller)
+        var roleNames = await GetUserRolesAsync(user.UserId);
+        var primaryRole = DeterminePrimaryRole(roleNames);
+
+        var accessToken = GenerateJwtToken(user, roleNames);
+        var newRefreshToken = GenerateRefreshToken(ipAddress, user.UserId);
+
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            existingToken.RevokedAt = utcNow;
+            existingToken.ReplacedByHash = newRefreshToken.TokenHash;
+
+            _unitOfWork.Repository<RefreshToken>().Update(existingToken);
+            await _unitOfWork.Repository<RefreshToken>().AddAsync(newRefreshToken);
+            await _unitOfWork.SaveChangesAsync(ct);
+        }, cancellationToken);
+
+        return BuildAuthResponse(user, primaryRole, roleNames, accessToken, newRefreshToken.TokenHash);
+    }
+
+    private async Task<List<string>> GetUserRolesAsync(long userId)
+    {
+        var userRoles = await _unitOfWork.Repository<UserRole>().FindAsync(ur => ur.UserId == userId);
+        var allRoles = await _unitOfWork.Repository<Role>().GetAllAsync();
+
+        var roleNames = (from ur in userRoles
+                         join r in allRoles on ur.RoleId equals r.RoleId
+                         select r.RoleName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!roleNames.Any())
+        {
+            roleNames.Add("Customer");
+        }
+
+        return roleNames;
+    }
+
+    private static string DeterminePrimaryRole(IReadOnlyCollection<string> roleNames)
+    {
+        if (roleNames.Contains("Admin")) return "Admin";
+        if (roleNames.Contains("WarehouseManager")) return "WarehouseManager";
+        if (roleNames.Contains("WarehouseStaff")) return "WarehouseStaff";
+        if (roleNames.Contains("Seller")) return "Seller";
+        return roleNames.FirstOrDefault() ?? "Customer";
+    }
+
+    private static AuthResponseDto BuildAuthResponse(
+        User user,
+        string primaryRole,
+        List<string> roleNames,
+        string accessToken,
+        string refreshToken)
+    {
         return new AuthResponseDto
         {
             UserId = user.UserId,
+            Username = user.Username,
             FullName = user.FullName,
             Email = user.Email,
+            Role = primaryRole,
+            Roles = roleNames,
             AccessToken = accessToken,
-            RefreshToken = refreshToken.TokenHash
+            RefreshToken = refreshToken
         };
     }
 
-    private string GenerateJwtToken(User user)
+    private string GenerateJwtToken(User user, IEnumerable<string> roles)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
@@ -109,6 +284,16 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Name, user.FullName)
         };
+
+        if (!string.IsNullOrEmpty(user.Username))
+        {
+            claims.Add(new Claim("username", user.Username));
+        }
+
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
