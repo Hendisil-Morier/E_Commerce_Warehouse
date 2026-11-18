@@ -10,6 +10,10 @@ import type {
   CreateShopRequest,
   ImageUploadResponseDto,
   ProductVariantDto,
+  PublicProductDetailDto,
+  PublicProductListItemDto,
+  PublicProductQuery,
+  PublicShopDto,
   RejectProductRequest,
   SellerProductDetailDto,
   SellerProductListItemDto,
@@ -177,6 +181,31 @@ export const catalogService = {
     const response = await axiosClient.post<ApiResponse<AdminProductDetailDto>>(
       API_ENDPOINTS.ADMIN_PRODUCTS.REJECT(productId),
       payload
+    );
+    return response.data.data;
+  },
+
+  async getPublicProducts(
+    query?: PublicProductQuery
+  ): Promise<PagedResult<PublicProductListItemDto>> {
+    const response = await axiosClient.get<
+      ApiResponse<PagedResult<PublicProductListItemDto>>
+    >(API_ENDPOINTS.PRODUCTS.BASE, {
+      params: cleanParams(query),
+    });
+    return response.data.data;
+  },
+
+  async getPublicProductDetail(productId: number): Promise<PublicProductDetailDto> {
+    const response = await axiosClient.get<ApiResponse<PublicProductDetailDto>>(
+      API_ENDPOINTS.PRODUCTS.BY_ID(productId)
+    );
+    return response.data.data;
+  },
+
+  async getPublicShopById(shopId: number): Promise<PublicShopDto> {
+    const response = await axiosClient.get<ApiResponse<PublicShopDto>>(
+      API_ENDPOINTS.SHOPS.BY_ID(shopId)
     );
     return response.data.data;
   },

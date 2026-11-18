@@ -22,6 +22,26 @@ import {
   getDefaultRouteForUser,
   hasRole,
 } from "@/utils/roleUtils";
+import { useCategoriesQuery } from "@/features/seller/hooks/useSellerCatalog";
+
+const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+  "điện thoại": Smartphone,
+  "máy tính": Laptop,
+  "laptop": Laptop,
+  "thời trang": Shirt,
+  "nhà cửa": Home,
+  "sức khỏe": Heart,
+  "làm đẹp": Heart,
+  "thực phẩm": Coffee,
+};
+
+function getCategoryIcon(name: string) {
+  const lower = name.toLowerCase();
+  for (const [key, IconComp] of Object.entries(CATEGORY_ICON_MAP)) {
+    if (lower.includes(key)) return IconComp;
+  }
+  return Package;
+}
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -29,19 +49,23 @@ export const Header: React.FC = () => {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const categoriesQuery = useCategoriesQuery();
+  const categories = categoriesQuery.data ?? [];
+
   const handleLogout = () => {
     logout();
     navigate(ROUTES.LOGIN);
   };
 
-  const categories = [
-    { name: "Điện thoại & Phụ kiện", icon: Smartphone, link: "/products?category=phone" },
-    { name: "Máy tính & Laptop", icon: Laptop, link: "/products?category=laptop" },
-    { name: "Thời trang", icon: Shirt, link: "/products?category=fashion" },
-    { name: "Nhà cửa & Đời sống", icon: Home, link: "/products?category=home" },
-    { name: "Sức khỏe & Làm đẹp", icon: Heart, link: "/products?category=beauty" },
-    { name: "Thực phẩm & Đồ uống", icon: Coffee, link: "/products?category=food" },
-  ];
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q) {
+      navigate(`${ROUTES.PRODUCTS}?q=${encodeURIComponent(q)}`);
+    } else {
+      navigate(ROUTES.PRODUCTS);
+    }
+  };
 
   return (
     <header style={{
@@ -278,17 +302,20 @@ export const Header: React.FC = () => {
         </Link>
 
         {/* Global Search Input with Green Search Button */}
-        <div style={{
-          flex: 1,
-          maxWidth: "680px",
-          display: "flex",
-          alignItems: "center",
-          border: "1.5px solid #059669",
-          borderRadius: "8px",
-          overflow: "hidden",
-          backgroundColor: "#ffffff",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-        }}>
+        <form
+          onSubmit={handleSearch}
+          style={{
+            flex: 1,
+            maxWidth: "680px",
+            display: "flex",
+            alignItems: "center",
+            border: "1.5px solid #059669",
+            borderRadius: "8px",
+            overflow: "hidden",
+            backgroundColor: "#ffffff",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+          }}
+        >
           <input
             type="text"
             value={searchQuery}
@@ -304,7 +331,7 @@ export const Header: React.FC = () => {
             }}
           />
           <button
-            type="button"
+            type="submit"
             style={{
               backgroundColor: "#064e3b",
               border: "none",
@@ -319,10 +346,11 @@ export const Header: React.FC = () => {
             }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#064e3b")}
+            aria-label="Tìm kiếm"
           >
             <Search size={19} />
           </button>
-        </div>
+        </form>
 
         {/* Right side: Cart & Account */}
         <div style={{ display: "flex", alignItems: "center", gap: "24px", flexShrink: 0 }}>
@@ -460,10 +488,10 @@ export const Header: React.FC = () => {
             overflowX: "auto",
             flex: 1,
           }}>
-            {categories.map((cat, idx) => (
+            {categories.slice(0, 8).map((cat) => (
               <Link
-                key={idx}
-                to={cat.link}
+                key={cat.categoryId}
+                to={`${ROUTES.PRODUCTS}?categoryId=${cat.categoryId}`}
                 style={{
                   color: "#334155",
                   textDecoration: "none",
@@ -473,7 +501,7 @@ export const Header: React.FC = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#059669")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#334155")}
               >
-                {cat.name}
+                {cat.categoryName}
               </Link>
             ))}
           </nav>
@@ -513,12 +541,12 @@ export const Header: React.FC = () => {
               gridTemplateColumns: "repeat(6, 1fr)",
               gap: "16px",
             }}>
-              {categories.map((cat, idx) => {
-                const IconComp = cat.icon;
+              {categories.map((cat) => {
+                const IconComp = getCategoryIcon(cat.categoryName);
                 return (
                   <Link
-                    key={idx}
-                    to={cat.link}
+                    key={cat.categoryId}
+                    to={`${ROUTES.PRODUCTS}?categoryId=${cat.categoryId}`}
                     onClick={() => setShowCategoryMenu(false)}
                     style={{
                       display: "flex",
@@ -555,7 +583,7 @@ export const Header: React.FC = () => {
                     }}>
                       <IconComp size={22} />
                     </div>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{cat.name}</span>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{cat.categoryName}</span>
                   </Link>
                 );
               })}

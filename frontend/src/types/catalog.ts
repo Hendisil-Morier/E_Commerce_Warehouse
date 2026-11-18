@@ -192,3 +192,79 @@ export interface RejectProductRequest {
   reason: string;
 }
 
+export interface PublicProductListItemDto {
+  productId: number;
+  shopId: number;
+  shopName: string;
+  categoryId: number;
+  categoryName: string;
+  productName: string;
+  thumbnailUrl: string | null;
+  minPrice: number;
+  maxPrice: number;
+  availableQuantity: number;
+  inStock: boolean;
+  createdAt: string;
+}
+
+export interface PublicProductShopDto {
+  shopId: number;
+  sellerId: number;
+  shopName: string;
+  description: string | null;
+  logoUrl: string | null;
+  sellerBusinessName: string;
+}
+
+export interface PublicProductVariantDto {
+  variantId: number;
+  productId: number;
+  sku: string;
+  barcode: string | null;
+  variantName: string;
+  price: number;
+  weightGrams: number | null;
+  availableQuantity: number;
+  inStock: boolean;
+}
+
+export interface PublicProductDetailDto {
+  productId: number;
+  productName: string;
+  description: string | null;
+  categoryId: number;
+  categoryName: string;
+  minPrice: number;
+  maxPrice: number;
+  availableQuantity: number;
+  inStock: boolean;
+  shop: PublicProductShopDto;
+  images: ProductImageDto[];
+  variants: PublicProductVariantDto[];
+  createdAt: string;
+}
+
+export interface PublicShopDto {
+  shopId: number;
+  sellerId: number;
+  shopName: string;
+  description: string | null;
+  logoUrl: string | null;
+  sellerBusinessName: string;
+  activeProductCount: number;
+  createdAt: string;
+}
+
+export interface PublicProductQuery {
+  categoryId?: number | "";
+  shopId?: number | "";
+  minPrice?: number | "";
+  maxPrice?: number | "";
+  inStockOnly?: boolean;
+  q?: string;
+  sort?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+
