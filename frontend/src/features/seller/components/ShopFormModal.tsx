@@ -15,7 +15,7 @@ import {
 } from "@/features/seller/hooks/useSellerCatalog";
 import type { ShopDto } from "@/types/catalog";
 import { isSafeImageUrlInput, validateCatalogImageFile } from "@/utils/catalogHelpers";
-import { getFieldErrors } from "@/utils/errorHandler";
+import { getErrorCode, getErrorMessage, getFieldErrors } from "@/utils/errorHandler";
 import { resolveAssetUrl } from "@/utils/formatters";
 
 const shopSchema = z.object({
@@ -56,6 +56,7 @@ export const ShopFormModal: React.FC<ShopFormModalProps> = ({
   const isEdit = editingShop !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const createShop = useCreateShopMutation();
   const updateShop = useUpdateShopMutation();
@@ -84,6 +85,7 @@ export const ShopFormModal: React.FC<ShopFormModalProps> = ({
   useEffect(() => {
     if (!open) return;
     setUploadError(null);
+    setFormError(null);
     reset({
       shopName: editingShop?.shopName ?? "",
       description: editingShop?.description ?? "",
@@ -116,19 +118,37 @@ export const ShopFormModal: React.FC<ShopFormModalProps> = ({
   };
 
   const applyBackendFieldErrors = (error: unknown) => {
+    const code = getErrorCode(error);
+    const message = getErrorMessage(error);
+
+    if (code === "SHOP_NAME_ALREADY_EXISTS") {
+      setError("shopName", { message });
+      setFormError(message);
+      return;
+    }
+
     const fieldErrors = getFieldErrors(error);
+    let matchedAny = false;
     if (fieldErrors.shopName?.[0]) {
       setError("shopName", { message: fieldErrors.shopName[0] });
+      matchedAny = true;
     }
     if (fieldErrors.description?.[0]) {
       setError("description", { message: fieldErrors.description[0] });
+      matchedAny = true;
     }
     if (fieldErrors.logoUrl?.[0]) {
       setError("logoUrl", { message: fieldErrors.logoUrl[0] });
+      matchedAny = true;
+    }
+
+    if (!matchedAny) {
+      setFormError(message);
     }
   };
 
   const onSubmit = async (values: ShopFormValues) => {
+    setFormError(null);
     const normalizedDescription = values.description?.trim() || null;
     const normalizedLogo = values.logoUrl?.trim() || null;
 
@@ -186,6 +206,15 @@ export const ShopFormModal: React.FC<ShopFormModalProps> = ({
         noValidate
         style={{ display: "flex", flexDirection: "column", gap: "16px" }}
       >
+        {formError && (
+          <div className="ew-banner ew-banner--danger" role="alert">
+            <div>
+              <div style={{ fontWeight: 600 }}>Không thể lưu gian hàng</div>
+              <div className="ew-banner__desc">{formError}</div>
+            </div>
+          </div>
+        )}
+
         <FormField
           label="Tên gian hàng"
           htmlFor="shop-name-input"

@@ -262,9 +262,9 @@ export interface PublicProductQuery {
   maxPrice?: number | "";
   inStockOnly?: boolean | "";
   q?: string;
+  sort?: string;
   page?: number;
   pageSize?: number;
-  sort?: string;
 }
 
 

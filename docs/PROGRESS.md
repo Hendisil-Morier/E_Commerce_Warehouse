@@ -19,7 +19,8 @@ Cách dùng: mỗi lần làm xong một việc, đánh dấu ở mục tương 
 | Khung 3 khu vực Seller/Warehouse/Admin & Bộ UI dùng chung (FE Bước 1–2) | Xong |
 | Luồng Seller hồ sơ & duyệt tài khoản (BE & FE Bước 3: `S0`, `A2`) | Xong |
 | Quản lý Shop, Danh mục, Upload ảnh, Sản phẩm & Duyệt sản phẩm (BE 4a–4c & FE Bước 4: `S2`–`S4`, `A3`) | Xong (đang chờ test thủ công end-to-end) |
-| Giao diện Customer còn lại (FE Bước 4b: `/products`, `/products/:id`, `/shops/:id`, giỏ hàng, đặt hàng...) | Chưa làm |
+| Storefront Khách hàng (FE Bước 4b: `/products`, `/products/:id`, `/shops/:id`, trang chủ & header động) | Xong (đang chờ test thủ công end-to-end) |
+| Giao diện Customer còn lại (Giỏ hàng, đặt hàng, lịch sử đơn...) | Chưa làm |
 | Màn hình nghiệp vụ Warehouse (`W2`–`W9`), Đơn hàng Seller (`S5`–`S9`), Admin còn lại | Chưa làm |
 
 ---
@@ -93,9 +94,9 @@ Cách dùng: mỗi lần làm xong một việc, đánh dấu ở mục tương 
 |---|---|---|
 | Trang chủ | [x] | STT 5 (kết nối API real catalog & categories) |
 | Đăng nhập, đăng ký | [x] | |
-| Danh sách sản phẩm `/products` | [x] | STT 6 (cây danh mục, tìm kiếm fulltext, lọc giá, URL filters) |
-| Chi tiết sản phẩm `/products/:id` | [x] | STT 6 (gallery, chọn biến thể đổi giá/SKU/tồn kho) |
-| Trang shop `/shops/:id` | [x] | STT 6 (thông tin shop & danh sách sản phẩm) |
+| Danh sách sản phẩm `/products` | [x] | FE Bước 4b / STT 6 (lọc danh mục, giá, tồn kho, sắp xếp, tìm kiếm, phân trang) |
+| Chi tiết sản phẩm `/products/:id` | [x] | FE Bước 4b / STT 6 (gallery ảnh, chọn biến thể cập nhật giá/SKU/tồn, điều hướng shop) |
+| Trang shop `/shops/:id` | [x] | FE Bước 4b / STT 6 (thông tin shop, thống kê SP, lưới SP có lọc & phân trang) |
 | Giỏ hàng | [ ] | |
 | Đặt hàng (checkout) | [ ] | |
 | Lịch sử đơn, chi tiết đơn, hủy đơn | [ ] | |
@@ -175,10 +176,9 @@ Các API chưa có trong tài liệu (⚠️) đang chờ BE: xem `docs/ui-scree
 
 ## 8. Việc kế tiếp
 
-1. Chạy kiểm thử thủ công luồng **BE 4a–4c + FE Bước 4** (Shop `S2`, Upload ảnh thật, Sản phẩm/Biến thể `S3`–`S4`, Duyệt/Từ chối sản phẩm `A3`).
-2. **FE Bước 4b:** Giao diện Customer Storefront (`/products`, `/products/:id`, `/shops/:id`) gọi API public catalog `/api/v1/products` và `/api/v1/shops/{id}`.
-3. **Bước 5 (BE & FE):** Module Kho & Nhập kho (`W2` Kho và vị trí, `W3` Tồn kho, `W4` Thẻ kho, `W5` Phiếu nhập + quy tắc 2 tài khoản WM tách quyền).
-4. Tiếp tục theo `.agents/rules/agent-prompts-be.md` và `.agents/rules/agent-prompts-fe.md` (Bước 6 đến Bước 11).
+1. Chạy kiểm thử thủ công luồng **BE 4a–4c + FE Bước 4 & 4b** (Shop `S2`, Upload ảnh, Sản phẩm/Biến thể `S3`–`S4`, Duyệt/Từ chối sản phẩm `A3`, Storefront `/products`, `/products/:id`, `/shops/:id`).
+2. **Bước 5 (BE & FE):** Module Kho & Nhập kho (`W2` Kho và vị trí, `W3` Tồn kho, `W4` Thẻ kho, `W5` Phiếu nhập + quy tắc 2 tài khoản WM tách quyền `manager1 != manager2`).
+3. Tiếp tục theo `.agents/rules/agent-prompts-be.md` và `.agents/rules/agent-prompts-fe.md` (Bước 6 đến Bước 11).
 
 ---
 
@@ -188,7 +188,9 @@ Mỗi lần làm xong một việc, thêm một dòng ở **trên cùng** (mới
 
 | Ngày | Việc đã làm | Nhánh / PR |
 |---|---|---|
+| 2026-11-18 | **FE Bước 4b+:** Cập nhật Seller (`ShopFormModal`, `useSellerCatalog`), chuẩn hóa `extractData` trong `catalog.service.ts`, xóa cache `authStore` khi login/logout. | `feature/namnh-full` |
 | 2026-11-17 | **TV2 – Vương (STT 5 & STT 6):** Hoàn thiện Storefront & Customer Catalog: `HomePage` kết nối API danh mục thật và sản phẩm Active; trang danh sách `/products` lọc cây danh mục đa tầng, tìm kiếm FULLTEXT, lọc giá, phân trang, URL filters; trang chi tiết `/products/:id` thư viện ảnh và đổi biến thể cập nhật giá/SKU/tồn khả dụng; trang shop `/shops/:id`; tách component `ProductCard` dùng chung; `pnpm run build` thành công. | `feature/vuong` |
+| 2026-11-12 | **FE Bước 4b:** Hoàn thiện Storefront Khách hàng: `ProductCard` dùng chung, danh sách sản phẩm `/products` (bộ lọc cây danh mục, khoảng giá, trạng thái tồn kho, sắp xếp, tìm kiếm `?q=`, đồng bộ URL `useUrlFilters`), chi tiết sản phẩm `/products/:id` (gallery ảnh kèm thumbnail, chọn biến thể cập nhật giá/SKU/tồn kho động, điều hướng shop, nút thêm giỏ hàng có redirect login khi chưa auth), trang shop `/shops/:id` (thông tin shop, tổng số SP, lưới SP của shop), kết nối API thật cho `HomePage` (danh mục & sản phẩm gợi ý) và `Header` (menu danh mục động, tìm kiếm form chuyển hướng `/products?q=...`); `pnpm build` sạch (`2334 modules`). (Chưa commit). | `feature/namnh-full` |
 | 2026-11-12 | **FE Bước 4:** Triển khai `S2` (`SellerShopsPage`, `ShopFormModal`), `S3` (`SellerProductsPage`), `S4` (`SellerProductFormPage`, `ProductImagesEditor` hỗ trợ upload file thật & URL/ảnh đại diện/thứ tự, `ProductVariantsEditor` cho xóa dòng ở chế độ tạo mới và lưu trực tiếp + công tắc `isActive` khi sửa), `A3` (`AdminProductsPage`, `AdminProductsTable`, `AdminProductDetailDrawer`, `ProductModerationConfirmDialog`); thêm `catalog.service.ts`, `resolveAssetUrl`; `pnpm build` (`tsc -b && vite build`) thành công (`2330 modules`). (Chưa commit). | `feature/namnh-full` |
 | 2026-11-12 | **BE Bước 4c:** Hoàn thiện Public Catalog (`ProductsController`: `GET /api/v1/products`, `GET /api/v1/products/{id}` đọc tồn khả dụng từ view `vw_VariantAvailability`), `PublicProductQueryValidator`, unit tests `PublicCatalogProductServiceTests` (`124/124` passed), cập nhật `docs/api-conventions.md` và probe thực tế qua WebAPI + MySQL. (Chưa commit). | `feature/namnh-full` |
 | 2026-11-12 | **BE Bước 4b:** Triển khai quản lý sản phẩm, biến thể và kiểm duyệt (`SellerProductsController`, `SellerVariantsController`, `AdminProductsController`, `SellerProductService`, `AdminProductService`, `ProductRepository`, validators) kèm unit tests (`119/119` passed). (Chưa commit). | `feature/namnh-full` |

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";
 import { catalogService } from "@/services/catalog.service";
+import { useAuthStore } from "@/stores/authStore";
 import type {
   CreateProductRequest,
   CreateShopRequest,
@@ -15,8 +16,8 @@ export const CATEGORIES_QUERY_KEY = ["catalog", "categories"] as const;
 export const SELLER_SHOPS_QUERY_KEY = ["seller", "shops"] as const;
 export const SELLER_PRODUCTS_QUERY_KEY = ["seller", "products"] as const;
 
-export const sellerProductDetailKey = (productId: number) =>
-  ["seller", "product", productId] as const;
+export const sellerProductDetailKey = (productId: number, userId?: number | null) =>
+  ["seller", "product", userId ?? "anon", productId] as const;
 
 export function useCategoriesQuery() {
   return useQuery({
@@ -27,24 +28,37 @@ export function useCategoriesQuery() {
 }
 
 export function useSellerShopsQuery(isActive?: boolean) {
+  const userId = useAuthStore((s) => s.user?.userId);
+
   return useQuery({
-    queryKey: [...SELLER_SHOPS_QUERY_KEY, isActive ?? "all"],
+    queryKey: [...SELLER_SHOPS_QUERY_KEY, userId ?? "anon", isActive ?? "all"],
     queryFn: () => catalogService.getSellerShops(isActive),
+    enabled: Boolean(userId),
+    staleTime: 0,
   });
 }
 
 export function useSellerProductsQuery(query: SellerProductQuery) {
+  const userId = useAuthStore((s) => s.user?.userId);
+
   return useQuery({
-    queryKey: [...SELLER_PRODUCTS_QUERY_KEY, query],
+    queryKey: [...SELLER_PRODUCTS_QUERY_KEY, userId ?? "anon", query],
     queryFn: () => catalogService.getSellerProducts(query),
+    enabled: Boolean(userId),
+    staleTime: 0,
   });
 }
 
 export function useSellerProductDetailQuery(productId: number | null) {
+  const userId = useAuthStore((s) => s.user?.userId);
+
   return useQuery({
-    queryKey: productId ? sellerProductDetailKey(productId) : ["seller", "product", "none"],
+    queryKey: productId
+      ? sellerProductDetailKey(productId, userId)
+      : ["seller", "product", "none"],
     queryFn: () => catalogService.getSellerProductDetail(productId as number),
-    enabled: productId !== null && Number.isFinite(productId) && productId > 0,
+    enabled: Boolean(userId) && productId !== null && Number.isFinite(productId) && productId > 0,
+    staleTime: 0,
   });
 }
 

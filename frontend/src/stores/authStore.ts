@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { queryClient } from "@/lib/queryClient";
 import type { User, AuthResponse } from "@/types/auth";
 
 interface AuthState {
@@ -19,7 +20,8 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
 
-      setAuth: (data: AuthResponse) =>
+      setAuth: (data: AuthResponse) => {
+        queryClient.clear();
         set({
           user: {
             userId: data.userId,
@@ -31,15 +33,18 @@ export const useAuthStore = create<AuthState>()(
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           isAuthenticated: true,
-        }),
+        });
+      },
 
-      logout: () =>
+      logout: () => {
+        queryClient.clear();
         set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: "ecommerce-auth-storage",

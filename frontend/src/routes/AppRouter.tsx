@@ -19,9 +19,9 @@ import { SellerLayout } from "@/layouts/SellerLayout";
 import { WarehouseLayout } from "@/layouts/WarehouseLayout";
 import { HomePage } from "@/pages/HomePage";
 import { OrdersPage } from "@/pages/OrdersPage";
+import { ProductDetailPage } from "@/pages/ProductDetailPage";
 import { ProductsPage } from "@/pages/ProductsPage";
-import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage";
-import { ShopDetailPage } from "@/features/catalog/pages/ShopDetailPage";
+import { ShopDetailPage } from "@/pages/ShopDetailPage";
 import { ROLES } from "@/utils/roleUtils";
 
 const router = createBrowserRouter([

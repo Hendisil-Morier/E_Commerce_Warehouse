@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -12,178 +12,51 @@ import {
   Home as HomeIcon,
   Heart,
   Coffee,
-  Store,
   Package,
-  Layers,
+  Store,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
-import {
-  useCategoriesTree,
-  usePublicProducts,
-} from "@/features/catalog/hooks/usePublicCatalog";
-import { ProductCard } from "@/features/catalog/components/ProductCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ProductCard } from "@/features/catalog/components/ProductCard";
+import { usePublicProductsQuery } from "@/features/catalog/hooks/usePublicCatalog";
+import { useCategoriesQuery } from "@/features/seller/hooks/useSellerCatalog";
 
-interface ProductItem {
-  id: string;
-  name: string;
-  shopName: string;
-  price: string;
-  variantsCount: number;
-  warehouseType: "Kho sàn" | "Kho người bán";
-  tag?: string;
-  bgColor: string;
+const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+  "điện thoại": Smartphone,
+  "máy tính": Laptop,
+  "laptop": Laptop,
+  "thời trang": Shirt,
+  "nhà cửa": HomeIcon,
+  "sức khỏe": Heart,
+  "làm đẹp": Heart,
+  "thực phẩm": Coffee,
+};
+
+function getCategoryIcon(name: string) {
+  const lower = name.toLowerCase();
+  for (const [key, IconComp] of Object.entries(CATEGORY_ICON_MAP)) {
+    if (lower.includes(key)) return IconComp;
+  }
+  return Package;
 }
 
-const productsList: ProductItem[] = [
-  {
-    id: "p1",
-    name: "Tai nghe Bluetooth chống ồn",
-    shopName: "Phụ kiện Số",
-    price: "349.000₫",
-    variantsCount: 2,
-    warehouseType: "Kho sàn",
-    bgColor: "#e8f5f1",
-  },
-  {
-    id: "p2",
-    name: "Ốp lưng điện thoại trong suốt",
-    shopName: "Phụ kiện Số",
-    price: "59.000₫",
-    variantsCount: 3,
-    warehouseType: "Kho sàn",
-    bgColor: "#f0f4f8",
-  },
-  {
-    id: "p3",
-    name: "Chuột không dây êm, pin sạc",
-    shopName: "Góc Văn Phòng",
-    price: "189.000₫",
-    variantsCount: 4,
-    warehouseType: "Kho người bán",
-    bgColor: "#f5f0fb",
-  },
-  {
-    id: "p4",
-    name: "Áo thun cotton basic",
-    shopName: "Thể thao Xanh",
-    price: "129.000₫",
-    variantsCount: 12,
-    warehouseType: "Kho sàn",
-    bgColor: "#fff4ec",
-  },
-  {
-    id: "p5",
-    name: "Giày chạy bộ nhẹ",
-    shopName: "Thể thao Xanh",
-    price: "549.000₫",
-    variantsCount: 6,
-    warehouseType: "Kho sàn",
-    tag: "Sắp hết hàng",
-    bgColor: "#eef7ee",
-  },
-  {
-    id: "p6",
-    name: "Bình giữ nhiệt 500ml",
-    shopName: "Nhà Xinh",
-    price: "159.000₫",
-    variantsCount: 1,
-    warehouseType: "Kho sàn",
-    bgColor: "#eaf5f5",
-  },
-  {
-    id: "p7",
-    name: "Bộ chăn ga cotton",
-    shopName: "Nhà Xinh",
-    price: "690.000₫",
-    variantsCount: 4,
-    warehouseType: "Kho người bán",
-    bgColor: "#fbf3ea",
-  },
-  {
-    id: "p8",
-    name: "Kem chống nắng SPF50",
-    shopName: "Tiệm Làm Đẹp",
-    price: "215.000₫",
-    variantsCount: 2,
-    warehouseType: "Kho sàn",
-    tag: "Flash Sale",
-    bgColor: "#f4f1fa",
-  },
-  {
-    id: "p9",
-    name: "Hạt điều rang muối 500g",
-    shopName: "Tiệm Hạt",
-    price: "135.000₫",
-    variantsCount: 3,
-    warehouseType: "Kho sàn",
-    bgColor: "#f1f6ed",
-  },
-  {
-    id: "p10",
-    name: "Cà phê rang xay 500g",
-    shopName: "Tiệm Hạt",
-    price: "175.000₫",
-    variantsCount: 5,
-    warehouseType: "Kho sàn",
-    bgColor: "#edf5f5",
-  },
-];
-
-const featuredCategories = [
-  { name: "Điện thoại & Phụ kiện", icon: Smartphone, link: "/products?category=phone" },
-  { name: "Máy tính & Laptop", icon: Laptop, link: "/products?category=laptop" },
-  { name: "Thời trang", icon: Shirt, link: "/products?category=fashion" },
-  { name: "Nhà cửa & Đời sống", icon: HomeIcon, link: "/products?category=home" },
-  { name: "Sức khỏe & Làm đẹp", icon: Heart, link: "/products?category=beauty" },
-  { name: "Thực phẩm & Đồ uống", icon: Coffee, link: "/products?category=food" },
-];
-
-const featuredShops = [
-  {
-    code: "PK",
-    name: "Phụ kiện Số",
-    category: "Điện thoại & Phụ kiện",
-    tag: "Giao từ kho sàn",
-    avatarBg: "#fce7f3",
-    avatarColor: "#db2777",
-    isWarehouse: true,
-  },
-  {
-    code: "NX",
-    name: "Nhà Xinh",
-    category: "Nhà cửa & Đời sống",
-    tag: "Giao từ kho sàn",
-    avatarBg: "#ffedd5",
-    avatarColor: "#ea580c",
-    isWarehouse: true,
-  },
-  {
-    code: "TH",
-    name: "Tiệm Hạt",
-    category: "Thực phẩm & Đồ uống",
-    tag: "Giao từ kho sàn",
-    avatarBg: "#dcfce7",
-    avatarColor: "#16a34a",
-    isWarehouse: true,
-  },
-  {
-    code: "GV",
-    name: "Góc Văn Phòng",
-    category: "Máy tính & Laptop",
-    tag: "Kho riêng của shop",
-    avatarBg: "#ede9fe",
-    avatarColor: "#7c3aed",
-    isWarehouse: false,
-  },
-];
-
 export const HomePage: React.FC = () => {
-  const { data: realCategories = [], isLoading: isLoadingCategories } = useCategoriesTree();
-  const { data: realProducts, isLoading: isLoadingProducts } = usePublicProducts({
-    pageSize: 10,
-    sort: "-createdAt",
-  });
+  const productsQuery = usePublicProductsQuery({ pageSize: 10, sort: "-createdAt" });
+  const categoriesQuery = useCategoriesQuery();
+
+  const featuredCategories = (categoriesQuery.data ?? []).slice(0, 6);
+  const products = productsQuery.data?.items ?? [];
+
+  const featuredShops = useMemo(() => {
+    const map = new Map<number, { shopId: number; shopName: string; categoryName: string }>();
+    for (const p of products) {
+      if (!map.has(p.shopId)) {
+        map.set(p.shopId, { shopId: p.shopId, shopName: p.shopName, categoryName: p.categoryName });
+      }
+    }
+    return Array.from(map.values()).slice(0, 4);
+  }, [products]);
+
   return (
     <div style={{
       maxWidth: "1280px",
@@ -742,90 +615,30 @@ export const HomePage: React.FC = () => {
           </Link>
         </div>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(6, 1fr)",
-          gap: "14px",
-        }}>
-          {isLoadingCategories ? (
-            Array.from({ length: 6 }).map((_, idx) => (
-              <div
-                key={idx}
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "14px",
-                  padding: "20px 12px",
-                  border: "1px solid #e2e8f0",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ marginBottom: "10px" }}>
-                  <Skeleton width={48} height={48} variant="circle" />
-                </div>
-                <Skeleton width="70%" height={16} />
+        {categoriesQuery.isLoading ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: "14px",
+          }}>
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} style={{ backgroundColor: "#ffffff", borderRadius: "14px", padding: "16px", border: "1px solid #e2e8f0" }}>
+                <Skeleton height={60} variant="rect" />
               </div>
-            ))
-          ) : realCategories.length > 0 ? (
-            realCategories.slice(0, 6).map((cat) => (
-              <Link
-                key={cat.categoryId}
-                to={`/products?categoryId=${cat.categoryId}`}
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "14px",
-                  padding: "20px 12px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  textAlign: "center",
-                  border: "1px solid #e2e8f0",
-                  textDecoration: "none",
-                  gap: "12px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#059669";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 6px 14px rgba(5, 150, 105, 0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.02)";
-                }}
-              >
-                <div style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "50%",
-                  backgroundColor: "#e8f5f1",
-                  color: "#059669",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}>
-                  <Layers size={22} />
-                </div>
-                <span style={{
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "#1e293b",
-                  lineHeight: 1.3,
-                }}>
-                  {cat.categoryName}
-                </span>
-              </Link>
-            ))
-          ) : (
-            featuredCategories.map((cat, idx) => {
-              const IconComp = cat.icon;
+            ))}
+          </div>
+        ) : featuredCategories.length > 0 ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: "14px",
+          }}>
+            {featuredCategories.map((cat) => {
+              const IconComp = getCategoryIcon(cat.categoryName);
               return (
                 <Link
-                  key={idx}
-                  to={cat.link}
+                  key={cat.categoryId}
+                  to={`${ROUTES.PRODUCTS}?categoryId=${cat.categoryId}`}
                   style={{
                     backgroundColor: "#ffffff",
                     borderRadius: "14px",
@@ -839,6 +652,16 @@ export const HomePage: React.FC = () => {
                     gap: "12px",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
                     transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#059669";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 14px rgba(5, 150, 105, 0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "#e2e8f0";
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.02)";
                   }}
                 >
                   <div style={{
@@ -859,13 +682,13 @@ export const HomePage: React.FC = () => {
                     color: "#1e293b",
                     lineHeight: 1.3,
                   }}>
-                    {cat.name}
+                    {cat.categoryName}
                   </span>
                 </Link>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        ) : null}
       </section>
 
       {/* ========================================================
@@ -894,118 +717,42 @@ export const HomePage: React.FC = () => {
           </Link>
         </div>
 
-        {isLoadingProducts ? (
+        {productsQuery.isLoading ? (
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
             gap: "16px",
           }}>
             {Array.from({ length: 5 }).map((_, idx) => (
-              <div
-                key={idx}
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "14px",
-                  padding: "12px",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ borderRadius: "8px", overflow: "hidden" }}>
-                  <Skeleton width="100%" height={140} variant="rect" />
-                </div>
+              <div key={idx} style={{ backgroundColor: "#ffffff", borderRadius: "14px", padding: "14px", border: "1px solid #e2e8f0" }}>
+                <Skeleton height={140} variant="rect" />
                 <div style={{ marginTop: "12px" }}>
-                  <Skeleton width="80%" height={16} />
-                </div>
-                <div style={{ marginTop: "8px" }}>
-                  <Skeleton width="50%" height={20} />
+                  <Skeleton lines={3} gap={8} />
                 </div>
               </div>
             ))}
           </div>
-        ) : realProducts && realProducts.items.length > 0 ? (
+        ) : products.length > 0 ? (
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
             gap: "16px",
           }}>
-            {realProducts.items.slice(0, 10).map((prod) => (
+            {products.map((prod) => (
               <ProductCard key={prod.productId} product={prod} />
             ))}
           </div>
         ) : (
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(5, 1fr)",
-            gap: "16px",
+            backgroundColor: "#ffffff",
+            borderRadius: "14px",
+            padding: "36px",
+            textAlign: "center",
+            border: "1px solid #e2e8f0",
+            color: "#64748b",
+            fontSize: "0.9rem",
           }}>
-            {productsList.map((prod) => (
-              <div
-                key={prod.id}
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "14px",
-                  border: "1px solid #e2e8f0",
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <div style={{
-                  height: "140px",
-                  backgroundColor: prod.bgColor,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#64748b",
-                  position: "relative",
-                }}>
-                  <Package size={30} strokeWidth={1.5} color="#94a3b8" />
-                  <span style={{ fontSize: "0.75rem", marginTop: "6px", color: "#64748b" }}>Ảnh sản phẩm</span>
-                </div>
-                <div style={{
-                  padding: "14px",
-                  display: "flex",
-                  flexDirection: "column",
-                  flex: 1,
-                  justifyContent: "space-between",
-                  gap: "8px",
-                }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      color: "#0f172a",
-                      lineHeight: 1.35,
-                      marginBottom: "6px",
-                      minHeight: "36px",
-                    }}>
-                      {prod.name}
-                    </h3>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      fontSize: "0.75rem",
-                      color: "#64748b",
-                      marginBottom: "8px",
-                    }}>
-                      <Store size={12} />
-                      <span>{prod.shopName}</span>
-                    </div>
-                    <div style={{
-                      fontSize: "1.05rem",
-                      fontWeight: 800,
-                      color: "#0f172a",
-                    }}>
-                      {prod.price}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+            Chưa có sản phẩm nào đang bán công khai trên sàn.
           </div>
         )}
       </section>
@@ -1013,130 +760,123 @@ export const HomePage: React.FC = () => {
       {/* ========================================================
           5. CỬA HÀNG NỔI BẬT (Featured Stores - 4 Cards)
           ======================================================== */}
-      <section>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "16px",
-        }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
-            Cửa hàng nổi bật
-          </h2>
-          <Link
-            to={ROUTES.PRODUCTS}
-            style={{
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              color: "#059669",
-              textDecoration: "none",
-            }}
-          >
-            Khám phá shop →
-          </Link>
-        </div>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "16px",
-        }}>
-          {featuredShops.map((shop, idx) => (
-            <div
-              key={idx}
+      {featuredShops.length > 0 && (
+        <section>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "16px",
+          }}>
+            <h2 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
+              Cửa hàng nổi bật
+            </h2>
+            <Link
+              to={ROUTES.PRODUCTS}
               style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "14px",
-                padding: "18px 16px",
-                border: "1px solid #e2e8f0",
-                display: "flex",
-                flexDirection: "column",
-                gap: "14px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#059669";
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 14px rgba(5, 150, 105, 0.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e2e8f0";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.02)";
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#059669",
+                textDecoration: "none",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              Khám phá shop →
+            </Link>
+          </div>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "16px",
+          }}>
+            {featuredShops.map((shop) => (
+              <div
+                key={shop.shopId}
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "14px",
+                  padding: "18px 16px",
+                  border: "1px solid #e2e8f0",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "14px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#059669";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 6px 14px rgba(5, 150, 105, 0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.02)";
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "50%",
+                    backgroundColor: "#e8f5f1",
+                    color: "#059669",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 800,
+                    fontSize: "0.95rem",
+                    flexShrink: 0,
+                  }}>
+                    {shop.shopName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                      {shop.shopName}
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "#64748b" }}>
+                      {shop.categoryName}
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  backgroundColor: shop.avatarBg,
-                  color: shop.avatarColor,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: "0.95rem",
-                  flexShrink: 0,
+                  justifyContent: "space-between",
+                  paddingTop: "10px",
+                  borderTop: "1px solid #f1f5f9",
                 }}>
-                  {shop.code}
-                </div>
-                <div>
-                  <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
-                    {shop.name}
-                  </div>
-                  <div style={{ fontSize: "0.76rem", color: "#64748b" }}>
-                    {shop.category}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingTop: "10px",
-                borderTop: "1px solid #f1f5f9",
-              }}>
-                <span style={{
-                  fontSize: "0.72rem",
-                  color: shop.isWarehouse ? "#059669" : "#64748b",
-                  fontWeight: 600,
-                }}>
-                  {shop.tag}
-                </span>
-
-                <button
-                  type="button"
-                  style={{
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #cbd5e1",
-                    color: "#1e293b",
-                    padding: "4px 10px",
-                    borderRadius: "6px",
-                    fontSize: "0.76rem",
+                  <span style={{
+                    fontSize: "0.72rem",
+                    color: "#059669",
                     fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#059669";
-                    e.currentTarget.style.color = "#ffffff";
-                    e.currentTarget.style.borderColor = "#059669";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.color = "#1e293b";
-                    e.currentTarget.style.borderColor = "#cbd5e1";
-                  }}
-                >
-                  Xem shop
-                </button>
+                  }}>
+                    Giao từ kho sàn
+                  </span>
+
+                  <Link
+                    to={`/shops/${shop.shopId}`}
+                    style={{
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      color: "#1e293b",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "0.76rem",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      display: "inline-block",
+                    }}
+                  >
+                    Xem shop
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ========================================================
           6. DÀNH CHO NGƯỜI BÁN (Seller Banner - Full Dark Green Card)

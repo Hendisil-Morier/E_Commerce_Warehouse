@@ -7,34 +7,61 @@ import {
   Search,
   ChevronDown,
   Menu,
+  Smartphone,
+  Laptop,
+  Shirt,
+  Home,
+  Heart,
+  Coffee,
   Package,
-  Layers,
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/authStore";
-import { useCategoriesTree } from "@/features/catalog/hooks/usePublicCatalog";
 import {
   ROLES,
   getDefaultRouteForUser,
   hasRole,
 } from "@/utils/roleUtils";
+import { useCategoriesQuery } from "@/features/seller/hooks/useSellerCatalog";
+
+const CATEGORY_ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+  "điện thoại": Smartphone,
+  "máy tính": Laptop,
+  "laptop": Laptop,
+  "thời trang": Shirt,
+  "nhà cửa": Home,
+  "sức khỏe": Heart,
+  "làm đẹp": Heart,
+  "thực phẩm": Coffee,
+};
+
+function getCategoryIcon(name: string) {
+  const lower = name.toLowerCase();
+  for (const [key, IconComp] of Object.entries(CATEGORY_ICON_MAP)) {
+    if (lower.includes(key)) return IconComp;
+  }
+  return Package;
+}
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: realCategories = [] } = useCategoriesTree();
+
+  const categoriesQuery = useCategoriesQuery();
+  const categories = categoriesQuery.data ?? [];
 
   const handleLogout = () => {
     logout();
     navigate(ROUTES.LOGIN);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/products?q=${encodeURIComponent(searchQuery.trim())}`);
+    const q = searchQuery.trim();
+    if (q) {
+      navigate(`${ROUTES.PRODUCTS}?q=${encodeURIComponent(q)}`);
     } else {
       navigate(ROUTES.PRODUCTS);
     }
@@ -276,7 +303,7 @@ export const Header: React.FC = () => {
 
         {/* Global Search Input with Green Search Button */}
         <form
-          onSubmit={handleSearchSubmit}
+          onSubmit={handleSearch}
           style={{
             flex: 1,
             maxWidth: "680px",
@@ -293,7 +320,7 @@ export const Header: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm sản phẩm, danh mục..."
+            placeholder="Tìm sản phẩm, shop..."
             style={{
               flex: 1,
               padding: "10px 16px",
@@ -319,7 +346,7 @@ export const Header: React.FC = () => {
             }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#047857")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#064e3b")}
-            title="Tìm kiếm"
+            aria-label="Tìm kiếm"
           >
             <Search size={19} />
           </button>
@@ -461,23 +488,10 @@ export const Header: React.FC = () => {
             overflowX: "auto",
             flex: 1,
           }}>
-            <Link
-              to={ROUTES.PRODUCTS}
-              style={{
-                color: "#334155",
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-                fontWeight: 600,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#059669")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#334155")}
-            >
-              Tất cả sản phẩm
-            </Link>
-            {realCategories.slice(0, 7).map((cat) => (
+            {categories.slice(0, 8).map((cat) => (
               <Link
                 key={cat.categoryId}
-                to={`/products?categoryId=${cat.categoryId}`}
+                to={`${ROUTES.PRODUCTS}?categoryId=${cat.categoryId}`}
                 style={{
                   color: "#334155",
                   textDecoration: "none",
@@ -524,52 +538,55 @@ export const Header: React.FC = () => {
               maxWidth: "1280px",
               margin: "0 auto",
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+              gridTemplateColumns: "repeat(6, 1fr)",
               gap: "16px",
             }}>
-              {realCategories.map((cat) => (
-                <Link
-                  key={cat.categoryId}
-                  to={`/products?categoryId=${cat.categoryId}`}
-                  onClick={() => setShowCategoryMenu(false)}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    textAlign: "center",
-                    padding: "16px 12px",
-                    borderRadius: "10px",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    textDecoration: "none",
-                    color: "#1e293b",
-                    gap: "10px",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#e8f5f1";
-                    e.currentTarget.style.borderColor = "#059669";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                  }}
-                >
-                  <div style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "50%",
-                    backgroundColor: "#e8f5f1",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#059669",
-                  }}>
-                    <Layers size={20} />
-                  </div>
-                  <span style={{ fontSize: "0.86rem", fontWeight: 600 }}>{cat.categoryName}</span>
-                </Link>
-              ))}
+              {categories.map((cat) => {
+                const IconComp = getCategoryIcon(cat.categoryName);
+                return (
+                  <Link
+                    key={cat.categoryId}
+                    to={`${ROUTES.PRODUCTS}?categoryId=${cat.categoryId}`}
+                    onClick={() => setShowCategoryMenu(false)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      padding: "16px 12px",
+                      borderRadius: "10px",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      textDecoration: "none",
+                      color: "#1e293b",
+                      gap: "10px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#e8f5f1";
+                      e.currentTarget.style.borderColor = "#059669";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#f8fafc";
+                      e.currentTarget.style.borderColor = "#e2e8f0";
+                    }}
+                  >
+                    <div style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "50%",
+                      backgroundColor: "#e8f5f1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#059669",
+                    }}>
+                      <IconComp size={22} />
+                    </div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>{cat.categoryName}</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
