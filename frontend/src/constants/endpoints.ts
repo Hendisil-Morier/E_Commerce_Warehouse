@@ -53,7 +53,5 @@ export const API_ENDPOINTS = {
   PUBLIC_SHOPS: {
     BY_ID: (shopId: number) => `/api/v1/shops/${shopId}`,
   },
-    BY_ID: (shopId: number) => `/api/v1/shops/${shopId}`,
-  },
 } as const;
 
