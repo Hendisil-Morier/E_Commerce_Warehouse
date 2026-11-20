@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IShopRepository, ShopRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ICartRepository, CartRepository>();
         services.AddScoped<IUnitOfWork, ECommerceWarehouse.Infrastructure.UnitOfWork.UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
         return services;
