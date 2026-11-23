@@ -9,6 +9,7 @@ export const ROUTES = {
   SHOP_DETAIL: "/shops/:id",
   CART: "/cart",
   ORDERS: "/orders",
+  PROFILE: "/profile",
   BECOME_SELLER: "/become-seller",
 
   // Seller Area (/seller)

@@ -173,9 +173,24 @@ export const Header: React.FC = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             {isAuthenticated && user ? (
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ color: "#a7f3d0", fontSize: "0.8rem" }}>
-                  Xin chào, <strong>{user.fullName}</strong> ({user.role || "Customer"})
-                </span>
+                <Link
+                  to={ROUTES.PROFILE}
+                  style={{
+                    color: "#a7f3d0",
+                    fontSize: "0.8rem",
+                    textDecoration: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#34d399")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "#a7f3d0")}
+                  title="Xem và quản lý hồ sơ tài khoản"
+                >
+                  <User size={13} />
+                  <span>Xin chào, <strong>{user.fullName}</strong></span>
+                </Link>
                 <span style={{ color: "#334155" }}>|</span>
                 <button
                   onClick={handleLogout}

@@ -19,6 +19,7 @@ import { SellerLayout } from "@/layouts/SellerLayout";
 import { WarehouseLayout } from "@/layouts/WarehouseLayout";
 import { HomePage } from "@/pages/HomePage";
 import { OrdersPage } from "@/pages/OrdersPage";
+import { ProfilePage } from "@/pages/ProfilePage";
 import { ProductsPage } from "@/pages/ProductsPage";
 import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage";
 import { ShopDetailPage } from "@/features/catalog/pages/ShopDetailPage";
@@ -49,6 +50,10 @@ const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          {
+            path: ROUTES.PROFILE,
+            element: <ProfilePage />,
+          },
           {
             path: ROUTES.ORDERS,
             element: <OrdersPage />,
