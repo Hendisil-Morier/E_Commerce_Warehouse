@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ROUTES } from "@/constants/routes";
 import { AdminProductsPage } from "@/features/admin/pages/AdminProductsPage";
 import { AdminSellersPage } from "@/features/admin/pages/AdminSellersPage";
+import { AdminUsersPage } from "@/features/admin/pages/AdminUsersPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { RegisterPage } from "@/features/auth/pages/RegisterPage";
 import { BecomeSellerPage } from "@/features/seller/pages/BecomeSellerPage";
@@ -362,13 +363,7 @@ const router = createBrowserRouter([
           },
           {
             path: "users",
-            element: (
-              <PlaceholderPage
-                screenCode="A7"
-                title="Quản lý người dùng"
-                description="Danh sách tài khoản người dùng trên sàn, xem phân quyền và thao tác Khóa / Mở khóa tài khoản."
-              />
-            ),
+            element: <AdminUsersPage />,
           },
           {
             path: "categories",

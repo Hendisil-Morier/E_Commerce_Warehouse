@@ -46,5 +46,12 @@ export const API_ENDPOINTS = {
   PUBLIC_SHOPS: {
     BY_ID: (shopId: number) => `/api/v1/shops/${shopId}`,
   },
+  ADMIN_USERS: {
+    BASE: "/api/v1/admin/users",
+    ROLES: "/api/v1/admin/users/roles",
+    BY_ID: (userId: number) => `/api/v1/admin/users/${userId}`,
+    STATUS: (userId: number) => `/api/v1/admin/users/${userId}/status`,
+    ROLES_UPDATE: (userId: number) => `/api/v1/admin/users/${userId}/roles`,
+  },
 } as const;
 

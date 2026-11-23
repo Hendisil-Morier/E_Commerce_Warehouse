@@ -32,6 +32,11 @@ export const ERROR_CODES: Record<string, string> = {
   REFUND_EXCEEDS_PAID: "Số tiền hoàn vượt quá số đã thanh toán.",
   RETURN_NOT_ELIGIBLE: "Chỉ có thể thực hiện với đơn đã giao.",
   INVALID_LOCATION: "Vị trí kho không hợp lệ.",
+
+  // 5. Quản trị người dùng & Phân quyền (Admin Users & RBAC)
+  ADMIN_CANNOT_LOCK_SELF: "Bạn không thể tự khóa tài khoản Quản trị viên của chính mình.",
+  ADMIN_CANNOT_REVOKE_OWN_ADMIN_ROLE: "Bạn không thể tự tước quyền Quản trị viên (Admin) của chính mình.",
+  INVALID_ROLE: "Vai trò được chọn không hợp lệ.",
 };
 
 export const DEFAULT_ERROR_MESSAGE = "Có lỗi xảy ra, vui lòng thử lại sau.";

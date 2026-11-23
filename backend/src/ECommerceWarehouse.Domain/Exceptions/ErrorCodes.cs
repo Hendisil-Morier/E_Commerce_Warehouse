@@ -38,5 +38,10 @@ public static class ErrorCodes
     public const string RefundExceedsPaid = "REFUND_EXCEEDS_PAID";
     public const string ReturnNotEligible = "RETURN_NOT_ELIGIBLE";
     public const string InvalidLocation = "INVALID_LOCATION";
+
+    // 5. Quản trị người dùng & Phân quyền (Admin Users & RBAC)
+    public const string AdminCannotLockSelf = "ADMIN_CANNOT_LOCK_SELF";
+    public const string AdminCannotRevokeOwnAdminRole = "ADMIN_CANNOT_REVOKE_OWN_ADMIN_ROLE";
+    public const string InvalidRole = "INVALID_ROLE";
 }
 
