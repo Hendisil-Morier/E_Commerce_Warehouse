@@ -260,11 +260,11 @@ export interface PublicProductQuery {
   shopId?: number | "";
   minPrice?: number | "";
   maxPrice?: number | "";
-  inStockOnly?: boolean;
+  inStockOnly?: boolean | "";
   q?: string;
-  sort?: string;
   page?: number;
   pageSize?: number;
+  sort?: string;
 }
 
 
