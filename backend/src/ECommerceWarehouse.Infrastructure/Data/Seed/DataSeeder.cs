@@ -1,3 +1,4 @@
+using ECommerceWarehouse.Domain.Entities.Catalog;
 using ECommerceWarehouse.Domain.Entities.Identity;
 using ECommerceWarehouse.Domain.Entities.Seller;
 using ECommerceWarehouse.Domain.Enums;
@@ -40,6 +41,23 @@ public static class DataSeeder
                 };
 
                 await context.Roles.AddRangeAsync(roles);
+                await context.SaveChangesAsync();
+            }
+
+            // 1b. Seed Danh mục gốc nếu chưa có
+            if (!await context.Categories.AnyAsync())
+            {
+                var defaultCategories = new List<Category>
+                {
+                    new() { CategoryName = "Điện thoại & Phụ kiện", Description = "Điện thoại, ốp lưng, sạc, tai nghe", IsActive = true },
+                    new() { CategoryName = "Máy tính & Laptop", Description = "Laptop, linh kiện, phụ kiện máy tính", IsActive = true },
+                    new() { CategoryName = "Thời trang", Description = "Quần áo, giày dép, phụ kiện", IsActive = true },
+                    new() { CategoryName = "Nhà cửa & Đời sống", Description = "Đồ gia dụng, nội thất, dụng cụ", IsActive = true },
+                    new() { CategoryName = "Sức khỏe & Làm đẹp", Description = "Mỹ phẩm, chăm sóc cá nhân", IsActive = true },
+                    new() { CategoryName = "Thực phẩm & Đồ uống", Description = "Thực phẩm khô, đồ uống, đồ ăn vặt", IsActive = true },
+                };
+
+                await context.Categories.AddRangeAsync(defaultCategories);
                 await context.SaveChangesAsync();
             }
 
