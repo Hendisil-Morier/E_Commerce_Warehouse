@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/authStore";
+import { authService } from "@/services/authService";
 import { useCategoriesTree } from "@/features/catalog/hooks/usePublicCatalog";
 import {
   ROLES,
@@ -27,6 +28,8 @@ export const Header: React.FC = () => {
   const { data: realCategories = [] } = useCategoriesTree();
 
   const handleLogout = () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    void authService.logout(refreshToken);
     logout();
     navigate(ROUTES.LOGIN);
   };

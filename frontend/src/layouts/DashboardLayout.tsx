@@ -5,6 +5,7 @@ import type { NavItem } from "@/constants/navigation";
 import { ROUTES } from "@/constants/routes";
 import { Sidebar } from "@/layouts/Sidebar";
 import { useAuthStore } from "@/stores/authStore";
+import { authService } from "@/services/authService";
 import {
   ROLE_LABELS,
   getAvailableWorkspaces,
@@ -49,6 +50,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const primaryRoleLabel = ROLE_LABELS[getPrimaryRole(user)] || "Người dùng";
 
   const handleLogout = () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    void authService.logout(refreshToken);
     logout();
     navigate(ROUTES.LOGIN);
   };

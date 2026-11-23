@@ -36,23 +36,23 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto model, string ipAddress)
     {
-        // 1. Kiểm tra định dạng Gmail (@gmail.com)
+        // 1. Kiểm tra định dạng Email hợp lệ (không ép cứng @gmail.com)
         if (string.IsNullOrWhiteSpace(model.Email) ||
-            !Regex.IsMatch(model.Email.Trim(), @"^[a-zA-Z0-9._%+-]+@gmail\.com$", RegexOptions.IgnoreCase))
+            !Regex.IsMatch(model.Email.Trim(), @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"))
         {
-            throw new InvalidOperationException("Vui lòng nhập địa chỉ Gmail hợp lệ (@gmail.com, ví dụ: yourname@gmail.com).");
+            throw new BusinessException(ErrorCodes.ValidationError, "Vui lòng nhập địa chỉ email hợp lệ.", 400);
         }
 
         // 2. Kiểm tra số điện thoại (bắt buộc đúng 10 chữ số và các đầu số nhà mạng VN quy định)
         if (string.IsNullOrWhiteSpace(model.PhoneNumber))
         {
-            throw new InvalidOperationException("Vui lòng nhập số điện thoại liên hệ.");
+            throw new BusinessException(ErrorCodes.ValidationError, "Vui lòng nhập số điện thoại liên hệ.", 400);
         }
 
         var cleanPhone = model.PhoneNumber.Trim().Replace(" ", "").Replace("-", "").Replace(".", "");
         if (!Regex.IsMatch(cleanPhone, @"^(03[2-9]|05[2689]|07[06-9]|08[1-689]|09[0-46-9])\d{7}$"))
         {
-            throw new InvalidOperationException("Số điện thoại không hợp lệ. Số điện thoại phải gồm đúng 10 chữ số và thuộc các đầu số nhà mạng hợp lệ (070, 076-079, 089, 090, 093, 032-039, 086, 096-098, 081-085, 088, 091, 094, 092, 052, 056, 058, 059, 099).");
+            throw new BusinessException(ErrorCodes.ValidationError, "Số điện thoại không hợp lệ. Số điện thoại phải gồm đúng 10 chữ số và thuộc các đầu số nhà mạng VN.", 400);
         }
 
         // 3. Kiểm tra email đã tồn tại chưa
@@ -60,7 +60,7 @@ public class AuthService : IAuthService
         var existingUsers = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == cleanEmail);
         if (existingUsers.Any())
         {
-            throw new InvalidOperationException("Email này đã được sử dụng.");
+            throw new BusinessException(ErrorCodes.EmailAlreadyExists, "Email này đã được sử dụng.", 409);
         }
 
         // 4. Kiểm tra tên đăng nhập (Username) nếu có nhập
@@ -70,7 +70,7 @@ public class AuthService : IAuthService
             var existingUsername = await _unitOfWork.Repository<User>().FindAsync(u => u.Username == cleanUsername);
             if (existingUsername.Any())
             {
-                throw new InvalidOperationException("Tên đăng nhập này đã có người sử dụng. Vui lòng chọn tên khác!");
+                throw new BusinessException(ErrorCodes.UsernameAlreadyExists, "Tên đăng nhập này đã có người sử dụng. Vui lòng chọn tên khác!", 409);
             }
         }
 
@@ -143,15 +143,20 @@ public class AuthService : IAuthService
             u.Email == model.Email || (u.Username != null && u.Username == model.Email));
         var user = users.FirstOrDefault();
 
-        if (user == null || !user.IsActive)
+        if (user == null)
         {
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không chính xác.");
+            throw new BusinessException(ErrorCodes.InvalidCredentials, "Email hoặc mật khẩu không chính xác.", 401);
+        }
+
+        if (!user.IsActive)
+        {
+            throw new BusinessException(ErrorCodes.AccountLocked, "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.", 403);
         }
 
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
         if (result == PasswordVerificationResult.Failed)
         {
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không chính xác.");
+            throw new BusinessException(ErrorCodes.InvalidCredentials, "Email hoặc mật khẩu không chính xác.", 401);
         }
 
         var roleNames = await GetUserRolesAsync(user.UserId);
@@ -222,6 +227,26 @@ public class AuthService : IAuthService
         }, cancellationToken);
 
         return BuildAuthResponse(user, primaryRole, roleNames, accessToken, newRefreshToken.TokenHash);
+    }
+
+    public async Task LogoutAsync(LogoutRequestDto model, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(model?.RefreshToken))
+        {
+            return;
+        }
+
+        var incomingToken = model.RefreshToken.Trim();
+        var matchingTokens = await _unitOfWork.Repository<RefreshToken>()
+            .FindAsync(rt => rt.TokenHash == incomingToken);
+        var existingToken = matchingTokens.FirstOrDefault();
+
+        if (existingToken != null && existingToken.RevokedAt == null)
+        {
+            existingToken.RevokedAt = DateTime.UtcNow;
+            _unitOfWork.Repository<RefreshToken>().Update(existingToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private async Task<List<string>> GetUserRolesAsync(long userId)
@@ -314,7 +339,7 @@ public class AuthService : IAuthService
         var randomNumber = new byte[32];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
-        var tokenHash = Convert.ToBase64String(randomNumber);
+        var tokenHash = Convert.ToHexString(SHA256.HashData(randomNumber)).ToLowerInvariant();
 
         return new RefreshToken
         {

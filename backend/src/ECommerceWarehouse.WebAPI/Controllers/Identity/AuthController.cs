@@ -30,16 +30,9 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto model)
     {
-        try
-        {
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-            var result = await _authService.RegisterAsync(model, ipAddress);
-            return Ok(new { success = true, data = result, message = "Đăng ký thành công!" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { success = false, message = ex.Message });
-        }
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var result = await _authService.RegisterAsync(model, ipAddress);
+        return Ok(new { success = true, data = result, message = "Đăng ký thành công!" });
     }
 
     /// <summary>
@@ -56,20 +49,9 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto model)
     {
-        try
-        {
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-            var result = await _authService.LoginAsync(model, ipAddress);
-            return Ok(new { success = true, data = result, message = "Đăng nhập thành công!" });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { success = false, message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { success = false, message = ex.Message });
-        }
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var result = await _authService.LoginAsync(model, ipAddress);
+        return Ok(new { success = true, data = result, message = "Đăng nhập thành công!" });
     }
 
     /// <summary>
@@ -87,5 +69,21 @@ public class AuthController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         var result = await _authService.RefreshTokenAsync(model, ipAddress, cancellationToken);
         return Ok(new { success = true, data = result, message = "Làm mới phiên đăng nhập thành công!" });
+    }
+
+    /// <summary>
+    /// Đăng xuất tài khoản và thu hồi Refresh Token
+    /// </summary>
+    /// <param name="model">Token cần thu hồi</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Logout(
+        [FromBody] LogoutRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        await _authService.LogoutAsync(model, cancellationToken);
+        return Ok(new { success = true, message = "Đăng xuất thành công!" });
     }
 }

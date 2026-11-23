@@ -179,5 +179,62 @@ public class AuthServiceRefreshTests
         await Assert.ThrowsAsync<ValidationException>(() =>
             service.RefreshTokenAsync(new RefreshTokenRequestDto { RefreshToken = "   " }, "127.0.0.1"));
     }
+
+    [Fact]
+    public async Task RefreshTokenAsync_GeneratesSha256Hex64CharToken()
+    {
+        var (service, _, _, _) = CreateSut();
+
+        var response = await service.RefreshTokenAsync(
+            new RefreshTokenRequestDto { RefreshToken = "valid-refresh-token-value" },
+            "127.0.0.1");
+
+        Assert.Equal(64, response.RefreshToken.Length);
+        Assert.Matches("^[a-f0-9]{64}$", response.RefreshToken);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_ValidToken_SetsRevokedAt()
+    {
+        var (service, _, _, refreshTokens) = CreateSut();
+        Assert.Null(refreshTokens.Items[0].RevokedAt);
+
+        await service.LogoutAsync(new LogoutRequestDto { RefreshToken = "valid-refresh-token-value" });
+
+        var token = refreshTokens.Items.Single(rt => rt.RefreshTokenId == 1);
+        Assert.NotNull(token.RevokedAt);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_NonExistentOrEmptyToken_DoesNotThrow()
+    {
+        var (service, _, _, _) = CreateSut();
+
+        await service.LogoutAsync(new LogoutRequestDto { RefreshToken = "non-existent-token" });
+        await service.LogoutAsync(new LogoutRequestDto { RefreshToken = "" });
+    }
+
+    [Fact]
+    public async Task RegisterAsync_ValidNonGmailDomain_Succeeds()
+    {
+        var (service, users, _, _) = CreateSut();
+
+        var registerDto = new RegisterRequestDto
+        {
+            FullName = "Trần Doanh Nghiệp",
+            Email = "seller@emarket.vn",
+            PhoneNumber = "0912345678",
+            Password = "Password@123",
+            Username = "doanhnghiep01"
+        };
+
+        var response = await service.RegisterAsync(registerDto, "127.0.0.1");
+
+        Assert.NotNull(response);
+        Assert.Equal("seller@emarket.vn", response.Email);
+        Assert.Equal(64, response.RefreshToken.Length);
+        Assert.Matches("^[a-f0-9]{64}$", response.RefreshToken);
+        Assert.Contains(users.Items, u => u.Email == "seller@emarket.vn");
+    }
 }
 

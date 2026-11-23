@@ -26,4 +26,14 @@ export const authService = {
     );
     return response.data.data;
   },
+
+  async logout(refreshToken?: string | null): Promise<void> {
+    if (refreshToken) {
+      try {
+        await axiosClient.post("/api/v1/Auth/logout", { refreshToken });
+      } catch {
+        // Nuốt lỗi nếu token hết hạn hoặc server offline khi đăng xuất
+      }
+    }
+  },
 };
