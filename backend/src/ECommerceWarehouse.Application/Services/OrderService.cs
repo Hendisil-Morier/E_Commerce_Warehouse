@@ -330,6 +330,21 @@ public class OrderService : IOrderService
             ?? throw new NotFoundException("Order", orderId);
     }
 
+    public async Task<PagedResult<OrderListItemDto>> GetAdminOrdersAsync(
+        AdminOrderQueryDto query,
+        CancellationToken cancellationToken = default)
+    {
+        return await _orderRepository.GetAdminOrdersPagedAsync(query, cancellationToken);
+    }
+
+    public async Task<OrderDetailDto> GetAdminOrderByIdAsync(
+        long orderId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _orderRepository.GetAdminOrderDetailAsync(orderId, cancellationToken)
+            ?? throw new NotFoundException("Order", orderId);
+    }
+
     public async Task<OrderDetailDto> CancelMyOrderAsync(
         long orderId,
         CancelOrderRequestDto request,

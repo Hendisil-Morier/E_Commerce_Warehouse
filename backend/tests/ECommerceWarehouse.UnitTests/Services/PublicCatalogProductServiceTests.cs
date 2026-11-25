@@ -23,6 +23,21 @@ public class PublicCatalogProductServiceTests
 
         public Task<Category?> GetActiveByIdAsNoTrackingAsync(long categoryId, CancellationToken cancellationToken = default)
             => Task.FromResult(Categories.FirstOrDefault(c => c.CategoryId == categoryId && c.IsActive));
+
+        public Task<IReadOnlyList<Category>> GetAllAsNoTrackingAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<Category>>(Categories.ToList());
+
+        public Task<Category?> GetByIdAsync(long categoryId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Categories.FirstOrDefault(c => c.CategoryId == categoryId));
+
+        public Task<bool> HasActiveProductsAsync(long categoryId, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
+
+        public Task AddAsync(Category category, CancellationToken cancellationToken = default)
+        {
+            Categories.Add(category);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class InMemoryPublicProductRepository : IProductRepository

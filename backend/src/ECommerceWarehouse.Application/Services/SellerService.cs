@@ -99,6 +99,28 @@ public class SellerService : ISellerService
         return seller.ToDto();
     }
 
+    public async Task<SellerDto> UpdateMySellerAsync(
+        UpdateSellerProfileRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var validator = new UpdateSellerProfileRequestValidator();
+        await validator.ValidateAndThrowAsync(request, cancellationToken);
+
+        var userId = RequireAuthenticatedUserId();
+        var seller = await _sellerRepository.GetByUserIdWithUserAsync(userId, cancellationToken)
+            ?? throw new NotFoundException("Hồ sơ người bán không tồn tại.");
+
+        seller.BusinessName = request.BusinessName.Trim();
+        seller.TaxCode = NormalizeOptionalText(request.TaxCode);
+        seller.Description = NormalizeOptionalText(request.Description);
+        seller.UpdatedAt = DateTime.UtcNow;
+
+        _sellerRepository.Update(seller);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return seller.ToDto();
+    }
+
     public async Task<PagedResult<SellerDto>> GetAdminSellersAsync(
         SellerListQueryDto query,
         CancellationToken cancellationToken = default)

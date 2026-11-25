@@ -136,6 +136,80 @@ public class OrderRepository : IOrderRepository
         return await projected.ToPagedResultAsync(query, cancellationToken);
     }
 
+    public async Task<PagedResult<OrderListItemDto>> GetAdminOrdersPagedAsync(
+        AdminOrderQueryDto query,
+        CancellationToken cancellationToken = default)
+    {
+        var baseQuery = _context.Orders
+            .AsNoTracking()
+            .Include(o => o.Customer)
+            .Include(o => o.SellerOrders)
+                .ThenInclude(so => so.Items)
+            .Include(o => o.Payments)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Status))
+        {
+            baseQuery = baseQuery.Where(o => o.OrderStatus == query.Status);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim().ToLower();
+            baseQuery = baseQuery.Where(o =>
+                o.OrderCode.ToLower().Contains(search) ||
+                o.RecipientName.ToLower().Contains(search) ||
+                o.Customer.Email.ToLower().Contains(search));
+        }
+
+        if (query.From.HasValue)
+        {
+            baseQuery = baseQuery.Where(o => o.CreatedAt >= query.From.Value);
+        }
+
+        if (query.To.HasValue)
+        {
+            baseQuery = baseQuery.Where(o => o.CreatedAt <= query.To.Value);
+        }
+
+        var projected = baseQuery
+            .OrderByDescending(o => o.CreatedAt)
+            .Select(o => new OrderListItemDto
+            {
+                OrderId = o.OrderId,
+                OrderCode = o.OrderCode,
+                Subtotal = o.Subtotal,
+                ShippingFee = o.ShippingFee,
+                DiscountAmount = o.DiscountAmount,
+                TotalAmount = o.TotalAmount,
+                OrderStatus = o.OrderStatus,
+                PaymentMethod = o.Payments.OrderByDescending(p => p.CreatedAt).Select(p => p.PaymentMethod).FirstOrDefault() ?? PaymentMethods.COD,
+                PaymentStatus = o.Payments.OrderByDescending(p => p.CreatedAt).Select(p => p.PaymentStatus).FirstOrDefault() ?? PaymentStatuses.Pending,
+                ExpiresAt = o.ExpiresAt,
+                CreatedAt = o.CreatedAt,
+                SellerOrderCount = o.SellerOrders.Count,
+                TotalItemCount = o.SellerOrders.SelectMany(so => so.Items).Sum(i => i.Quantity)
+            });
+
+        return await projected.ToPagedResultAsync(query, cancellationToken);
+    }
+
+    public async Task<OrderDetailDto?> GetAdminOrderDetailAsync(
+        long orderId,
+        CancellationToken cancellationToken = default)
+    {
+        var order = await _context.Orders
+            .AsNoTracking()
+            .Include(o => o.SellerOrders).ThenInclude(so => so.Seller)
+            .Include(o => o.SellerOrders).ThenInclude(so => so.Warehouse)
+            .Include(o => o.SellerOrders).ThenInclude(so => so.Items)
+            .Include(o => o.Payments)
+            .Include(o => o.StatusHistories)
+            .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
+
+        return order == null ? null : MapOrderDetail(order);
+    }
+
     public async Task<OrderDetailDto?> GetOrderDetailForCustomerAsync(
         long customerId,
         long orderId,
@@ -153,7 +227,11 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.StatusHistories)
             .FirstOrDefaultAsync(o => o.OrderId == orderId && o.CustomerId == customerId, cancellationToken);
 
-        if (order == null) return null;
+        return order == null ? null : MapOrderDetail(order);
+    }
+
+    private static OrderDetailDto MapOrderDetail(Order order)
+    {
 
         return new OrderDetailDto
         {

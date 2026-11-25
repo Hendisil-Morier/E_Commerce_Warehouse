@@ -73,6 +73,10 @@ public class SellerOrderServiceTests
         public void RemoveCartItems(IEnumerable<CartItem> items) { }
         public Task<PagedResult<OrderListItemDto>> GetCustomerOrdersPagedAsync(long customerId, OrderQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<OrderDetailDto?> GetOrderDetailForCustomerAsync(long customerId, long orderId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+
+        public Task<PagedResult<OrderListItemDto>> GetAdminOrdersPagedAsync(AdminOrderQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+
+        public Task<OrderDetailDto?> GetAdminOrderDetailAsync(long orderId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Order?> GetOrderWithDetailsForUpdateAsync(long orderId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<List<StockReservation>> GetActiveReservationsByOrderItemsAsync(IReadOnlyCollection<long> orderItemIds, CancellationToken cancellationToken = default)
             => Task.FromResult(Reservations.Where(r => orderItemIds.Contains(r.OrderItemId) && r.Status == ReservationStatuses.Active).ToList());

@@ -24,6 +24,14 @@ public class OrderQueryDto : PaginationQuery
     public string? Search { get; set; }
 }
 
+public class AdminOrderQueryDto : PaginationQuery
+{
+    public string? Status { get; set; }
+    public string? Search { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+}
+
 public class OrderItemDto
 {
     public long OrderItemId { get; set; }

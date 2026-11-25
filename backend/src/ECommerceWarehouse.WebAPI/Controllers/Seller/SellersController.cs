@@ -54,5 +54,23 @@ public class SellersController : ControllerBase
         var result = await _sellerService.GetMySellerAsync(cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Cập nhật thông tin hồ sơ người bán của chính mình
+    /// </summary>
+    [HttpPut("me")]
+    [Authorize(Policy = RoleNames.Seller)]
+    [ProducesResponseType(typeof(SellerDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SellerDto>> UpdateMySeller(
+        [FromBody] UpdateSellerProfileRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sellerService.UpdateMySellerAsync(request, cancellationToken);
+        return Ok(result);
+    }
 }
 

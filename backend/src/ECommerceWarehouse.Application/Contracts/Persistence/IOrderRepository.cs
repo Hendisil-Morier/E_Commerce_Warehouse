@@ -25,6 +25,8 @@ public interface IOrderRepository
 
     Task<PagedResult<OrderListItemDto>> GetCustomerOrdersPagedAsync(long customerId, OrderQueryDto query, CancellationToken cancellationToken = default);
     Task<OrderDetailDto?> GetOrderDetailForCustomerAsync(long customerId, long orderId, CancellationToken cancellationToken = default);
+    Task<PagedResult<OrderListItemDto>> GetAdminOrdersPagedAsync(AdminOrderQueryDto query, CancellationToken cancellationToken = default);
+    Task<OrderDetailDto?> GetAdminOrderDetailAsync(long orderId, CancellationToken cancellationToken = default);
     Task<Order?> GetOrderWithDetailsForUpdateAsync(long orderId, CancellationToken cancellationToken = default);
     Task<List<StockReservation>> GetActiveReservationsByOrderItemsAsync(IReadOnlyCollection<long> orderItemIds, CancellationToken cancellationToken = default);
 

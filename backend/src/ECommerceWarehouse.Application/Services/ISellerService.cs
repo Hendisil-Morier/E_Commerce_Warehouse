@@ -9,6 +9,7 @@ public interface ISellerService
 {
     Task<SellerSubmissionResult> RegisterOrResubmitAsync(RegisterSellerRequestDto request, CancellationToken cancellationToken = default);
     Task<SellerDto> GetMySellerAsync(CancellationToken cancellationToken = default);
+    Task<SellerDto> UpdateMySellerAsync(UpdateSellerProfileRequestDto request, CancellationToken cancellationToken = default);
     Task<PagedResult<SellerDto>> GetAdminSellersAsync(SellerListQueryDto query, CancellationToken cancellationToken = default);
     Task<SellerDto> ApproveAsync(long sellerId, CancellationToken cancellationToken = default);
     Task<SellerDto> RejectAsync(long sellerId, RejectSellerRequestDto request, CancellationToken cancellationToken = default);

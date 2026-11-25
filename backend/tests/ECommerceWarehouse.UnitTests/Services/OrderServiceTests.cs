@@ -147,6 +147,25 @@ public class OrderServiceTests
         public Task<PagedResult<OrderListItemDto>> GetCustomerOrdersPagedAsync(long customerId, OrderQueryDto query, CancellationToken cancellationToken = default)
             => Task.FromResult(PagedResult<OrderListItemDto>.Create([], query.NormalizedPage, query.NormalizedPageSize, 0));
 
+        public Task<PagedResult<OrderListItemDto>> GetAdminOrdersPagedAsync(AdminOrderQueryDto query, CancellationToken cancellationToken = default)
+            => Task.FromResult(PagedResult<OrderListItemDto>.Create([], query.NormalizedPage, query.NormalizedPageSize, 0));
+
+        public Task<OrderDetailDto?> GetAdminOrderDetailAsync(long orderId, CancellationToken cancellationToken = default)
+        {
+            var order = Orders.FirstOrDefault(o => o.OrderId == orderId);
+            if (order == null) return Task.FromResult<OrderDetailDto?>(null);
+
+            return Task.FromResult<OrderDetailDto?>(new OrderDetailDto
+            {
+                OrderId = order.OrderId,
+                OrderCode = order.OrderCode,
+                IdempotencyKey = order.IdempotencyKey,
+                Subtotal = order.Subtotal,
+                TotalAmount = order.TotalAmount,
+                OrderStatus = order.OrderStatus
+            });
+        }
+
         public Task<OrderDetailDto?> GetOrderDetailForCustomerAsync(long customerId, long orderId, CancellationToken cancellationToken = default)
         {
             var order = Orders.FirstOrDefault(o => o.OrderId == orderId && o.CustomerId == customerId);
@@ -389,5 +408,34 @@ public class OrderServiceTests
         Assert.Equal(OrderStatuses.Expired, repo.Orders[0].OrderStatus);
         Assert.Equal(ReservationStatuses.Expired, repo.Reservations[0].Status);
         Assert.Single(ledger.ReleasedCalls);
+    }
+
+    [Fact]
+    public async Task GetAdminOrderByIdAsync_ReturnsOrderDetail_WhenOrderExists()
+    {
+        var (service, repo, _, _) = CreateSut();
+        repo.Orders.Add(new Order
+        {
+            OrderId = 99,
+            CustomerId = 100,
+            OrderCode = "ORD-ADM-99",
+            IdempotencyKey = "idem-99",
+            Subtotal = 200m,
+            TotalAmount = 200m,
+            OrderStatus = OrderStatuses.PendingPayment
+        });
+
+        var result = await service.GetAdminOrderByIdAsync(99);
+
+        Assert.Equal(99, result.OrderId);
+        Assert.Equal("ORD-ADM-99", result.OrderCode);
+    }
+
+    [Fact]
+    public async Task GetAdminOrderByIdAsync_ThrowsNotFoundException_WhenOrderMissing()
+    {
+        var (service, _, _, _) = CreateSut();
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetAdminOrderByIdAsync(999));
     }
 }

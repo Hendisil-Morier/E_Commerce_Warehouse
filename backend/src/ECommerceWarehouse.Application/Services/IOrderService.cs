@@ -8,6 +8,8 @@ public interface IOrderService
     Task<OrderDetailDto> CheckoutAsync(string idempotencyKey, CheckoutRequestDto request, CancellationToken cancellationToken = default);
     Task<PagedResult<OrderListItemDto>> GetMyOrdersAsync(OrderQueryDto query, CancellationToken cancellationToken = default);
     Task<OrderDetailDto> GetMyOrderByIdAsync(long orderId, CancellationToken cancellationToken = default);
+    Task<PagedResult<OrderListItemDto>> GetAdminOrdersAsync(AdminOrderQueryDto query, CancellationToken cancellationToken = default);
+    Task<OrderDetailDto> GetAdminOrderByIdAsync(long orderId, CancellationToken cancellationToken = default);
     Task<OrderDetailDto> CancelMyOrderAsync(long orderId, CancelOrderRequestDto request, CancellationToken cancellationToken = default);
     Task<PaymentDto> CreateCodPaymentAsync(long orderId, CreatePaymentRequestDto request, CancellationToken cancellationToken = default);
     Task<int> ExpireOverdueOrdersAsync(CancellationToken cancellationToken = default);
