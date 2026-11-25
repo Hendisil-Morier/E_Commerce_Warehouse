@@ -1155,5 +1155,57 @@ JOIN Shops sh ON sh.SellerId = sel.SellerId
 JOIN Products p ON p.ShopId = sh.ShopId AND p.ProductName = v.ProductName
 ON DUPLICATE KEY UPDATE Price = v.Price, IsActive = v.IsActive;
 
+-- ============================================================================
+-- 10. TỒN KHO KHỞI TẠO CHO CÁC BIẾN THỂ SẢN PHẨM (Ngẫu nhiên 1 -> 69)
+--     Ghi đồng thời vào Inventory và sổ cái StockMovements để vw_StockReconciliation luôn khớp 100%.
+-- ============================================================================
+SET @loc_sellable := (
+    SELECT LocationId FROM WarehouseLocations
+    WHERE WarehouseId = @platform_wh AND LocationCode = 'A-01-01' AND IsSellable = 1
+    LIMIT 1
+);
+
+INSERT INTO Inventory (WarehouseId, LocationId, VariantId, QuantityOnHand, QuantityReserved)
+SELECT
+    @platform_wh,
+    @loc_sellable,
+    pv.VariantId,
+    FLOOR(1 + RAND() * 69),
+    0
+FROM ProductVariants pv
+WHERE @platform_wh IS NOT NULL
+  AND @loc_sellable IS NOT NULL
+  AND pv.IsActive = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM Inventory inv
+      WHERE inv.LocationId = @loc_sellable AND inv.VariantId = pv.VariantId
+  );
+
+INSERT INTO StockMovements (
+    WarehouseId, LocationId, VariantId, MovementType,
+    OnHandChange, ReservedChange, OnHandAfter, ReservedAfter,
+    ReferenceType, ReferenceId, CreatedBy, Note
+)
+SELECT
+    inv.WarehouseId,
+    inv.LocationId,
+    inv.VariantId,
+    'Receipt',
+    inv.QuantityOnHand,
+    0,
+    inv.QuantityOnHand,
+    0,
+    'Manual',
+    0,
+    2,
+    'Tồn kho khởi tạo dữ liệu mẫu'
+FROM Inventory inv
+WHERE inv.LocationId = @loc_sellable
+  AND inv.QuantityOnHand > 0
+  AND NOT EXISTS (
+      SELECT 1 FROM StockMovements sm
+      WHERE sm.LocationId = inv.LocationId AND sm.VariantId = inv.VariantId
+  );
+
 -- Khôi phục chế độ kiểm tra an toàn sau khi hoàn tất seed
 SET SQL_SAFE_UPDATES = 1;
