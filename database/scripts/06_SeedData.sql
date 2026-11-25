@@ -91,21 +91,26 @@ INSERT IGNORE INTO WarehouseLocations (WarehouseId, LocationCode, StorageType, I
     (@platform_wh, 'DAMAGED-01','Damaged',  0);
 
 -- ============================================================================
--- 5. TÀI KHOẢN MẪU THỬ NGHIỆM 4 VAI TRÒ (Seed Data)
---    Lưu ý: Bạn cũng có thể để ứng dụng tự động seed khi chạy API (DataSeeder.cs).
---    Mật khẩu mặc định: Demo@123
+-- 5. TÀI KHOẢN MẪU THỬ NGHIỆM 5 VAI TRÒ (Seed Data)
+--    Hash chuẩn ASP.NET Core Identity V3 (PBKDF2-SHA512) cho mật khẩu: Demo@123
+--    Lưu ý: DataSeeder.cs khi chạy API cũng tự seed thêm bộ tài khoản @gmail.com (Demo@123).
 -- ============================================================================
--- Tạo User mẫu (nếu chưa có)
-INSERT INTO Users (UserId, FullName, Email, PasswordHash, PhoneNumber, IsActive)
+-- Tạo 5 User mẫu đủ 5 role: Admin, WarehouseManager, WarehouseStaff, Seller, Customer
+INSERT INTO Users (UserId, Username, FullName, Email, PasswordHash, PhoneNumber, IsActive)
 VALUES 
-    (1, 'Quản trị viên Hệ thống', 'admin@emarket.vn', 'AQAAAAIAAYagAAAAENK8/demoHashAdmin1234567890abcdef...', '0988123456', 1),
-    (2, 'Nguyễn Văn Kho (Thủ kho)', 'warehouse@emarket.vn', 'AQAAAAIAAYagAAAAENK8/demoHashWarehouse123456...', '0988123456', 1),
-    (3, 'Trần Thị Shop (Người bán)', 'seller@emarket.vn', 'AQAAAAIAAYagAAAAENK8/demoHashSeller123456789...', '0988123456', 1),
-    (4, 'Lê Hoàng Khách (Khách hàng)', 'customer@gmail.com', 'AQAAAAIAAYagAAAAENK8/demoHashCustomer123456...', '0988123456', 1)
+    (1, 'admin_demo',      'Quản trị viên Hệ thống',       'admin@emarket.vn',     'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123456', 1),
+    (2, 'wh_manager_demo', 'Nguyễn Văn Kho (Quản lý kho)', 'warehouse@emarket.vn', 'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123457', 1),
+    (3, 'seller_demo',     'Trần Thị Shop (Người bán)',    'seller@emarket.vn',    'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123458', 1),
+    (4, 'customer_demo',   'Lê Hoàng Khách (Khách hàng)',  'customer@gmail.com',   'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123459', 1),
+    (5, 'wh_staff_demo',   'Phạm Văn Soạn (Nhân viên kho)','whstaff@emarket.vn',   'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123460', 1)
 AS new_user
-ON DUPLICATE KEY UPDATE FullName = new_user.FullName;
+ON DUPLICATE KEY UPDATE
+    Username = new_user.Username,
+    FullName = new_user.FullName,
+    PasswordHash = new_user.PasswordHash,
+    IsActive = 1;
 
--- Gán quyền vào bảng UserRoles
+-- Gán quyền vào bảng UserRoles (đủ 5 vai trò)
 INSERT IGNORE INTO UserRoles (UserId, RoleId)
 SELECT 1, RoleId FROM Roles WHERE RoleName = 'Admin'
 UNION ALL
@@ -113,7 +118,9 @@ SELECT 2, RoleId FROM Roles WHERE RoleName = 'WarehouseManager'
 UNION ALL
 SELECT 3, RoleId FROM Roles WHERE RoleName = 'Seller'
 UNION ALL
-SELECT 4, RoleId FROM Roles WHERE RoleName = 'Customer';
+SELECT 4, RoleId FROM Roles WHERE RoleName = 'Customer'
+UNION ALL
+SELECT 5, RoleId FROM Roles WHERE RoleName = 'WarehouseStaff';
 
 -- ============================================================================
 -- 5B. LÀM SẠCH DỮ LIỆU DEMO CŨ (NẾU TỒN TẠI) TRƯỚC KHI NẠP MỚI
