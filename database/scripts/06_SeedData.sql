@@ -93,16 +93,15 @@ INSERT IGNORE INTO WarehouseLocations (WarehouseId, LocationCode, StorageType, I
 -- ============================================================================
 -- 5. TÀI KHOẢN MẪU THỬ NGHIỆM 5 VAI TRÒ (Seed Data)
 --    Hash chuẩn ASP.NET Core Identity V3 (PBKDF2-SHA512) cho mật khẩu: Demo@123
---    Lưu ý: DataSeeder.cs khi chạy API cũng tự seed thêm bộ tài khoản @gmail.com (Demo@123).
+--    Dùng Email làm khóa khớp tự nhiên (không ép cứng UserId 1..5 để tránh lệch khi DB đã có user).
 -- ============================================================================
--- Tạo 5 User mẫu đủ 5 role: Admin, WarehouseManager, WarehouseStaff, Seller, Customer
-INSERT INTO Users (UserId, Username, FullName, Email, PasswordHash, PhoneNumber, IsActive)
+INSERT INTO Users (Username, FullName, Email, PasswordHash, PhoneNumber, IsActive)
 VALUES 
-    (1, 'admin_demo',      'Quản trị viên Hệ thống',       'admin@emarket.vn',     'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123456', 1),
-    (2, 'wh_manager_demo', 'Nguyễn Văn Kho (Quản lý kho)', 'warehouse@emarket.vn', 'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123457', 1),
-    (3, 'seller_demo',     'Trần Thị Shop (Người bán)',    'seller@emarket.vn',    'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123458', 1),
-    (4, 'customer_demo',   'Lê Hoàng Khách (Khách hàng)',  'customer@gmail.com',   'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123459', 1),
-    (5, 'wh_staff_demo',   'Phạm Văn Soạn (Nhân viên kho)','whstaff@emarket.vn',   'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123460', 1)
+    ('admin_demo',      'Quản trị viên Hệ thống',        'admin@emarket.vn',     'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123456', 1),
+    ('wh_manager_demo', 'Nguyễn Văn Kho (Quản lý kho)',  'warehouse@emarket.vn', 'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123457', 1),
+    ('wh_staff_demo',   'Phạm Văn Soạn (Nhân viên kho)', 'whstaff@emarket.vn',   'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123460', 1),
+    ('seller_demo',     'Trần Thị Shop (Người bán)',     'seller@emarket.vn',    'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123458', 1),
+    ('customer_demo',   'Lê Hoàng Khách (Khách hàng)',   'customer@gmail.com',   'AQAAAAIAAYagAAAAEGDfilKKxefEGWPz5fHC0nokVBj3tero92JQiH0KheUCU4ESW5Vqk6gEi+O8HKwgkg==', '0988123459', 1)
 AS new_user
 ON DUPLICATE KEY UPDATE
     Username = new_user.Username,
@@ -110,17 +109,18 @@ ON DUPLICATE KEY UPDATE
     PasswordHash = new_user.PasswordHash,
     IsActive = 1;
 
--- Gán quyền vào bảng UserRoles (đủ 5 vai trò)
+-- Gán quyền vào bảng UserRoles theo đúng Email (đủ 5 vai trò)
 INSERT IGNORE INTO UserRoles (UserId, RoleId)
-SELECT 1, RoleId FROM Roles WHERE RoleName = 'Admin'
-UNION ALL
-SELECT 2, RoleId FROM Roles WHERE RoleName = 'WarehouseManager'
-UNION ALL
-SELECT 3, RoleId FROM Roles WHERE RoleName = 'Seller'
-UNION ALL
-SELECT 4, RoleId FROM Roles WHERE RoleName = 'Customer'
-UNION ALL
-SELECT 5, RoleId FROM Roles WHERE RoleName = 'WarehouseStaff';
+SELECT u.UserId, r.RoleId
+FROM (
+    SELECT 'admin@emarket.vn'     AS Email, 'Admin'            AS RoleName UNION ALL
+    SELECT 'warehouse@emarket.vn' AS Email, 'WarehouseManager' AS RoleName UNION ALL
+    SELECT 'whstaff@emarket.vn'   AS Email, 'WarehouseStaff'   AS RoleName UNION ALL
+    SELECT 'seller@emarket.vn'    AS Email, 'Seller'           AS RoleName UNION ALL
+    SELECT 'customer@gmail.com'   AS Email, 'Customer'         AS RoleName
+) m
+JOIN Users u ON u.Email = m.Email
+JOIN Roles r ON r.RoleName = m.RoleName;
 
 -- ============================================================================
 -- 5B. LÀM SẠCH DỮ LIỆU DEMO CŨ (NẾU TỒN TẠI) TRƯỚC KHI NẠP MỚI
@@ -1197,7 +1197,7 @@ SELECT
     0,
     'Manual',
     0,
-    2,
+    (SELECT UserId FROM Users WHERE Email = 'warehouse@emarket.vn' LIMIT 1),
     'Tồn kho khởi tạo dữ liệu mẫu'
 FROM Inventory inv
 WHERE inv.LocationId = @loc_sellable
