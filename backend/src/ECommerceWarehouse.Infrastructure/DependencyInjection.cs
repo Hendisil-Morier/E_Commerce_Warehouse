@@ -43,6 +43,8 @@ public static class DependencyInjection
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IInventoryIssueRepository, InventoryIssueRepository>();
         services.AddScoped<IShipmentRepository, ShipmentRepository>();
+        services.AddScoped<IReturnRepository, ReturnRepository>();
+        services.AddScoped<IRefundRepository, RefundRepository>();
         services.AddScoped<IUnitOfWork, ECommerceWarehouse.Infrastructure.UnitOfWork.UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
         return services;

@@ -230,6 +230,67 @@ public class InventoryLedgerService : IInventoryLedgerService
         await _inventoryRepository.AddStockMovementAsync(movement, cancellationToken);
     }
 
+    public async Task TransferAdjustmentAsync(
+        long warehouseId,
+        long sourceLocationId,
+        long destinationLocationId,
+        long variantId,
+        int quantity,
+        string referenceType,
+        long referenceId,
+        long? createdBy,
+        string? note = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (quantity <= 0)
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "Số lượng điều chuyển phải lớn hơn 0.", 400);
+        }
+
+        var sourceInventory = await _inventoryRepository.GetByLocationAndVariantAsync(sourceLocationId, variantId, cancellationToken)
+            ?? throw new NotFoundException("Inventory", $"{sourceLocationId}-{variantId}");
+
+        if (sourceInventory.QuantityOnHand - sourceInventory.QuantityReserved < quantity)
+        {
+            throw new BusinessException(
+                ErrorCodes.InsufficientStock,
+                "Số lượng hàng tại khu chờ kiểm định không đủ để điều chỉnh chuyển kệ.",
+                409);
+        }
+
+        sourceInventory.QuantityOnHand -= quantity;
+        sourceInventory.UpdatedAt = DateTime.UtcNow;
+
+        await _inventoryRepository.AddStockMovementAsync(new StockMovement
+        {
+            WarehouseId = warehouseId,
+            LocationId = sourceLocationId,
+            VariantId = variantId,
+            MovementType = StockMovementTypes.Adjustment,
+            OnHandChange = -quantity,
+            ReservedChange = 0,
+            OnHandAfter = sourceInventory.QuantityOnHand,
+            ReservedAfter = sourceInventory.QuantityReserved,
+            ReferenceType = referenceType,
+            ReferenceId = referenceId,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow,
+            Note = note
+        }, cancellationToken);
+
+        await IncreaseOnHandAsync(
+            warehouseId,
+            destinationLocationId,
+            variantId,
+            quantity,
+            StockMovementTypes.Adjustment,
+            referenceType,
+            referenceId,
+            createdBy,
+            note,
+            cancellationToken);
+    }
+
     public async Task<PagedResult<InventoryItemDto>> GetInventoryAsync(
         InventoryQueryDto query,
         CancellationToken cancellationToken = default)

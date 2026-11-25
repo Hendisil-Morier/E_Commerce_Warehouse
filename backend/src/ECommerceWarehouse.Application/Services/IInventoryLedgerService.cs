@@ -46,6 +46,18 @@ public interface IInventoryLedgerService
         string? note = null,
         CancellationToken cancellationToken = default);
 
+    Task TransferAdjustmentAsync(
+        long warehouseId,
+        long sourceLocationId,
+        long destinationLocationId,
+        long variantId,
+        int quantity,
+        string referenceType,
+        long referenceId,
+        long? createdBy,
+        string? note = null,
+        CancellationToken cancellationToken = default);
+
     Task<PagedResult<InventoryItemDto>> GetInventoryAsync(
         InventoryQueryDto query,
         CancellationToken cancellationToken = default);
