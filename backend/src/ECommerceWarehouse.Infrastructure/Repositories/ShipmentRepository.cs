@@ -116,12 +116,24 @@ public class ShipmentRepository : IShipmentRepository
         => await _context.Shipments
             .Include(s => s.Carrier)
             .Include(s => s.SellerOrder)
+                .ThenInclude(so => so.Items)
+            .Include(s => s.SellerOrder)
                 .ThenInclude(so => so.Order)
                     .ThenInclude(o => o.SellerOrders)
             .Include(s => s.SellerOrder)
                 .ThenInclude(so => so.Order)
                     .ThenInclude(o => o.Payments)
             .FirstOrDefaultAsync(s => s.ShipmentId == shipmentId, cancellationToken);
+
+    public async Task<long?> GetReturnLocationIdAsync(long warehouseId, CancellationToken cancellationToken = default)
+        => await _context.WarehouseLocations
+            .AsNoTracking()
+            .Where(l => l.WarehouseId == warehouseId && l.IsActive && l.StorageType == Domain.Constants.StorageTypes.Returns)
+            .Select(l => (long?)l.LocationId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task AddReturnReceiptAsync(Domain.Entities.Warehouse.InventoryReceipt receipt, CancellationToken cancellationToken = default)
+        => await _context.InventoryReceipts.AddAsync(receipt, cancellationToken);
 
     public async Task<ShipmentDto?> GetDtoByIdAsync(long shipmentId, CancellationToken cancellationToken = default)
     {

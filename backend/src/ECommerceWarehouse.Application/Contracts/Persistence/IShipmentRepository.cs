@@ -20,4 +20,6 @@ public interface IShipmentRepository
     Task<SellerOrder?> GetSellerOrderForShipmentAsync(long sellerOrderId, CancellationToken cancellationToken = default);
     Task<bool> TrackingNumberExistsAsync(int carrierId, string trackingNumber, CancellationToken cancellationToken = default);
     Task AddShipmentAsync(Shipment shipment, CancellationToken cancellationToken = default);
+    Task<long?> GetReturnLocationIdAsync(long warehouseId, CancellationToken cancellationToken = default);
+    Task AddReturnReceiptAsync(Domain.Entities.Warehouse.InventoryReceipt receipt, CancellationToken cancellationToken = default);
 }

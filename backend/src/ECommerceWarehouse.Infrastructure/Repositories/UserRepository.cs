@@ -105,6 +105,18 @@ public class UserRepository : IUserRepository
         _context.UserRoles.RemoveRange(userRoles);
     }
 
+    public async Task RevokeAllRefreshTokensAsync(long userId, DateTime revokedAt, CancellationToken cancellationToken = default)
+    {
+        var activeTokens = await _context.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > revokedAt)
+            .ToListAsync(cancellationToken);
+
+        foreach (var token in activeTokens)
+        {
+            token.RevokedAt = revokedAt;
+        }
+    }
+
     public void Update(User user)
     {
         _context.Users.Update(user);

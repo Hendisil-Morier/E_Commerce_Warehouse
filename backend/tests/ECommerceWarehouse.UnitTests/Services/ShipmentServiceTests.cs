@@ -87,10 +87,17 @@ public class ShipmentServiceTests
             return Task.CompletedTask;
         }
 
+        public List<Domain.Entities.Warehouse.InventoryReceipt> ReturnReceipts { get; } = [];
         public Task<List<CarrierDto>> GetAllCarriersAsync(CancellationToken cancellationToken = default) => Task.FromResult<List<CarrierDto>>([]);
         public Task<Carrier?> GetCarrierByIdForUpdateAsync(int carrierId, CancellationToken cancellationToken = default) => Task.FromResult<Carrier?>(null);
         public Task<bool> CarrierCodeExistsAsync(string carrierCode, int? excludeCarrierId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task AddCarrierAsync(Carrier carrier, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<long?> GetReturnLocationIdAsync(long warehouseId, CancellationToken cancellationToken = default) => Task.FromResult<long?>(99);
+        public Task AddReturnReceiptAsync(Domain.Entities.Warehouse.InventoryReceipt receipt, CancellationToken cancellationToken = default)
+        {
+            ReturnReceipts.Add(receipt);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class StubOrderRepo : IOrderRepository
@@ -174,5 +181,40 @@ public class ShipmentServiceTests
         repo.Shipments.Add(new Shipment { ShipmentId = 1, SellerOrderId = 10, TrackingNumber = "GHN-SECRET", SellerOrder = so });
 
         await Assert.ThrowsAsync<NotFoundException>(() => service.TrackByNumberForCustomerAsync("GHN-SECRET"));
+    }
+
+    [Fact]
+    public async Task UpdateShipmentStatusAsync_FailedToReturned_CreatesDraftCustomerReturnReceipt()
+    {
+        var (service, repo, _) = CreateSut();
+        var order = new Order { OrderId = 2, CustomerId = 100, OrderCode = "ORD-RET" };
+        var so = new SellerOrder
+        {
+            SellerOrderId = 20,
+            OrderId = 2,
+            SellerId = 5,
+            WarehouseId = 1,
+            Status = SellerOrderStatuses.DeliveryFailed,
+            Order = order,
+            Items = [new OrderItem { OrderItemId = 200, SellerOrderId = 20, VariantId = 101, Quantity = 2 }]
+        };
+        order.SellerOrders.Add(so);
+        repo.Shipments.Add(new Shipment
+        {
+            ShipmentId = 2,
+            SellerOrderId = 20,
+            TrackingNumber = "GHN-RET",
+            ShippingStatus = ShippingStatuses.Failed,
+            SellerOrder = so
+        });
+
+        var updated = await service.UpdateShipmentStatusAsync(2, new UpdateShipmentStatusRequestDto { Status = ShippingStatuses.Returned });
+
+        Assert.Equal(ShippingStatuses.Returned, updated.ShippingStatus);
+        var receipt = Assert.Single(repo.ReturnReceipts);
+        Assert.Equal(ReceiptTypes.CustomerReturn, receipt.ReceiptType);
+        Assert.Equal(ReceiptStatuses.Draft, receipt.Status);
+        Assert.Equal(99, receipt.Details.Single().LocationId);
+        Assert.Equal(2, receipt.Details.Single().Quantity);
     }
 }

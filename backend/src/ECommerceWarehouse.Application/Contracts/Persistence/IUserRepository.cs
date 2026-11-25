@@ -13,5 +13,6 @@ public interface IUserRepository
     Task<int> GetAddressCountAsync(long userId, CancellationToken cancellationToken = default);
     Task AddUserRoleAsync(UserRole userRole, CancellationToken cancellationToken = default);
     void RemoveUserRoles(IEnumerable<UserRole> userRoles);
+    Task RevokeAllRefreshTokensAsync(long userId, DateTime revokedAt, CancellationToken cancellationToken = default);
     void Update(User user);
 }

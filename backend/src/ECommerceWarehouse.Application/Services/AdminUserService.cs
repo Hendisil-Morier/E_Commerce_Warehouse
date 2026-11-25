@@ -98,8 +98,14 @@ public class AdminUserService : IAdminUserService
         var user = await _userRepository.GetByIdWithRolesAsync(userId, cancellationToken)
             ?? throw new NotFoundException("User", userId);
 
+        var now = DateTime.UtcNow;
         user.IsActive = request.IsActive;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
+
+        if (!request.IsActive)
+        {
+            await _userRepository.RevokeAllRefreshTokensAsync(userId, now, cancellationToken);
+        }
 
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

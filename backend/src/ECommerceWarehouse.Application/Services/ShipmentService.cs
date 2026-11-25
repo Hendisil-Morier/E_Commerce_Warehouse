@@ -288,6 +288,47 @@ public class ShipmentService : IShipmentService
                     CreatedAt = now
                 }, ct);
             }
+            else if (next == ShippingStatuses.Returned)
+            {
+                if (shipment.SellerOrder.WarehouseId.HasValue && shipment.SellerOrder.Items.Count > 0)
+                {
+                    var returnLocationId = await _shipmentRepository.GetReturnLocationIdAsync(
+                        shipment.SellerOrder.WarehouseId.Value, ct);
+                    if (returnLocationId.HasValue)
+                    {
+                        var receipt = new Domain.Entities.Warehouse.InventoryReceipt
+                        {
+                            WarehouseId = shipment.SellerOrder.WarehouseId.Value,
+                            ReceiptCode = $"PNK-RET-{now:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..4].ToUpperInvariant()}",
+                            ReceiptType = ReceiptTypes.CustomerReturn,
+                            Status = ReceiptStatuses.Draft,
+                            SenderSellerId = shipment.SellerOrder.SellerId,
+                            CreatedBy = userId,
+                            CreatedAt = now,
+                            Note = $"Nhập hoàn từ vận đơn {shipment.TrackingNumber} giao thất bại",
+                            Details = shipment.SellerOrder.Items.Select(item => new Domain.Entities.Warehouse.ReceiptDetail
+                            {
+                                WarehouseId = shipment.SellerOrder.WarehouseId.Value,
+                                LocationId = returnLocationId.Value,
+                                VariantId = item.VariantId,
+                                Quantity = item.Quantity
+                            }).ToList()
+                        };
+                        await _shipmentRepository.AddReturnReceiptAsync(receipt, ct);
+                    }
+                }
+
+                await _orderRepository.AddStatusHistoryAsync(new OrderStatusHistory
+                {
+                    OrderId = shipment.SellerOrder.OrderId,
+                    SellerOrderId = shipment.SellerOrder.SellerOrderId,
+                    FromStatus = shipment.SellerOrder.Status,
+                    ToStatus = shipment.SellerOrder.Status,
+                    Reason = $"Hàng hoàn ({shipment.TrackingNumber}) đã về kho chờ kiểm tra nhập kho",
+                    ChangedBy = userId,
+                    CreatedAt = now
+                }, ct);
+            }
 
             await _unitOfWork.SaveChangesAsync(ct);
         }, cancellationToken);

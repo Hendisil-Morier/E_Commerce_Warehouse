@@ -135,6 +135,14 @@ public class AdminUserServiceTests
             UserRoles.RemoveAll(ur => toRemove.Any(tr => tr.UserId == ur.UserId && tr.RoleId == tr.RoleId));
         }
 
+        public List<long> RevokedUserIds { get; } = [];
+
+        public Task RevokeAllRefreshTokensAsync(long userId, DateTime revokedAt, CancellationToken cancellationToken = default)
+        {
+            RevokedUserIds.Add(userId);
+            return Task.CompletedTask;
+        }
+
         public void Update(User user) { }
     }
 
@@ -341,5 +349,17 @@ public class AdminUserServiceTests
         Assert.Contains(roles, r => r.RoleName == RoleNames.WarehouseManager);
         Assert.Contains(roles, r => r.RoleName == RoleNames.Seller);
         Assert.Contains(roles, r => r.RoleName == RoleNames.Customer);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusAsync_LockingUser_RevokesRefreshTokens()
+    {
+        var (service, repo, _) = CreateTestContext();
+        repo.Users.Add(new User { UserId = 9, FullName = "User 9", Email = "u9@test.com", IsActive = true });
+
+        var updated = await service.UpdateUserStatusAsync(9, new UpdateUserStatusRequestDto { IsActive = false });
+
+        Assert.False(updated.IsActive);
+        Assert.Contains(9, repo.RevokedUserIds);
     }
 }
