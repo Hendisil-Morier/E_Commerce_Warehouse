@@ -15,6 +15,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasKey(x => x.OrderId);
         builder.Property(x => x.OrderCode).HasMaxLength(40).IsRequired();
         builder.HasIndex(x => x.OrderCode).IsUnique();
+        builder.Property(x => x.IdempotencyKey).HasMaxLength(100);
+        builder.HasIndex(x => new { x.CustomerId, x.IdempotencyKey }).IsUnique();
         builder.Property(x => x.RecipientName).HasMaxLength(150).IsRequired();
         builder.Property(x => x.RecipientPhone).HasMaxLength(20).IsRequired();
         builder.Property(x => x.ShippingProvince).HasMaxLength(100).IsRequired();

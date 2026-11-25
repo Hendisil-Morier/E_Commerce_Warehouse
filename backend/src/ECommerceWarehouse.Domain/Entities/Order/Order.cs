@@ -7,6 +7,7 @@ public class Order
     public long OrderId { get; set; }
     public long CustomerId { get; set; }
     public string OrderCode { get; set; } = null!;
+    public string? IdempotencyKey { get; set; }
     public string RecipientName { get; set; } = null!;
     public string RecipientPhone { get; set; } = null!;
     public string ShippingProvince { get; set; } = null!;

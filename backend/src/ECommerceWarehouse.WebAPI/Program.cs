@@ -93,6 +93,7 @@ builder.Services.AddApplication();
 
 // Đăng ký Infrastructure (DbContext, UnitOfWork, Repositories, AuthService, Storage...)
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddHostedService<ECommerceWarehouse.WebAPI.BackgroundServices.OrderExpirationBackgroundService>();
 
 // Đăng ký JWT Bearer Authentication, Role Policies và ICurrentUser
 builder.Services.AddJwtAuthenticationAndPolicies(builder.Configuration);
