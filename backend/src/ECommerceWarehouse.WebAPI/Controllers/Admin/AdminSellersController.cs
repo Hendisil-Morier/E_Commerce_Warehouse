@@ -88,5 +88,22 @@ public class AdminSellersController : ControllerBase
         var result = await _sellerService.SuspendAsync(id, request, cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Cập nhật tỷ lệ hoa hồng (%) cho Seller
+    /// </summary>
+    [HttpPatch("{id:long}/commission")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateCommission(
+        long id,
+        [FromBody] UpdateSellerCommissionRequestDto request,
+        [FromServices] ISettlementService settlementService,
+        CancellationToken cancellationToken)
+    {
+        var updatedRate = await settlementService.UpdateSellerCommissionRateAsync(id, request, cancellationToken);
+        return Ok(new { sellerId = id, commissionRate = updatedRate });
+    }
 }
 

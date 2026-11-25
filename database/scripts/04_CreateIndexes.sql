@@ -171,3 +171,10 @@ CREATE INDEX IX_RefreshTokens_User_Expires
 -- Seller duyệt/ngừng: lọc hồ sơ seller theo trạng thái.
 CREATE INDEX IX_Sellers_Status
     ON Sellers (Status);
+
+-- Đối soát tài chính Seller theo trạng thái và ngày tạo.
+CREATE INDEX IX_SellerSettlements_Seller_Status_Created
+    ON SellerSettlements (SellerId, Status, CreatedAt DESC);
+
+CREATE INDEX IX_SellerSettlementItems_Settlement
+    ON SellerSettlementItems (SettlementId);

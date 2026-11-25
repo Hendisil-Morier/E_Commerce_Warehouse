@@ -327,3 +327,19 @@ ALTER TABLE Reviews
     ADD CONSTRAINT FK_Reviews_Customers FOREIGN KEY (CustomerId) REFERENCES Users (UserId);
 ALTER TABLE Reviews
     ADD CONSTRAINT FK_Reviews_OrderItems FOREIGN KEY (OrderItemId) REFERENCES OrderItems (OrderItemId);
+
+-- ============================================================================
+-- 11. ĐỐI SOÁT TÀI CHÍNH & CHI TRẢ SELLER (SETTLEMENTS)
+-- ============================================================================
+
+ALTER TABLE SellerSettlements
+    ADD CONSTRAINT FK_SellerSettlements_Sellers FOREIGN KEY (SellerId) REFERENCES Sellers (SellerId);
+ALTER TABLE SellerSettlements
+    ADD CONSTRAINT FK_SellerSettlements_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
+ALTER TABLE SellerSettlements
+    ADD CONSTRAINT FK_SellerSettlements_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES Users (UserId);
+
+ALTER TABLE SellerSettlementItems
+    ADD CONSTRAINT FK_SellerSettlementItems_Settlements FOREIGN KEY (SettlementId) REFERENCES SellerSettlements (SettlementId);
+ALTER TABLE SellerSettlementItems
+    ADD CONSTRAINT FK_SellerSettlementItems_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);

@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IDashboardRepository, DashboardRepository>();
         services.AddScoped<IReviewRepository, ReviewRepository>();
         services.AddScoped<IWishlistRepository, WishlistRepository>();
+        services.AddScoped<ISettlementRepository, SettlementRepository>();
         services.AddScoped<IUnitOfWork, ECommerceWarehouse.Infrastructure.UnitOfWork.UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
         return services;

@@ -796,5 +796,50 @@ CREATE TABLE Reviews (
     CONSTRAINT CK_Reviews_Rating CHECK (Rating BETWEEN 1 AND 5)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS SellerSettlements;
+-- Kỳ đối soát & chi trả doanh thu cho Seller (áp dụng Seller.CommissionRate tại thời điểm chốt).
+CREATE TABLE SellerSettlements (
+    SettlementId            BIGINT        NOT NULL AUTO_INCREMENT,
+    SellerId                BIGINT        NOT NULL,
+    SettlementCode          VARCHAR(40)   NOT NULL,
+    PeriodStart             DATETIME(3)   NOT NULL,
+    PeriodEnd               DATETIME(3)   NOT NULL,
+    GrossAmount             DECIMAL(18,2) NOT NULL DEFAULT 0,
+    RefundDeductionAmount   DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CommissionRateSnapshot  DECIMAL(5,2)  NOT NULL,
+    CommissionAmount        DECIMAL(18,2) NOT NULL DEFAULT 0,
+    NetPayoutAmount         DECIMAL(18,2) NOT NULL DEFAULT 0,
+    Status                  VARCHAR(20)   NOT NULL DEFAULT 'Pending',
+    PaymentReference        VARCHAR(100)  NULL,
+    Note                    VARCHAR(500)  NULL,
+    CreatedBy               BIGINT        NOT NULL,
+    ApprovedBy              BIGINT        NULL,
+    ApprovedAt              DATETIME(3)   NULL,
+    PaidAt                  DATETIME(3)   NULL,
+    CreatedAt               DATETIME(3)   NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
+    CONSTRAINT PK_SellerSettlements PRIMARY KEY (SettlementId),
+    CONSTRAINT UQ_SellerSettlements_Code UNIQUE (SettlementCode),
+    CONSTRAINT CK_SellerSettlements_Status CHECK (Status IN ('Pending','Approved','Paid','Cancelled')),
+    CONSTRAINT CK_SellerSettlements_Amounts CHECK (
+        GrossAmount >= 0 AND RefundDeductionAmount >= 0 AND CommissionAmount >= 0 AND NetPayoutAmount >= 0),
+    CONSTRAINT CK_SellerSettlements_Rate CHECK (CommissionRateSnapshot >= 0 AND CommissionRateSnapshot <= 100)
+) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS SellerSettlementItems;
+-- Chi tiết từng đơn con thuộc kỳ đối soát; UNIQUE(SellerOrderId) đảm bảo không đối soát trùng.
+CREATE TABLE SellerSettlementItems (
+    SettlementItemId  BIGINT        NOT NULL AUTO_INCREMENT,
+    SettlementId      BIGINT        NOT NULL,
+    SellerOrderId     BIGINT        NOT NULL,
+    GrossAmount       DECIMAL(18,2) NOT NULL,
+    RefundAmount      DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CommissionAmount  DECIMAL(18,2) NOT NULL DEFAULT 0,
+    NetAmount         DECIMAL(18,2) NOT NULL DEFAULT 0,
+    CONSTRAINT PK_SellerSettlementItems PRIMARY KEY (SettlementItemId),
+    CONSTRAINT UQ_SellerSettlementItems_SellerOrder UNIQUE (SellerOrderId),
+    CONSTRAINT CK_SellerSettlementItems_Amounts CHECK (
+        GrossAmount >= 0 AND RefundAmount >= 0 AND CommissionAmount >= 0 AND NetAmount >= 0)
+) ENGINE=InnoDB;
+
 -- Bật lại kiểm tra khóa ngoại.
 SET FOREIGN_KEY_CHECKS = 1;

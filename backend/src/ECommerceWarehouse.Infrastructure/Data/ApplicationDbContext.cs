@@ -23,7 +23,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Seller> Sellers => Set<Seller>();
-    public DbSet<Shop> Shops => Set<Shop>();    
+    public DbSet<Shop> Shops => Set<Shop>();
+    public DbSet<SellerSettlement> SellerSettlements => Set<SellerSettlement>();
+    public DbSet<SellerSettlementItem> SellerSettlementItems => Set<SellerSettlementItem>();
 
     // 2. Product Catalog
     public DbSet<Category> Categories => Set<Category>();

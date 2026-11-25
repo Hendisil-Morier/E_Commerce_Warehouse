@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IWishlistService, WishlistService>();
+        services.AddScoped<ISettlementService, SettlementService>();
         return services;
     }
 }
