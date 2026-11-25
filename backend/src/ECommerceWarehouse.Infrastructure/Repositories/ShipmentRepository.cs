@@ -32,8 +32,32 @@ public class ShipmentRepository : IShipmentRepository
             })
             .ToListAsync(cancellationToken);
 
+    public async Task<List<CarrierDto>> GetAllCarriersAsync(CancellationToken cancellationToken = default)
+        => await _context.Carriers
+            .AsNoTracking()
+            .OrderBy(c => c.CarrierId)
+            .Select(c => new CarrierDto
+            {
+                CarrierId = c.CarrierId,
+                CarrierCode = c.CarrierCode,
+                CarrierName = c.CarrierName,
+                IsActive = c.IsActive
+            })
+            .ToListAsync(cancellationToken);
+
     public async Task<Carrier?> GetCarrierByIdAsync(int carrierId, CancellationToken cancellationToken = default)
         => await _context.Carriers.AsNoTracking().FirstOrDefaultAsync(c => c.CarrierId == carrierId, cancellationToken);
+
+    public async Task<Carrier?> GetCarrierByIdForUpdateAsync(int carrierId, CancellationToken cancellationToken = default)
+        => await _context.Carriers.FirstOrDefaultAsync(c => c.CarrierId == carrierId, cancellationToken);
+
+    public Task<bool> CarrierCodeExistsAsync(string carrierCode, int? excludeCarrierId = null, CancellationToken cancellationToken = default)
+        => _context.Carriers.AnyAsync(
+            c => c.CarrierCode == carrierCode && (!excludeCarrierId.HasValue || c.CarrierId != excludeCarrierId.Value),
+            cancellationToken);
+
+    public async Task AddCarrierAsync(Carrier carrier, CancellationToken cancellationToken = default)
+        => await _context.Carriers.AddAsync(carrier, cancellationToken);
 
     public async Task<PagedResult<ShipmentDto>> GetPagedAsync(
         ShipmentQueryDto query,

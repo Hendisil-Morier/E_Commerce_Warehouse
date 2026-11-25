@@ -35,5 +35,15 @@ public interface ISellerProductService
         long variantId,
         UpsertVariantRequestDto request,
         CancellationToken cancellationToken = default);
+
+    Task<SellerProductDetailDto> SetProductStatusAsync(
+        long productId,
+        bool isActive,
+        CancellationToken cancellationToken = default);
+
+    Task<ProductVariantDto> SetVariantStatusAsync(
+        long variantId,
+        bool isActive,
+        CancellationToken cancellationToken = default);
 }
 

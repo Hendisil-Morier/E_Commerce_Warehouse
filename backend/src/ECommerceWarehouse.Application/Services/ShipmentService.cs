@@ -41,6 +41,89 @@ public class ShipmentService : IShipmentService
     public async Task<List<CarrierDto>> GetActiveCarriersAsync(CancellationToken cancellationToken = default)
         => await _shipmentRepository.GetActiveCarriersAsync(cancellationToken);
 
+    public async Task<List<CarrierDto>> GetAllCarriersAsync(CancellationToken cancellationToken = default)
+        => await _shipmentRepository.GetAllCarriersAsync(cancellationToken);
+
+    public async Task<CarrierDto> CreateCarrierAsync(UpsertCarrierRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var code = request.CarrierCode?.Trim().ToUpperInvariant() ?? string.Empty;
+        var name = request.CarrierName?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(name))
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "Mã và tên đơn vị vận chuyển không được để trống.", 400);
+        }
+
+        if (await _shipmentRepository.CarrierCodeExistsAsync(code, null, cancellationToken))
+        {
+            throw new BusinessException(ErrorCodes.BusinessRuleViolation, $"Mã đơn vị vận chuyển '{code}' đã tồn tại.", 409);
+        }
+
+        var carrier = new Domain.Entities.Review.Carrier
+        {
+            CarrierCode = code,
+            CarrierName = name,
+            IsActive = request.IsActive
+        };
+        await _shipmentRepository.AddCarrierAsync(carrier, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new CarrierDto
+        {
+            CarrierId = carrier.CarrierId,
+            CarrierCode = carrier.CarrierCode,
+            CarrierName = carrier.CarrierName,
+            IsActive = carrier.IsActive
+        };
+    }
+
+    public async Task<CarrierDto> UpdateCarrierAsync(int carrierId, UpsertCarrierRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var code = request.CarrierCode?.Trim().ToUpperInvariant() ?? string.Empty;
+        var name = request.CarrierName?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(name))
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "Mã và tên đơn vị vận chuyển không được để trống.", 400);
+        }
+
+        var carrier = await _shipmentRepository.GetCarrierByIdForUpdateAsync(carrierId, cancellationToken)
+            ?? throw new NotFoundException("Carrier", carrierId);
+
+        if (await _shipmentRepository.CarrierCodeExistsAsync(code, carrierId, cancellationToken))
+        {
+            throw new BusinessException(ErrorCodes.BusinessRuleViolation, $"Mã đơn vị vận chuyển '{code}' đã tồn tại.", 409);
+        }
+
+        carrier.CarrierCode = code;
+        carrier.CarrierName = name;
+        carrier.IsActive = request.IsActive;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new CarrierDto
+        {
+            CarrierId = carrier.CarrierId,
+            CarrierCode = carrier.CarrierCode,
+            CarrierName = carrier.CarrierName,
+            IsActive = carrier.IsActive
+        };
+    }
+
+    public async Task<CarrierDto> UpdateCarrierStatusAsync(int carrierId, UpdateCarrierStatusRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var carrier = await _shipmentRepository.GetCarrierByIdForUpdateAsync(carrierId, cancellationToken)
+            ?? throw new NotFoundException("Carrier", carrierId);
+
+        carrier.IsActive = request.IsActive;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new CarrierDto
+        {
+            CarrierId = carrier.CarrierId,
+            CarrierCode = carrier.CarrierCode,
+            CarrierName = carrier.CarrierName,
+            IsActive = carrier.IsActive
+        };
+    }
+
     public async Task<PagedResult<ShipmentDto>> GetShipmentsAsync(
         ShipmentQueryDto query,
         CancellationToken cancellationToken = default)

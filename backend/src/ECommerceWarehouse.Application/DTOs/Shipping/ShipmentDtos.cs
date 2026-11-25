@@ -10,6 +10,18 @@ public class CarrierDto
     public bool IsActive { get; set; }
 }
 
+public class UpsertCarrierRequestDto
+{
+    public string CarrierCode { get; set; } = null!;
+    public string CarrierName { get; set; } = null!;
+    public bool IsActive { get; set; } = true;
+}
+
+public class UpdateCarrierStatusRequestDto
+{
+    public bool IsActive { get; set; }
+}
+
 public class ShipmentQueryDto : PaginationQuery
 {
     public string? Status { get; set; }

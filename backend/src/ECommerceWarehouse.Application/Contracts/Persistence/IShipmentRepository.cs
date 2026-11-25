@@ -8,7 +8,11 @@ namespace ECommerceWarehouse.Application.Contracts.Persistence;
 public interface IShipmentRepository
 {
     Task<List<CarrierDto>> GetActiveCarriersAsync(CancellationToken cancellationToken = default);
+    Task<List<CarrierDto>> GetAllCarriersAsync(CancellationToken cancellationToken = default);
     Task<Carrier?> GetCarrierByIdAsync(int carrierId, CancellationToken cancellationToken = default);
+    Task<Carrier?> GetCarrierByIdForUpdateAsync(int carrierId, CancellationToken cancellationToken = default);
+    Task<bool> CarrierCodeExistsAsync(string carrierCode, int? excludeCarrierId = null, CancellationToken cancellationToken = default);
+    Task AddCarrierAsync(Carrier carrier, CancellationToken cancellationToken = default);
     Task<PagedResult<ShipmentDto>> GetPagedAsync(ShipmentQueryDto query, CancellationToken cancellationToken = default);
     Task<Shipment?> GetByIdWithOrderAsync(long shipmentId, CancellationToken cancellationToken = default);
     Task<ShipmentDto?> GetDtoByIdAsync(long shipmentId, CancellationToken cancellationToken = default);

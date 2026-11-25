@@ -86,6 +86,11 @@ public class ShipmentServiceTests
             Shipments.Add(shipment);
             return Task.CompletedTask;
         }
+
+        public Task<List<CarrierDto>> GetAllCarriersAsync(CancellationToken cancellationToken = default) => Task.FromResult<List<CarrierDto>>([]);
+        public Task<Carrier?> GetCarrierByIdForUpdateAsync(int carrierId, CancellationToken cancellationToken = default) => Task.FromResult<Carrier?>(null);
+        public Task<bool> CarrierCodeExistsAsync(string carrierCode, int? excludeCarrierId = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task AddCarrierAsync(Carrier carrier, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed class StubOrderRepo : IOrderRepository

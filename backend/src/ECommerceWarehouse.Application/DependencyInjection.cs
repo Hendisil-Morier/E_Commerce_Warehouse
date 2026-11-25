@@ -36,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<IStockCountService, StockCountService>();
         services.AddScoped<IStockTransferService, StockTransferService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IWishlistService, WishlistService>();
         return services;
     }
 }

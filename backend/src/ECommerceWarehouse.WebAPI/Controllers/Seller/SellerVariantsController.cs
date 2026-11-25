@@ -36,5 +36,23 @@ public class SellerVariantsController : ControllerBase
         var updated = await _sellerProductService.UpdateVariantAsync(id, request, cancellationToken);
         return Ok(updated);
     }
+
+    /// <summary>
+    /// Bật/tắt hoạt động biến thể
+    /// </summary>
+    [HttpPatch("{id:long}/status")]
+    [ProducesResponseType(typeof(ProductVariantDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ProductVariantDto>> SetStatus(
+        long id,
+        [FromBody] UpdateCatalogStatusRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _sellerProductService.SetVariantStatusAsync(id, request.IsActive, cancellationToken);
+        return Ok(updated);
+    }
 }
 

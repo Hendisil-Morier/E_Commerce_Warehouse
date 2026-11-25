@@ -125,5 +125,23 @@ public class SellerProductsController : ControllerBase
         var created = await _sellerProductService.AddVariantAsync(id, request, cancellationToken);
         return Created($"/api/v1/seller/variants/{created.VariantId}", created);
     }
+
+    /// <summary>
+    /// Bật/tắt bán sản phẩm (Active &lt;-&gt; Inactive)
+    /// </summary>
+    [HttpPatch("{id:long}/status")]
+    [ProducesResponseType(typeof(SellerProductDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<SellerProductDetailDto>> SetStatus(
+        long id,
+        [FromBody] UpdateCatalogStatusRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var updated = await _sellerProductService.SetProductStatusAsync(id, request.IsActive, cancellationToken);
+        return Ok(updated);
+    }
 }
 

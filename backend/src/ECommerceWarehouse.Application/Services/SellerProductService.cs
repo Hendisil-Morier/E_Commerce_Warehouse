@@ -362,6 +362,78 @@ public class SellerProductService : ISellerProductService
         return variant.ToDto();
     }
 
+    public async Task<SellerProductDetailDto> SetProductStatusAsync(
+        long productId,
+        bool isActive,
+        CancellationToken cancellationToken = default)
+    {
+        var seller = await _approvedSellerResolver.RequireApprovedSellerAsync(cancellationToken);
+        var product = await _productRepository.GetByIdForSellerWithDetailsAsync(
+            productId,
+            seller.SellerId,
+            asNoTracking: false,
+            cancellationToken) ?? throw new NotFoundException("Product", productId);
+
+        if (product.ProductStatus != ProductStatus.Active && product.ProductStatus != ProductStatus.Inactive)
+        {
+            throw BusinessException.InvalidStatusTransition(
+                $"Chỉ có thể bật/tắt bán sản phẩm ở trạng thái Active hoặc Inactive (hiện tại: {product.ProductStatus}).");
+        }
+
+        if (isActive)
+        {
+            var shop = await _shopRepository.GetByIdAndSellerIdAsync(product.ShopId, seller.SellerId, cancellationToken)
+                ?? throw new NotFoundException("Shop", product.ShopId);
+            CatalogProductRules.EnsureReadyForReviewOrPublish(product, shop.IsActive, seller.Status, "kích hoạt bán");
+            product.ProductStatus = ProductStatus.Active;
+        }
+        else
+        {
+            product.ProductStatus = ProductStatus.Inactive;
+        }
+
+        product.UpdatedAt = DateTime.UtcNow;
+        _productRepository.Update(product);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return product.ToSellerDetailDto();
+    }
+
+    public async Task<ProductVariantDto> SetVariantStatusAsync(
+        long variantId,
+        bool isActive,
+        CancellationToken cancellationToken = default)
+    {
+        var seller = await _approvedSellerResolver.RequireApprovedSellerAsync(cancellationToken);
+        var variant = await _productRepository.GetVariantByIdForSellerAsync(variantId, seller.SellerId, cancellationToken)
+            ?? throw new NotFoundException("ProductVariant", variantId);
+
+        if (variant.Product.ProductStatus == ProductStatus.PendingReview)
+        {
+            throw BusinessException.InvalidStatusTransition(
+                "Không thể thay đổi trạng thái biến thể khi sản phẩm đang chờ duyệt.");
+        }
+
+        if (variant.Product.ProductStatus == ProductStatus.Active &&
+            !isActive &&
+            !variant.Product.Variants.Any(v => v.VariantId != variantId && v.IsActive))
+        {
+            throw new BusinessException(
+                ErrorCodes.BusinessRuleViolation,
+                "Không thể tắt biến thể hoạt động cuối cùng của sản phẩm đang bán (Active).");
+        }
+
+        var utcNow = DateTime.UtcNow;
+        variant.IsActive = isActive;
+        variant.UpdatedAt = utcNow;
+        variant.Product.UpdatedAt = utcNow;
+
+        _productRepository.UpdateVariant(variant);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return variant.ToDto();
+    }
+
     private async Task<(string Sku, string? Barcode)> ValidateUniqueSkuAndBarcodeAsync(
         UpsertVariantRequestDto request,
         long? excludeVariantId,
