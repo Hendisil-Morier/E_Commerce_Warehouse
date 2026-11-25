@@ -65,5 +65,16 @@ export const API_ENDPOINTS = {
     ITEMS: "/api/v1/cart/items",
     ITEM_BY_ID: (itemId: number) => `/api/v1/cart/items/${itemId}`,
   },
+  USER_ADDRESSES: {
+    BASE: "/api/v1/users/me/addresses",
+    BY_ID: (addressId: number) => `/api/v1/users/me/addresses/${addressId}`,
+    SET_DEFAULT: (addressId: number) => `/api/v1/users/me/addresses/${addressId}/default`,
+  },
+  ORDERS: {
+    BASE: "/api/v1/orders",
+    BY_ID: (orderId: number) => `/api/v1/orders/${orderId}`,
+    CANCEL: (orderId: number) => `/api/v1/orders/${orderId}/cancel`,
+    PAYMENTS: (orderId: number) => `/api/v1/orders/${orderId}/payments`,
+  },
 } as const;
 

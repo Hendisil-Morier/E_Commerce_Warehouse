@@ -1,10 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CheckCircle2, Info, Mail, MapPin, ShieldCheck, Store, User } from "lucide-react";
+import { CheckCircle2, Info, Mail, MapPin, Plus, ShieldCheck, Store, Trash2, User } from "lucide-react";
 import { EmptyState } from "@/components/common/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ROUTES } from "@/constants/routes";
+import {
+  useCreateAddress,
+  useDeleteAddress,
+  useMyAddresses,
+  useSetDefaultAddress,
+} from "@/features/customer/hooks/useAddresses";
+import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/authStore";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { getUserRoles, hasRole, ROLE_LABELS, ROLES } from "@/utils/roleUtils";
 
 function getInitials(fullName: string | undefined): string {
@@ -17,11 +30,50 @@ function getInitials(fullName: string | undefined): string {
 export const CustomerAccountPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
   const user = useAuthStore((state) => state.user);
 
   const isAddressesTab = location.pathname.startsWith(ROUTES.ACCOUNT_ADDRESSES);
   const roles = getUserRoles(user);
   const isSeller = hasRole(user, ROLES.SELLER);
+
+  const { data: addresses = [], isLoading: addrLoading } = useMyAddresses();
+  const createAddress = useCreateAddress();
+  const deleteAddress = useDeleteAddress();
+  const setDefaultAddress = useSetDefaultAddress();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [recipientName, setRecipientName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [province, setProvince] = useState("");
+  const [district, setDistrict] = useState("");
+  const [ward, setWard] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+
+  const handleCreateAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createAddress.mutateAsync({
+        recipientName: recipientName.trim(),
+        phoneNumber: phoneNumber.trim(),
+        province: province.trim(),
+        district: district.trim(),
+        ward: ward.trim(),
+        streetAddress: streetAddress.trim(),
+        isDefault: addresses.length === 0,
+      });
+      setShowAddModal(false);
+      setRecipientName("");
+      setPhoneNumber("");
+      setProvince("");
+      setDistrict("");
+      setWard("");
+      setStreetAddress("");
+      toast.success("Đã thêm địa chỉ nhận hàng.");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
 
   return (
     <div>
@@ -231,17 +283,137 @@ export const CustomerAccountPage: React.FC = () => {
           </aside>
         </div>
       ) : (
-        <div className="ew-card">
-          <EmptyState
-            icon={<MapPin size={28} />}
-            title="Sổ địa chỉ nhận hàng đang chờ kết nối API"
-            description="Cấu trúc bảng UserAddresses (Người nhận, SĐT, Tỉnh/Thành, Quận/Huyện, Phường/Xã, Địa chỉ chi tiết, Mặc định) đã sẵn sàng trong CSDL. Sổ địa chỉ sẽ tự đồng bộ khi Backend bổ sung endpoint /api/v1/users/me/addresses."
-            action={
-              <Link to={ROUTES.PRODUCTS} className="ew-btn ew-btn--primary ew-btn--md">
-                Tiếp tục mua sắm
-              </Link>
-            }
-          />
+        <div className="ew-card" style={{ padding: "22px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h2 style={{ margin: 0, fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <MapPin size={18} color="var(--color-primary)" />
+              <span>Sổ địa chỉ nhận hàng ({addresses.length})</span>
+            </h2>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus size={15} />}
+              onClick={() => setShowAddModal(true)}
+            >
+              Thêm địa chỉ mới
+            </Button>
+          </div>
+
+          {addrLoading ? (
+            <Skeleton lines={4} height={24} gap={12} />
+          ) : addresses.length === 0 ? (
+            <EmptyState
+              icon={<MapPin size={28} />}
+              title="Bạn chưa lưu địa chỉ nhận hàng nào"
+              description="Thêm địa chỉ nhận hàng để đặt hàng nhanh hơn trong các lần mua sắm tiếp theo."
+              action={
+                <Button variant="primary" size="md" leftIcon={<Plus size={15} />} onClick={() => setShowAddModal(true)}>
+                  Thêm địa chỉ đầu tiên
+                </Button>
+              }
+            />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {addresses.map((addr) => (
+                <div
+                  key={addr.addressId}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "16px",
+                    padding: "14px 16px",
+                    borderRadius: "10px",
+                    border: addr.isDefault
+                      ? "1.5px solid var(--color-primary)"
+                      : "1px solid var(--color-border)",
+                    background: addr.isDefault ? "#f0fdf4" : "transparent",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: "14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span>{addr.recipientName} • {addr.phoneNumber}</span>
+                      {addr.isDefault && (
+                        <StatusBadge status="Active" labelOverride="Mặc định" size="sm" />
+                      )}
+                    </div>
+                    <div style={{ fontSize: "13px", color: "var(--color-muted)", marginTop: "4px" }}>
+                      {addr.fullAddress}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                    {!addr.isDefault && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={setDefaultAddress.isPending}
+                        onClick={() =>
+                          void setDefaultAddress
+                            .mutateAsync(addr.addressId)
+                            .then(() => toast.success("Đã đặt làm địa chỉ mặc định."))
+                            .catch((err) => toast.error(getErrorMessage(err)))
+                        }
+                      >
+                        Đặt mặc định
+                      </Button>
+                    )}
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      leftIcon={<Trash2 size={14} />}
+                      loading={deleteAddress.isPending}
+                      onClick={() =>
+                        void deleteAddress
+                          .mutateAsync(addr.addressId)
+                          .then(() => toast.success("Đã xóa địa chỉ."))
+                          .catch((err) => toast.error(getErrorMessage(err)))
+                      }
+                    >
+                      Xóa
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Modal
+            open={showAddModal}
+            title="Thêm địa chỉ nhận hàng"
+            onClose={() => setShowAddModal(false)}
+          >
+            <form
+              onSubmit={(e) => void handleCreateAddress(e)}
+              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+            >
+              <FormField label="Họ tên người nhận" required>
+                <Input required value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nguyễn Văn A" />
+              </FormField>
+              <FormField label="Số điện thoại" required>
+                <Input required value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="0987654321" />
+              </FormField>
+              <FormField label="Tỉnh / Thành phố" required>
+                <Input required value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Hà Nội" />
+              </FormField>
+              <FormField label="Quận / Huyện" required>
+                <Input required value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Cầu Giấy" />
+              </FormField>
+              <FormField label="Phường / Xã" required>
+                <Input required value={ward} onChange={(e) => setWard(e.target.value)} placeholder="Dịch Vọng" />
+              </FormField>
+              <FormField label="Địa chỉ chi tiết" required>
+                <Input required value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="Số 1 Xuân Thủy" />
+              </FormField>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "6px" }}>
+                <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
+                  Hủy
+                </Button>
+                <Button type="submit" variant="primary" loading={createAddress.isPending}>
+                  Lưu địa chỉ
+                </Button>
+              </div>
+            </form>
+          </Modal>
         </div>
       )}
     </div>

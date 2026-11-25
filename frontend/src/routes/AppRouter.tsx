@@ -35,6 +35,11 @@ const ShopDetailPage = lazy(() =>
 const CartPage = lazy(() =>
   import("@/features/cart/pages/CartPage").then((m) => ({ default: m.CartPage }))
 );
+const CheckoutPage = lazy(() =>
+  import("@/features/customer/pages/CheckoutPage").then((m) => ({
+    default: m.CheckoutPage,
+  }))
+);
 const CustomerPortalLayout = lazy(() =>
   import("@/features/customer/layouts/CustomerPortalLayout").then((m) => ({
     default: m.CustomerPortalLayout,
@@ -43,6 +48,11 @@ const CustomerPortalLayout = lazy(() =>
 const CustomerOrdersPage = lazy(() =>
   import("@/features/customer/pages/CustomerOrdersPage").then((m) => ({
     default: m.CustomerOrdersPage,
+  }))
+);
+const CustomerOrderDetailPage = lazy(() =>
+  import("@/features/customer/pages/CustomerOrderDetailPage").then((m) => ({
+    default: m.CustomerOrderDetailPage,
   }))
 );
 const CustomerAccountPage = lazy(() =>
@@ -129,6 +139,10 @@ const router = createBrowserRouter([
             path: ROUTES.CART,
             element: withSuspense(<CartPage />),
           },
+          {
+            path: ROUTES.CHECKOUT,
+            element: withSuspense(<CheckoutPage />),
+          },
         ],
       },
       {
@@ -140,6 +154,10 @@ const router = createBrowserRouter([
               {
                 path: ROUTES.ORDERS,
                 element: withSuspense(<CustomerOrdersPage />),
+              },
+              {
+                path: ROUTES.ORDER_DETAIL,
+                element: withSuspense(<CustomerOrderDetailPage />),
               },
               {
                 path: ROUTES.ACCOUNT,

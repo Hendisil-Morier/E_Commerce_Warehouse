@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ChevronRight,
@@ -47,6 +47,7 @@ function getAvailabilityBadgeProps(status: CartAvailabilityStatus): {
 }
 
 export const CartPage: React.FC = () => {
+  const navigate = useNavigate();
   const toast = useToast();
   const { data: cart, isLoading, isError, error, refetch } = useMyCart();
   const updateItemMutation = useUpdateCartItem();
@@ -205,9 +206,8 @@ export const CartPage: React.FC = () => {
                       return (
                         <div
                           key={item.cartItemId}
-                          className={`ks-cart-item-row ${
-                            !item.isAvailable ? "ks-cart-item-row--warn" : ""
-                          }`}
+                          className={`ks-cart-item-row ${!item.isAvailable ? "ks-cart-item-row--warn" : ""
+                            }`}
                         >
                           {thumb ? (
                             <img
@@ -316,7 +316,7 @@ export const CartPage: React.FC = () => {
                                 onClick={() => {
                                   const nextQty =
                                     item.quantity > item.availableQuantity &&
-                                    item.availableQuantity > 0
+                                      item.availableQuantity > 0
                                       ? item.availableQuantity
                                       : item.quantity - 1;
                                   void handleUpdateQty(item, nextQty);
@@ -416,8 +416,7 @@ export const CartPage: React.FC = () => {
                   <Info size={16} style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
                   <span>
                     Giỏ hàng chỉ kiểm tra tồn khả dụng tham khảo và <strong>chưa giữ chỗ</strong>.
-                    Bước đặt hàng (Checkout) sẽ tách đơn theo từng shop và giữ chỗ tồn kho khi API{" "}
-                    <code>POST /api/v1/orders</code> hoàn thiện ở giai đoạn kế tiếp.
+                    Bước đặt hàng (Checkout) sẽ tách đơn theo từng shop và giữ chỗ tồn kho ngay lập tức.
                   </span>
                 </div>
 
@@ -426,11 +425,7 @@ export const CartPage: React.FC = () => {
                   size="lg"
                   fullWidth
                   disabled={cart.hasWarnings || cart.subtotal <= 0}
-                  onClick={() =>
-                    toast.info(
-                      "Luồng Đặt hàng & Giữ chỗ tồn kho (POST /api/v1/orders) sẽ được mở ở Bước 6."
-                    )
-                  }
+                  onClick={() => navigate(ROUTES.CHECKOUT)}
                 >
                   Tiến hành đặt hàng
                 </Button>
