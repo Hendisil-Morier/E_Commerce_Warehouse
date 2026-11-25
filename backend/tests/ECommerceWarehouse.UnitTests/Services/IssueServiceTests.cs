@@ -48,6 +48,7 @@ public class IssueServiceTests
             return Task.CompletedTask;
         }
         public Task TransferAdjustmentAsync(long warehouseId, long sourceLocationId, long destinationLocationId, long variantId, int quantity, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task PutawayAsync(PutawayRequestDto request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<PagedResult<InventoryItemDto>> GetInventoryAsync(InventoryQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<VariantAvailabilityDto> GetVariantAvailabilityAsync(long variantId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<PagedResult<StockMovementDto>> GetStockMovementsAsync(StockMovementQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
@@ -221,5 +222,19 @@ public class IssueServiceTests
         Assert.Equal(ReservationStatuses.Consumed, issue.Details.Single().Reservation!.Status);
         Assert.Equal(SellerOrderStatuses.Shipped, issue.SellerOrder!.Status);
         Assert.Equal(OrderStatuses.Shipped, issue.SellerOrder.Order.OrderStatus);
+    }
+
+    [Fact]
+    public async Task CancelAsync_PickingIssue_CancelsIssueReleasesReservationAndRevertsSellerOrder()
+    {
+        var (service, repo, _, _) = CreateSut();
+        var issue = BuildIssue(IssueStatuses.Picking, qty: 2, picked: 0);
+        repo.Issues.Add(issue);
+
+        var result = await service.CancelAsync(1, new CancelIssueRequestDto { Reason = "Hàng trên kệ bị hỏng" });
+
+        Assert.Equal(IssueStatuses.Cancelled, result.Status);
+        Assert.Equal(ReservationStatuses.Released, issue.Details.Single().Reservation!.Status);
+        Assert.Equal(SellerOrderStatuses.Pending, issue.SellerOrder!.Status);
     }
 }

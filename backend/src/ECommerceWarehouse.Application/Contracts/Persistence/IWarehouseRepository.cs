@@ -12,6 +12,8 @@ public interface IWarehouseRepository
     Task AddWarehouseAsync(Warehouse warehouse, CancellationToken cancellationToken = default);
     Task<List<WarehouseLocationDto>> GetLocationsAsync(long warehouseId, CancellationToken cancellationToken = default);
     Task<WarehouseLocation?> GetLocationByIdAsync(long locationId, CancellationToken cancellationToken = default);
+    Task<WarehouseLocation?> GetLocationForUpdateAsync(long locationId, CancellationToken cancellationToken = default);
+    Task<bool> LocationHasStockAsync(long locationId, CancellationToken cancellationToken = default);
     Task<bool> LocationCodeExistsAsync(long warehouseId, string locationCode, CancellationToken cancellationToken = default);
     Task AddLocationAsync(WarehouseLocation location, CancellationToken cancellationToken = default);
 }

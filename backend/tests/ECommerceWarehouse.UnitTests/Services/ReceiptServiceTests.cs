@@ -93,6 +93,10 @@ public class ReceiptServiceTests
             => throw new NotImplementedException();
         public Task<WarehouseLocation?> GetLocationByIdAsync(long locationId, CancellationToken cancellationToken = default)
             => Task.FromResult(Locations.FirstOrDefault(l => l.LocationId == locationId));
+        public Task<WarehouseLocation?> GetLocationForUpdateAsync(long locationId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Locations.FirstOrDefault(l => l.LocationId == locationId));
+        public Task<bool> LocationHasStockAsync(long locationId, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
         public Task<bool> LocationCodeExistsAsync(long warehouseId, string locationCode, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
         public Task AddLocationAsync(WarehouseLocation location, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -115,6 +119,7 @@ public class ReceiptServiceTests
         public Task ReleaseReservationAsync(long locationId, long variantId, int quantity, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task DispatchReservedStockAsync(long locationId, long variantId, int quantity, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task TransferAdjustmentAsync(long warehouseId, long sourceLocationId, long destinationLocationId, long variantId, int quantity, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task PutawayAsync(PutawayRequestDto request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<PagedResult<InventoryItemDto>> GetInventoryAsync(InventoryQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<VariantAvailabilityDto> GetVariantAvailabilityAsync(long variantId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<PagedResult<StockMovementDto>> GetStockMovementsAsync(StockMovementQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();

@@ -321,6 +321,102 @@ public class IssueService : IIssueService
             ?? throw new NotFoundException("InventoryIssue", issue.IssueId);
     }
 
+    public async Task<IssueDto> CancelAsync(
+        long issueId,
+        CancelIssueRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = RequireCurrentUserId();
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(reason))
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "Lý do hủy phiếu xuất không được để trống.", 400);
+        }
+
+        var issue = await _issueRepository.GetByIdWithDetailsAsync(issueId, cancellationToken)
+            ?? throw new NotFoundException("InventoryIssue", issueId);
+
+        if (issue.Status is IssueStatuses.Dispatched or IssueStatuses.Cancelled)
+        {
+            throw new BusinessException(
+                ErrorCodes.InvalidStatusTransition,
+                $"Không thể hủy phiếu xuất ở trạng thái '{issue.Status}'.",
+                409);
+        }
+
+        var now = DateTime.UtcNow;
+
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            foreach (var detail in issue.Details)
+            {
+                if (detail.Reservation != null && detail.Reservation.Status == ReservationStatuses.Active)
+                {
+                    await _inventoryLedgerService.ReleaseReservationAsync(
+                        detail.LocationId,
+                        detail.VariantId,
+                        detail.Reservation.Quantity,
+                        detail.Reservation.OrderItemId,
+                        userId,
+                        $"Hủy phiếu xuất {issue.IssueCode}: {reason}",
+                        ct);
+
+                    detail.Reservation.Status = ReservationStatuses.Released;
+                    detail.Reservation.ResolvedAt = now;
+                }
+            }
+
+            issue.Status = IssueStatuses.Cancelled;
+            issue.Note = string.IsNullOrWhiteSpace(issue.Note)
+                ? $"Hủy: {reason}"
+                : $"{issue.Note} | Hủy: {reason}";
+
+            if (issue.SellerOrder != null &&
+                issue.SellerOrder.Status != SellerOrderStatuses.Cancelled &&
+                issue.SellerOrder.Status != SellerOrderStatuses.Shipped &&
+                issue.SellerOrder.Status != SellerOrderStatuses.Delivered)
+            {
+                var prevSoStatus = issue.SellerOrder.Status;
+                issue.SellerOrder.Status = SellerOrderStatuses.Pending;
+                issue.SellerOrder.UpdatedAt = now;
+
+                await _orderRepository.AddStatusHistoryAsync(new OrderStatusHistory
+                {
+                    OrderId = issue.SellerOrder.OrderId,
+                    SellerOrderId = issue.SellerOrder.SellerOrderId,
+                    FromStatus = prevSoStatus,
+                    ToStatus = SellerOrderStatuses.Pending,
+                    Reason = $"Phiếu xuất {issue.IssueCode} bị hủy: {reason}",
+                    ChangedBy = userId,
+                    CreatedAt = now
+                }, ct);
+
+                var nextOrderStatus = OrderStatusCalculator.ComputeAggregateOrderStatus(issue.SellerOrder.Order);
+                if (nextOrderStatus != issue.SellerOrder.Order.OrderStatus)
+                {
+                    var prevOrderStatus = issue.SellerOrder.Order.OrderStatus;
+                    issue.SellerOrder.Order.OrderStatus = nextOrderStatus;
+                    issue.SellerOrder.Order.UpdatedAt = now;
+
+                    await _orderRepository.AddStatusHistoryAsync(new OrderStatusHistory
+                    {
+                        OrderId = issue.SellerOrder.OrderId,
+                        FromStatus = prevOrderStatus,
+                        ToStatus = nextOrderStatus,
+                        Reason = $"Đồng bộ từ hủy phiếu xuất {issue.IssueCode}",
+                        ChangedBy = userId,
+                        CreatedAt = now
+                    }, ct);
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+        }, cancellationToken);
+
+        return await _issueRepository.GetDtoByIdAsync(issue.IssueId, cancellationToken)
+            ?? throw new NotFoundException("InventoryIssue", issue.IssueId);
+    }
+
     private long RequireCurrentUserId()
     {
         return _currentUser.UserId ?? throw BusinessException.Unauthorized();

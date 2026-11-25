@@ -357,6 +357,37 @@ public class InventoryLedgerService : IInventoryLedgerService
             cancellationToken);
     }
 
+    public async Task PutawayAsync(
+        PutawayRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Quantity <= 0 || request.SourceLocationId == request.DestinationLocationId)
+        {
+            throw new BusinessException(
+                ErrorCodes.ValidationError,
+                "Số lượng phải lớn hơn 0 và vị trí đích phải khác vị trí nguồn.",
+                400);
+        }
+
+        var userId = _currentUser.UserId ?? throw BusinessException.Unauthorized();
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            await TransferAdjustmentAsync(
+                request.WarehouseId,
+                request.SourceLocationId,
+                request.DestinationLocationId,
+                request.VariantId,
+                request.Quantity,
+                StockReferenceTypes.Manual,
+                0,
+                userId,
+                string.IsNullOrWhiteSpace(request.Note) ? "Putaway chuyển kệ nội bộ" : request.Note.Trim(),
+                ct);
+
+            await _unitOfWork.SaveChangesAsync(ct);
+        }, cancellationToken);
+    }
+
     public async Task<PagedResult<InventoryItemDto>> GetInventoryAsync(
         InventoryQueryDto query,
         CancellationToken cancellationToken = default)

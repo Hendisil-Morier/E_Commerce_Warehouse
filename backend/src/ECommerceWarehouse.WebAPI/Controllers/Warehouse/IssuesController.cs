@@ -144,4 +144,22 @@ public class IssuesController : ControllerBase
         var result = await _issueService.DispatchAsync(id, cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Hủy phiếu xuất kho (Draft/Approved/Picking/Packed -> Cancelled): giải phóng giữ chỗ tồn kho nếu có
+    /// </summary>
+    [HttpPost("{id:long}/cancel")]
+    [Authorize(Policy = RoleNames.WarehouseManager)]
+    [ProducesResponseType(typeof(IssueDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<IssueDto>> Cancel(
+        long id,
+        [FromBody] CancelIssueRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _issueService.CancelAsync(id, request, cancellationToken);
+        return Ok(result);
+    }
 }

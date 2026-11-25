@@ -63,4 +63,21 @@ public class InventoryController : ControllerBase
         var result = await _inventoryLedgerService.GetReconciliationDiscrepanciesAsync(cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Chuyển hàng 1 bước giữa 2 vị trí kệ trong cùng kho (ví dụ từ khu Inbound/Returns lên kệ bán)
+    /// </summary>
+    [HttpPost("putaway")]
+    [Authorize(Roles = $"{RoleNames.WarehouseStaff},{RoleNames.WarehouseManager}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Putaway(
+        [FromBody] PutawayRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        await _inventoryLedgerService.PutawayAsync(request, cancellationToken);
+        return NoContent();
+    }
 }

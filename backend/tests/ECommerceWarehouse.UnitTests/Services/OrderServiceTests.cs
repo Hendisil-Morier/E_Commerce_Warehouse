@@ -68,6 +68,8 @@ public class OrderServiceTests
             => Task.CompletedTask;
         public Task TransferAdjustmentAsync(long warehouseId, long sourceLocationId, long destinationLocationId, long variantId, int quantity, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
+        public Task PutawayAsync(PutawayRequestDto request, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
 
         public Task<PagedResult<InventoryItemDto>> GetInventoryAsync(InventoryQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<VariantAvailabilityDto> GetVariantAvailabilityAsync(long variantId, CancellationToken cancellationToken = default) => throw new NotImplementedException();

@@ -70,6 +70,10 @@ public interface IInventoryLedgerService
         string? note = null,
         CancellationToken cancellationToken = default);
 
+    Task PutawayAsync(
+        PutawayRequestDto request,
+        CancellationToken cancellationToken = default);
+
     Task<PagedResult<InventoryItemDto>> GetInventoryAsync(
         InventoryQueryDto query,
         CancellationToken cancellationToken = default);

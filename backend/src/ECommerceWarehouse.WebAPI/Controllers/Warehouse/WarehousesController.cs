@@ -89,4 +89,45 @@ public class WarehousesController : ControllerBase
         var created = await _warehouseService.CreateLocationAsync(id, request, cancellationToken);
         return Created($"/api/v1/warehouses/{id}/locations/{created.LocationId}", created);
     }
+
+    /// <summary>
+    /// Cập nhật thông tin kho (chỉ Quản lý kho)
+    /// </summary>
+    [HttpPut("{id:long}")]
+    [Authorize(Policy = RoleNames.WarehouseManager)]
+    [ProducesResponseType(typeof(WarehouseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<WarehouseDto>> UpdateWarehouse(
+        long id,
+        [FromBody] UpdateWarehouseRequestDto request,
+        CancellationToken cancellationToken)
+        => Ok(await _warehouseService.UpdateWarehouseAsync(id, request, cancellationToken));
+
+    /// <summary>
+    /// Bật/tắt hoạt động kho (chỉ Quản lý kho)
+    /// </summary>
+    [HttpPatch("{id:long}/status")]
+    [Authorize(Policy = RoleNames.WarehouseManager)]
+    [ProducesResponseType(typeof(WarehouseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<WarehouseDto>> SetWarehouseStatus(
+        long id,
+        [FromBody] UpdateWarehouseActiveStatusDto request,
+        CancellationToken cancellationToken)
+        => Ok(await _warehouseService.SetWarehouseStatusAsync(id, request.IsActive, cancellationToken));
+
+    /// <summary>
+    /// Bật/tắt hoạt động vị trí kệ (chỉ Quản lý kho; chặn tắt nếu còn tồn kho/giữ chỗ)
+    /// </summary>
+    [HttpPatch("locations/{locationId:long}/status")]
+    [Authorize(Policy = RoleNames.WarehouseManager)]
+    [ProducesResponseType(typeof(WarehouseLocationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<WarehouseLocationDto>> SetLocationStatus(
+        long locationId,
+        [FromBody] UpdateWarehouseActiveStatusDto request,
+        CancellationToken cancellationToken)
+        => Ok(await _warehouseService.SetLocationStatusAsync(locationId, request.IsActive, cancellationToken));
 }

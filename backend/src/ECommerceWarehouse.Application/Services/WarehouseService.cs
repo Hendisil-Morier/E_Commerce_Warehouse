@@ -140,4 +140,97 @@ public class WarehouseService : IWarehouseService
             IsActive = location.IsActive
         };
     }
+
+    public async Task<WarehouseDto> UpdateWarehouseAsync(
+        long warehouseId,
+        UpdateWarehouseRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken)
+            ?? throw new NotFoundException("Warehouse", warehouseId);
+
+        var name = request.WarehouseName?.Trim() ?? string.Empty;
+        var address = request.Address?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(address))
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "Tên và địa chỉ kho không được để trống.", 400);
+        }
+
+        warehouse.WarehouseName = name;
+        warehouse.Address = address;
+        warehouse.UpdatedAt = DateTime.UtcNow;
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new WarehouseDto
+        {
+            WarehouseId = warehouse.WarehouseId,
+            WarehouseName = warehouse.WarehouseName,
+            WarehouseType = warehouse.WarehouseType,
+            OwnerSellerId = warehouse.OwnerSellerId,
+            OwnerSellerName = warehouse.OwnerSeller?.BusinessName,
+            Address = warehouse.Address,
+            IsActive = warehouse.IsActive,
+            LocationCount = warehouse.Locations.Count,
+            CreatedAt = warehouse.CreatedAt,
+            UpdatedAt = warehouse.UpdatedAt
+        };
+    }
+
+    public async Task<WarehouseDto> SetWarehouseStatusAsync(
+        long warehouseId,
+        bool isActive,
+        CancellationToken cancellationToken = default)
+    {
+        var warehouse = await _warehouseRepository.GetByIdAsync(warehouseId, cancellationToken)
+            ?? throw new NotFoundException("Warehouse", warehouseId);
+
+        warehouse.IsActive = isActive;
+        warehouse.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new WarehouseDto
+        {
+            WarehouseId = warehouse.WarehouseId,
+            WarehouseName = warehouse.WarehouseName,
+            WarehouseType = warehouse.WarehouseType,
+            OwnerSellerId = warehouse.OwnerSellerId,
+            OwnerSellerName = warehouse.OwnerSeller?.BusinessName,
+            Address = warehouse.Address,
+            IsActive = warehouse.IsActive,
+            LocationCount = warehouse.Locations.Count,
+            CreatedAt = warehouse.CreatedAt,
+            UpdatedAt = warehouse.UpdatedAt
+        };
+    }
+
+    public async Task<WarehouseLocationDto> SetLocationStatusAsync(
+        long locationId,
+        bool isActive,
+        CancellationToken cancellationToken = default)
+    {
+        var location = await _warehouseRepository.GetLocationForUpdateAsync(locationId, cancellationToken)
+            ?? throw new NotFoundException("WarehouseLocation", locationId);
+
+        if (!isActive && await _warehouseRepository.LocationHasStockAsync(locationId, cancellationToken))
+        {
+            throw new BusinessException(
+                ErrorCodes.BusinessRuleViolation,
+                "Không thể tắt vị trí kệ khi vẫn còn hàng tồn kho hoặc đang giữ chỗ.",
+                409);
+        }
+
+        location.IsActive = isActive;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new WarehouseLocationDto
+        {
+            LocationId = location.LocationId,
+            WarehouseId = location.WarehouseId,
+            LocationCode = location.LocationCode,
+            StorageType = location.StorageType,
+            IsSellable = location.IsSellable,
+            IsActive = location.IsActive
+        };
+    }
 }

@@ -53,6 +53,7 @@ public class ReturnServiceTests
             TransferCalls.Add((sourceLocationId, destinationLocationId, variantId, quantity));
             return Task.CompletedTask;
         }
+        public Task PutawayAsync(PutawayRequestDto request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<PagedResult<InventoryItemDto>> GetInventoryAsync(InventoryQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<VariantAvailabilityDto> GetVariantAvailabilityAsync(long variantId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<PagedResult<StockMovementDto>> GetStockMovementsAsync(StockMovementQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();

@@ -12,4 +12,5 @@ public interface IIssueService
     Task<IssueDto> ScanLineAsync(long issueId, long lineId, ScanIssueLineRequestDto request, CancellationToken cancellationToken = default);
     Task<IssueDto> PackAsync(long issueId, CancellationToken cancellationToken = default);
     Task<IssueDto> DispatchAsync(long issueId, CancellationToken cancellationToken = default);
+    Task<IssueDto> CancelAsync(long issueId, CancelIssueRequestDto request, CancellationToken cancellationToken = default);
 }

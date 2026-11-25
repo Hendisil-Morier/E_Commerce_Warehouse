@@ -99,6 +99,15 @@ public class WarehouseRepository : IWarehouseRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.LocationId == locationId, cancellationToken);
 
+    public async Task<WarehouseLocation?> GetLocationForUpdateAsync(long locationId, CancellationToken cancellationToken = default)
+        => await _context.WarehouseLocations
+            .FirstOrDefaultAsync(l => l.LocationId == locationId, cancellationToken);
+
+    public Task<bool> LocationHasStockAsync(long locationId, CancellationToken cancellationToken = default)
+        => _context.Inventories.AnyAsync(
+            i => i.LocationId == locationId && (i.QuantityOnHand > 0 || i.QuantityReserved > 0),
+            cancellationToken);
+
     public async Task<bool> LocationCodeExistsAsync(
         long warehouseId,
         string locationCode,
