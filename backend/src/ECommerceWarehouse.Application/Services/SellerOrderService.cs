@@ -13,6 +13,7 @@ namespace ECommerceWarehouse.Application.Services;
 public class SellerOrderService : ISellerOrderService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IRefundRepository _refundRepository;
     private readonly IInventoryIssueRepository _issueRepository;
     private readonly IInventoryLedgerService _inventoryLedgerService;
     private readonly IUnitOfWork _unitOfWork;
@@ -22,6 +23,7 @@ public class SellerOrderService : ISellerOrderService
 
     public SellerOrderService(
         IOrderRepository orderRepository,
+        IRefundRepository refundRepository,
         IInventoryIssueRepository issueRepository,
         IInventoryLedgerService inventoryLedgerService,
         IUnitOfWork unitOfWork,
@@ -30,6 +32,7 @@ public class SellerOrderService : ISellerOrderService
         IValidator<CancelSellerOrderRequestDto> cancelValidator)
     {
         _orderRepository = orderRepository;
+        _refundRepository = refundRepository;
         _issueRepository = issueRepository;
         _inventoryLedgerService = inventoryLedgerService;
         _unitOfWork = unitOfWork;
@@ -224,6 +227,27 @@ public class SellerOrderService : ISellerOrderService
                 ChangedBy = userId,
                 CreatedAt = now
             }, ct);
+
+            var paidPayment = sellerOrder.Order.Payments.FirstOrDefault(p => p.PaymentStatus == PaymentStatuses.Paid);
+            if (paidPayment != null)
+            {
+                var lockedPayment = await _refundRepository.GetPaymentForUpdateAsync(paidPayment.PaymentId, ct)
+                    ?? paidPayment;
+                var existingRefunds = await _refundRepository.GetTotalNonRejectedRefundsForPaymentAsync(lockedPayment.PaymentId, ct);
+                var refundAmount = Math.Min(sellerOrder.Subtotal, lockedPayment.Amount - existingRefunds);
+                if (refundAmount > 0)
+                {
+                    await _refundRepository.AddAsync(new Refund
+                    {
+                        PaymentId = lockedPayment.PaymentId,
+                        SellerOrderId = sellerOrder.SellerOrderId,
+                        Amount = refundAmount,
+                        Reason = $"Hoàn tiền do Seller hủy đơn con #{sellerOrder.SellerOrderId}: {reason}",
+                        RefundStatus = RefundStatuses.Pending,
+                        CreatedAt = now
+                    }, ct);
+                }
+            }
 
             var nextOrderStatus = OrderStatusCalculator.ComputeAggregateOrderStatus(sellerOrder.Order);
             if (nextOrderStatus != sellerOrder.Order.OrderStatus)

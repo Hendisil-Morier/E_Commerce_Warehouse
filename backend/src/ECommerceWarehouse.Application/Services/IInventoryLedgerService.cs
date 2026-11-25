@@ -20,6 +20,18 @@ public interface IInventoryLedgerService
         string? note = null,
         CancellationToken cancellationToken = default);
 
+    Task AdjustOnHandAsync(
+        long warehouseId,
+        long locationId,
+        long variantId,
+        int deltaQuantity,
+        string movementType,
+        string referenceType,
+        long referenceId,
+        long? createdBy,
+        string? note = null,
+        CancellationToken cancellationToken = default);
+
     Task ReserveStockAtomicAsync(
         long inventoryId,
         int quantity,

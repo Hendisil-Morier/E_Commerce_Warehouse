@@ -88,6 +88,72 @@ public class InventoryLedgerService : IInventoryLedgerService
         await _inventoryRepository.AddStockMovementAsync(movement, cancellationToken);
     }
 
+    public async Task AdjustOnHandAsync(
+        long warehouseId,
+        long locationId,
+        long variantId,
+        int deltaQuantity,
+        string movementType,
+        string referenceType,
+        long referenceId,
+        long? createdBy,
+        string? note = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (deltaQuantity == 0)
+        {
+            return;
+        }
+
+        if (deltaQuantity > 0)
+        {
+            await IncreaseOnHandAsync(
+                warehouseId,
+                locationId,
+                variantId,
+                deltaQuantity,
+                movementType,
+                referenceType,
+                referenceId,
+                createdBy,
+                note,
+                cancellationToken);
+            return;
+        }
+
+        var decreaseQty = -deltaQuantity;
+        var inventory = await _inventoryRepository.GetByLocationAndVariantAsync(locationId, variantId, cancellationToken)
+            ?? throw new NotFoundException("Inventory", $"{locationId}-{variantId}");
+
+        if (inventory.QuantityOnHand - inventory.QuantityReserved < decreaseQty)
+        {
+            throw new BusinessException(
+                ErrorCodes.InsufficientStock,
+                $"Số lượng khả dụng tại vị trí #{locationId} không đủ để giảm {decreaseQty} đơn vị.",
+                409);
+        }
+
+        inventory.QuantityOnHand -= decreaseQty;
+        inventory.UpdatedAt = DateTime.UtcNow;
+
+        await _inventoryRepository.AddStockMovementAsync(new StockMovement
+        {
+            WarehouseId = warehouseId,
+            LocationId = locationId,
+            VariantId = variantId,
+            MovementType = movementType,
+            OnHandChange = deltaQuantity,
+            ReservedChange = 0,
+            OnHandAfter = inventory.QuantityOnHand,
+            ReservedAfter = inventory.QuantityReserved,
+            ReferenceType = referenceType,
+            ReferenceId = referenceId,
+            CreatedBy = createdBy,
+            CreatedAt = DateTime.UtcNow,
+            Note = note
+        }, cancellationToken);
+    }
+
     public async Task ReserveStockAtomicAsync(
         long inventoryId,
         int quantity,

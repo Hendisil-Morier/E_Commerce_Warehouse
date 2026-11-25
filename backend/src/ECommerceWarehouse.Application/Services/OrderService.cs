@@ -14,6 +14,7 @@ namespace ECommerceWarehouse.Application.Services;
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IRefundRepository _refundRepository;
     private readonly IInventoryLedgerService _inventoryLedgerService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
@@ -24,6 +25,7 @@ public class OrderService : IOrderService
 
     public OrderService(
         IOrderRepository orderRepository,
+        IRefundRepository refundRepository,
         IInventoryLedgerService inventoryLedgerService,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
@@ -33,6 +35,7 @@ public class OrderService : IOrderService
         IValidator<CreatePaymentRequestDto> paymentValidator)
     {
         _orderRepository = orderRepository;
+        _refundRepository = refundRepository;
         _inventoryLedgerService = inventoryLedgerService;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
@@ -398,7 +401,11 @@ public class OrderService : IOrderService
                 reservation.ResolvedAt = now;
             }
 
-            foreach (var so in order.SellerOrders.Where(s => s.Status != SellerOrderStatuses.Cancelled))
+            var newlyCancelledSellerOrders = order.SellerOrders
+                .Where(s => s.Status != SellerOrderStatuses.Cancelled)
+                .ToList();
+
+            foreach (var so in newlyCancelledSellerOrders)
             {
                 var prevSoStatus = so.Status;
                 so.Status = SellerOrderStatuses.Cancelled;
@@ -416,6 +423,33 @@ public class OrderService : IOrderService
                     ChangedBy = customerId,
                     CreatedAt = now
                 }, ct);
+            }
+
+            var paidPayment = order.Payments.FirstOrDefault(p => p.PaymentStatus == PaymentStatuses.Paid);
+            if (paidPayment != null)
+            {
+                var lockedPayment = await _refundRepository.GetPaymentForUpdateAsync(paidPayment.PaymentId, ct)
+                    ?? paidPayment;
+                var existingRefunds = await _refundRepository.GetTotalNonRejectedRefundsForPaymentAsync(lockedPayment.PaymentId, ct);
+                var remainingRefundable = lockedPayment.Amount - existingRefunds;
+
+                foreach (var so in newlyCancelledSellerOrders)
+                {
+                    var refundAmount = Math.Min(so.Subtotal, remainingRefundable);
+                    if (refundAmount <= 0) continue;
+
+                    await _refundRepository.AddAsync(new Refund
+                    {
+                        PaymentId = lockedPayment.PaymentId,
+                        SellerOrderId = so.SellerOrderId,
+                        Amount = refundAmount,
+                        Reason = $"Hoàn tiền do khách hủy đơn {order.OrderCode}: {reason}",
+                        RefundStatus = RefundStatuses.Pending,
+                        CreatedAt = now
+                    }, ct);
+
+                    remainingRefundable -= refundAmount;
+                }
             }
 
             var prevOrderStatus = order.OrderStatus;

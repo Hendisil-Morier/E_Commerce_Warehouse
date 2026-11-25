@@ -38,6 +38,7 @@ public class SellerOrderServiceTests
     {
         public List<(long LocationId, long VariantId, int Qty)> ReleasedCalls { get; } = [];
         public Task IncreaseOnHandAsync(long warehouseId, long locationId, long variantId, int quantity, string movementType, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task AdjustOnHandAsync(long warehouseId, long locationId, long variantId, int deltaQuantity, string movementType, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ReserveStockAtomicAsync(long inventoryId, int quantity, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ReleaseReservationAsync(long locationId, long variantId, int quantity, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default)
         {
@@ -130,15 +131,38 @@ public class SellerOrderServiceTests
         }
     }
 
+    private sealed class InMemoryRefundRepo : IRefundRepository
+    {
+        public List<Refund> Refunds { get; } = [];
+        public Task<PagedResult<RefundDto>> GetPagedAsync(RefundQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Refund?> GetByIdWithDetailsAsync(long refundId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<RefundDto?> GetDtoByIdAsync(long refundId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Payment?> GetPaymentForUpdateAsync(long paymentId, CancellationToken cancellationToken = default) => Task.FromResult<Payment?>(null);
+        public Task<decimal> GetTotalNonRejectedRefundsForPaymentAsync(long paymentId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Refunds.Where(r => r.PaymentId == paymentId && r.RefundStatus != RefundStatuses.Rejected).Sum(r => r.Amount));
+        public Task<bool> ExistsForReturnRequestAsync(long returnRequestId, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task AddAsync(Refund refund, CancellationToken cancellationToken = default)
+        {
+            refund.RefundId = Refunds.Count + 1;
+            Refunds.Add(refund);
+            return Task.CompletedTask;
+        }
+    }
+
     private static (SellerOrderService Service, StubOrderRepo Repo, SpyInventoryLedger Ledger, StubCurrentUser CurrentUser, StubIssueRepo IssueRepo) CreateSut()
+        => CreateSutWithRefunds() is var t ? (t.Service, t.Repo, t.Ledger, t.CurrentUser, t.IssueRepo) : default;
+
+    private static (SellerOrderService Service, StubOrderRepo Repo, SpyInventoryLedger Ledger, StubCurrentUser CurrentUser, StubIssueRepo IssueRepo, InMemoryRefundRepo RefundRepo) CreateSutWithRefunds()
     {
         var repo = new StubOrderRepo();
+        var refundRepo = new InMemoryRefundRepo();
         var issueRepo = new StubIssueRepo();
         var ledger = new SpyInventoryLedger();
         var currentUser = new StubCurrentUser { SellerId = 10 };
 
         var service = new SellerOrderService(
             repo,
+            refundRepo,
             issueRepo,
             ledger,
             new StubUnitOfWork(),
@@ -146,7 +170,7 @@ public class SellerOrderServiceTests
             new SellerOrderQueryValidator(),
             new CancelSellerOrderRequestValidator());
 
-        return (service, repo, ledger, currentUser, issueRepo);
+        return (service, repo, ledger, currentUser, issueRepo, refundRepo);
     }
 
     [Fact]
@@ -228,5 +252,36 @@ public class SellerOrderServiceTests
         Assert.Equal(OrderStatuses.Cancelled, order.OrderStatus);
         Assert.Equal(ReservationStatuses.Released, repo.Reservations[0].Status);
         Assert.Single(ledger.ReleasedCalls);
+    }
+
+    [Fact]
+    public async Task CancelSellerOrderAsync_CreatesPendingRefund_WhenPaidPaymentExists()
+    {
+        var (service, repo, _, _, _, refundRepo) = CreateSutWithRefunds();
+        var order = new Order
+        {
+            OrderId = 2,
+            OrderCode = "ORD-PAID-2",
+            OrderStatus = OrderStatuses.Confirmed,
+            Payments = [new Payment { PaymentId = 88, OrderId = 2, Amount = 500_000m, PaymentStatus = PaymentStatuses.Paid }]
+        };
+        var so = new SellerOrder
+        {
+            SellerOrderId = 2,
+            OrderId = 2,
+            SellerId = 10,
+            Subtotal = 300_000m,
+            Status = SellerOrderStatuses.Pending,
+            Order = order
+        };
+        order.SellerOrders.Add(so);
+        repo.SellerOrders.Add(so);
+
+        await service.CancelSellerOrderAsync(2, new CancelSellerOrderRequestDto { Reason = "Hết hàng" });
+
+        Assert.Single(refundRepo.Refunds);
+        Assert.Equal(300_000m, refundRepo.Refunds[0].Amount);
+        Assert.Equal(RefundStatuses.Pending, refundRepo.Refunds[0].RefundStatus);
+        Assert.Equal(88, refundRepo.Refunds[0].PaymentId);
     }
 }

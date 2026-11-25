@@ -46,6 +46,9 @@ public class OrderServiceTests
         public Task IncreaseOnHandAsync(long warehouseId, long locationId, long variantId, int quantity, string movementType, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
+        public Task AdjustOnHandAsync(long warehouseId, long locationId, long variantId, int deltaQuantity, string movementType, string referenceType, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
         public Task ReserveStockAtomicAsync(long inventoryId, int quantity, long referenceId, long? createdBy, string? note = null, CancellationToken cancellationToken = default)
         {
             if (ForceInsufficientStock)
@@ -218,9 +221,31 @@ public class OrderServiceTests
             => Task.FromResult(Orders.Where(o => o.OrderStatus == OrderStatuses.PendingPayment && o.ExpiresAt != null && o.ExpiresAt < utcNow).ToList());
     }
 
+    private sealed class InMemoryRefundRepo : IRefundRepository
+    {
+        public List<Refund> Refunds { get; } = [];
+        public Task<PagedResult<RefundDto>> GetPagedAsync(RefundQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Refund?> GetByIdWithDetailsAsync(long refundId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<RefundDto?> GetDtoByIdAsync(long refundId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<Payment?> GetPaymentForUpdateAsync(long paymentId, CancellationToken cancellationToken = default) => Task.FromResult<Payment?>(null);
+        public Task<decimal> GetTotalNonRejectedRefundsForPaymentAsync(long paymentId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Refunds.Where(r => r.PaymentId == paymentId && r.RefundStatus != RefundStatuses.Rejected).Sum(r => r.Amount));
+        public Task<bool> ExistsForReturnRequestAsync(long returnRequestId, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task AddAsync(Refund refund, CancellationToken cancellationToken = default)
+        {
+            refund.RefundId = Refunds.Count + 1;
+            Refunds.Add(refund);
+            return Task.CompletedTask;
+        }
+    }
+
     private static (OrderService Service, InMemoryOrderRepo Repo, SpyInventoryLedger Ledger, StubCurrentUser CurrentUser) CreateSut()
+        => CreateSutWithRefunds() is var tuple ? (tuple.Service, tuple.Repo, tuple.Ledger, tuple.CurrentUser) : default;
+
+    private static (OrderService Service, InMemoryOrderRepo Repo, SpyInventoryLedger Ledger, StubCurrentUser CurrentUser, InMemoryRefundRepo RefundRepo) CreateSutWithRefunds()
     {
         var repo = new InMemoryOrderRepo();
+        var refundRepo = new InMemoryRefundRepo();
         var ledger = new SpyInventoryLedger();
         var currentUser = new StubCurrentUser { UserId = 100 };
 
@@ -238,6 +263,7 @@ public class OrderServiceTests
 
         var service = new OrderService(
             repo,
+            refundRepo,
             ledger,
             new StubUnitOfWork(),
             currentUser,
@@ -246,7 +272,7 @@ public class OrderServiceTests
             new OrderQueryValidator(),
             new CreatePaymentRequestValidator());
 
-        return (service, repo, ledger, currentUser);
+        return (service, repo, ledger, currentUser, refundRepo);
     }
 
     private static CartItem BuildCartItem(long cartItemId, long userId, long sellerId, long variantId, decimal price, int qty)
@@ -437,5 +463,41 @@ public class OrderServiceTests
         var (service, _, _, _) = CreateSut();
 
         await Assert.ThrowsAsync<NotFoundException>(() => service.GetAdminOrderByIdAsync(999));
+    }
+
+    [Fact]
+    public async Task CancelOrderAsync_CreatesPendingRefund_WhenPaidPaymentExists()
+    {
+        var (service, repo, _, _, refundRepo) = CreateSutWithRefunds();
+        var order = new Order
+        {
+            OrderId = 77,
+            CustomerId = 100,
+            OrderCode = "ORD-PAID-77",
+            IdempotencyKey = "idem-77",
+            Subtotal = 400_000m,
+            TotalAmount = 400_000m,
+            OrderStatus = OrderStatuses.Confirmed,
+            Payments = [new Payment { PaymentId = 55, OrderId = 77, Amount = 400_000m, PaymentStatus = PaymentStatuses.Paid }],
+            SellerOrders =
+            [
+                new SellerOrder
+                {
+                    SellerOrderId = 701,
+                    OrderId = 77,
+                    SellerId = 1,
+                    Subtotal = 400_000m,
+                    Status = SellerOrderStatuses.Pending
+                }
+            ]
+        };
+        repo.Orders.Add(order);
+
+        await service.CancelMyOrderAsync(77, new CancelOrderRequestDto { Reason = "Đổi ý" });
+
+        Assert.Single(refundRepo.Refunds);
+        Assert.Equal(400_000m, refundRepo.Refunds[0].Amount);
+        Assert.Equal(RefundStatuses.Pending, refundRepo.Refunds[0].RefundStatus);
+        Assert.Equal(55, refundRepo.Refunds[0].PaymentId);
     }
 }

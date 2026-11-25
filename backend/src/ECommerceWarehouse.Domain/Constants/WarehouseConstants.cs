@@ -97,3 +97,31 @@ public static class StockReferenceTypes
     public const string ReturnRequest = "ReturnRequest";
     public const string Manual = "Manual";
 }
+
+public static class StockCountStatuses
+{
+    public const string Draft = "Draft";
+    public const string Counting = "Counting";
+    public const string PendingApproval = "PendingApproval";
+    public const string Approved = "Approved";
+    public const string Cancelled = "Cancelled";
+
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Draft, Counting, PendingApproval, Approved, Cancelled
+    };
+}
+
+public static class StockTransferStatuses
+{
+    public const string Draft = "Draft";
+    public const string Approved = "Approved";
+    public const string InTransit = "InTransit";
+    public const string Received = "Received";
+    public const string Cancelled = "Cancelled";
+
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Draft, Approved, InTransit, Received, Cancelled
+    };
+}
