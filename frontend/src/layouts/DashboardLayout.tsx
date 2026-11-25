@@ -57,43 +57,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        width: "100%",
-        backgroundColor: "var(--color-bg)",
-      }}
-    >
+    <div className="ew-dashboard-shell">
       <Sidebar
         areaLabel={areaLabel}
         areaBadge={areaBadge}
         menuItems={menuItems}
       />
 
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <header
-          style={{
-            height: "64px",
-            backgroundColor: "var(--color-white)",
-            borderBottom: "1px solid var(--color-border)",
-            padding: "0 32px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "16px",
-            position: "sticky",
-            top: 0,
-            zIndex: 30,
-          }}
-        >
+      <div className="ew-dashboard-body">
+        <header className="ew-dashboard-header">
           {/* Left: Current Area & Page Title */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
             <span
@@ -219,7 +191,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: "28px 32px" }}>
+        <main className="ew-dashboard-main">
           <Outlet />
         </main>
       </div>

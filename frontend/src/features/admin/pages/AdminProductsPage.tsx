@@ -41,6 +41,12 @@ const SORT_OPTIONS = [
   { value: "name_desc", label: "Tên Z → A" },
 ];
 
+const DEFAULT_ADMIN_PRODUCT_FILTERS = {
+  status: "PendingReview",
+  categoryId: "",
+  q: "",
+};
+
 export const AdminProductsPage: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [moderationTarget, setModerationTarget] =
@@ -57,7 +63,7 @@ export const AdminProductsPage: React.FC = () => {
     setSort,
     resetFilters,
   } = useUrlFilters({
-    defaults: { status: "PendingReview", categoryId: "", q: "" },
+    defaults: DEFAULT_ADMIN_PRODUCT_FILTERS,
     defaultPageSize: 10,
     defaultSort: "updated",
   });
@@ -219,6 +225,7 @@ export const AdminProductsPage: React.FC = () => {
       <AdminProductDetailDrawer
         productId={selectedProductId}
         isActionPending={isModerating}
+        disableEscape={Boolean(moderationTarget)}
         onClose={() => setSelectedProductId(null)}
         onRequestAction={openModerationFromDrawer}
       />

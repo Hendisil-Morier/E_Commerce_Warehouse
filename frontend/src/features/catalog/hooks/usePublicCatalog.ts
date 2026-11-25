@@ -3,19 +3,16 @@ import { catalogService } from "@/services/catalog.service";
 import type { PublicProductQuery } from "@/types/catalog";
 
 export const PUBLIC_CATALOG_QUERY_KEYS = {
-  all: ["publicCatalog"] as const,
-  categories: () => [...PUBLIC_CATALOG_QUERY_KEYS.all, "categories"] as const,
-  products: (query: PublicProductQuery) =>
-    [...PUBLIC_CATALOG_QUERY_KEYS.all, "products", query] as const,
-  productDetail: (id: number) =>
-    [...PUBLIC_CATALOG_QUERY_KEYS.all, "productDetail", id] as const,
-  shop: (shopId: number) =>
-    [...PUBLIC_CATALOG_QUERY_KEYS.all, "shop", shopId] as const,
+  categories: ["public", "categories"] as const,
+  products: (query: PublicProductQuery) => ["public", "products", query] as const,
+  productDetail: (productId: number) =>
+    ["public", "products", "detail", productId] as const,
+  shopDetail: (shopId: number) => ["public", "shops", "detail", shopId] as const,
 };
 
-export function useCategoriesTree() {
+export function usePublicCategories() {
   return useQuery({
-    queryKey: PUBLIC_CATALOG_QUERY_KEYS.categories(),
+    queryKey: PUBLIC_CATALOG_QUERY_KEYS.categories,
     queryFn: () => catalogService.getCategories(),
     staleTime: 5 * 60 * 1000,
   });
@@ -25,22 +22,24 @@ export function usePublicProducts(query: PublicProductQuery) {
   return useQuery({
     queryKey: PUBLIC_CATALOG_QUERY_KEYS.products(query),
     queryFn: () => catalogService.getPublicProducts(query),
+    placeholderData: (previous) => previous,
   });
 }
 
-export function usePublicProductDetail(productId: number) {
+export function usePublicProductDetail(productId: number | null) {
   return useQuery({
-    queryKey: PUBLIC_CATALOG_QUERY_KEYS.productDetail(productId),
-    queryFn: () => catalogService.getPublicProductDetail(productId),
-    enabled: Number.isFinite(productId) && productId > 0,
+    queryKey: PUBLIC_CATALOG_QUERY_KEYS.productDetail(productId ?? 0),
+    queryFn: () => catalogService.getPublicProductDetail(productId!),
+    enabled: productId !== null && Number.isFinite(productId) && productId > 0,
   });
 }
 
-export function usePublicShop(shopId: number) {
+export function usePublicShopDetail(shopId: number | null) {
   return useQuery({
-    queryKey: PUBLIC_CATALOG_QUERY_KEYS.shop(shopId),
-    queryFn: () => catalogService.getPublicShop(shopId),
-    enabled: Number.isFinite(shopId) && shopId > 0,
+    queryKey: PUBLIC_CATALOG_QUERY_KEYS.shopDetail(shopId ?? 0),
+    queryFn: () => catalogService.getPublicShopDetail(shopId!),
+    enabled: shopId !== null && Number.isFinite(shopId) && shopId > 0,
   });
 }
 
+export const useCategoriesTree = usePublicCategories;

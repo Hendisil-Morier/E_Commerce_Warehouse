@@ -1,0 +1,205 @@
+/* ==========================================================================
+   KHO SÀN+ Customer Portal (2-Column Sidebar + Orders + Profile & Addresses)
+   ========================================================================== */
+
+.ks-portal-main {
+  padding: 28px 0 64px;
+}
+
+.ks-portal-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.ks-customer-sidebar {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  position: sticky;
+  top: 136px;
+}
+
+.ks-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background-color: var(--color-forest-900);
+  color: var(--color-white);
+}
+
+.ks-sidebar-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ks-sidebar-user-meta {
+  min-width: 0;
+}
+
+.ks-sidebar-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-sidebar-tier {
+  font-size: 12px;
+  color: #a7f3d0;
+  margin-top: 2px;
+}
+
+.ks-sidebar-nav {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ks-sidebar-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.ks-sidebar-link-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ks-sidebar-link:hover {
+  background-color: var(--color-bg);
+  color: var(--color-dark);
+}
+
+.ks-sidebar-link--active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.ks-sidebar-guarantee {
+  margin: 0 12px 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-warm-accent);
+  border: 1px solid #f5e2c4;
+  font-size: 12px;
+  color: var(--color-dark);
+  line-height: 1.45;
+}
+
+.ks-sidebar-guarantee-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #794b00;
+  margin-bottom: 4px;
+}
+
+/* Tabs & Account Grid */
+.ks-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.ks-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.ks-tab-btn:hover {
+  background-color: var(--color-bg);
+  color: var(--color-dark);
+}
+
+.ks-tab-btn--active {
+  background-color: var(--color-accent-soft);
+  color: var(--color-primary);
+}
+
+.ks-profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 20px;
+  align-items: start;
+}
+
+.ks-verify-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  margin: 14px 0;
+}
+
+.ks-verify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.ks-verify-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text);
+}
+
+@media (max-width: 1024px) {
+  .ks-portal-grid,
+  .ks-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ks-customer-sidebar {
+    position: static;
+  }
+}

@@ -1,91 +1,130 @@
-import React, { useState, useEffect } from "react";
-import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  Store,
+  ArrowLeft,
+  ChevronRight,
   Package,
   ShieldCheck,
-  Truck,
-  RotateCcw,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
   ShoppingCart,
-  ChevronRight,
+  Store,
+  Truck,
+  Warehouse,
 } from "lucide-react";
-import { usePublicProductDetail } from "@/features/catalog/hooks/usePublicCatalog";
-import { useAddToCartMutation } from "@/features/cart/hooks/useCart";
-import { useAuthStore } from "@/stores/authStore";
-import { useToast } from "@/hooks/useToast";
-import { ROUTES } from "@/constants/routes";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorState } from "@/components/common/ErrorState";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/common/ErrorState";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ROUTES } from "@/constants/routes";
+import { useAddCartItem } from "@/features/cart/hooks/useCart";
+import { usePublicProductDetail } from "@/features/catalog/hooks/usePublicCatalog";
+import { useToast } from "@/hooks/useToast";
+import { useAuthStore } from "@/stores/authStore";
+import { formatPriceRange, resolveStockStatusKey } from "@/utils/catalogHelpers";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { formatCurrency, resolveAssetUrl } from "@/utils/formatters";
 import { hasRole, ROLES } from "@/utils/roleUtils";
-import type { PublicProductVariantDto } from "@/types/catalog";
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const productId = Number(id);
   const navigate = useNavigate();
-  const location = useLocation();
   const toast = useToast();
   const { user, isAuthenticated } = useAuthStore();
-  const addToCartMutation = useAddToCartMutation();
 
-  const {
-    data: product,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = usePublicProductDetail(productId);
+  const productId = id ? Number(id) : null;
+  const { data: product, isLoading, isError, error, refetch } =
+    usePublicProductDetail(productId);
+  const addCartMutation = useAddCartItem();
 
-  const [selectedVariant, setSelectedVariant] = useState<PublicProductVariantDto | null>(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-  const [quantity, setQuantity] = useState<number>(1);
-
-  // Default to first variant when product loads
-  useEffect(() => {
-    if (product && product.variants.length > 0) {
-      setSelectedVariant(product.variants[0]);
-    }
+  const sortedImages = useMemo(() => {
+    if (!product?.images) return [];
+    return [...product.images].sort((a, b) => {
+      if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+      return a.displayOrder - b.displayOrder;
+    });
   }, [product]);
 
-  // Reset quantity when variant changes
-  useEffect(() => {
-    setQuantity(1);
-  }, [selectedVariant]);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+
+  const activeVariant = useMemo(() => {
+    if (!product?.variants?.length) return null;
+    if (selectedVariantId !== null) {
+      const found = product.variants.find((v) => v.variantId === selectedVariantId);
+      if (found) return found;
+    }
+    return product.variants.find((v) => v.inStock) ?? product.variants[0];
+  }, [product, selectedVariantId]);
+
+  const activeImageSrc = resolveAssetUrl(
+    selectedImageUrl || sortedImages[0]?.imageUrl || ""
+  );
+
+  const maxOrderQty = activeVariant?.inStock ? activeVariant.availableQuantity : 0;
+  const clampedQty = maxOrderQty > 0 ? Math.min(Math.max(1, quantity), maxOrderQty) : 1;
+  const isCustomer = isAuthenticated && hasRole(user, ROLES.CUSTOMER);
+
+  const handleAddToCart = async (goToCartAfter: boolean) => {
+    if (!activeVariant || !activeVariant.inStock) return;
+
+    if (!isAuthenticated) {
+      toast.info("Vui lòng đăng nhập tài khoản Khách hàng để thêm sản phẩm vào giỏ.");
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+
+    if (!isCustomer) {
+      toast.error("Tài khoản hiện tại không có quyền Khách hàng để mua sắm.");
+      return;
+    }
+
+    try {
+      await addCartMutation.mutateAsync({
+        variantId: activeVariant.variantId,
+        quantity: clampedQty,
+      });
+      toast.success(
+        `Đã thêm ${clampedQty} × "${product?.productName} (${activeVariant.variantName})" vào giỏ hàng.`
+      );
+      if (goToCartAfter) {
+        navigate(ROUTES.CART);
+      }
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const fallbackBreadcrumb = (
+    <div className="ks-breadcrumb-bar">
+      <div className="ks-container">
+        <nav className="ks-breadcrumb" aria-label="Đường dẫn trang">
+          <Link to={ROUTES.HOME}>Trang chủ</Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <Link to={ROUTES.PRODUCTS}>Sản phẩm</Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <span className="ks-breadcrumb-current">Chi tiết sản phẩm</span>
+        </nav>
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "28px 20px" }}>
-        <div style={{ marginBottom: "20px" }}>
-          <Skeleton width="30%" height={24} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "36px" }}>
-          <div>
-            <div style={{ borderRadius: "10px", overflow: "hidden" }}>
-              <Skeleton width="100%" height={420} variant="rect" />
+      <div>
+        {fallbackBreadcrumb}
+        <div className="ks-container ks-store-main">
+          <div className="ks-pdp-grid">
+            <div className="ks-pdp-gallery">
+              <Skeleton height={380} />
+              <Skeleton height={44} />
             </div>
-            <div style={{ display: "flex", gap: "12px", marginTop: "14px" }}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} style={{ borderRadius: "8px", overflow: "hidden" }}>
-                  <Skeleton width={80} height={80} variant="rect" />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <Skeleton width="80%" height={32} />
-            <div style={{ marginTop: "14px" }}>
+            <div className="ks-pdp-panel">
               <Skeleton width="40%" height={24} />
-            </div>
-            <div style={{ marginTop: "24px" }}>
-              <Skeleton width="50%" height={40} />
-            </div>
-            <div style={{ marginTop: "28px" }}>
-              <Skeleton lines={5} gap={10} />
+              <Skeleton width="85%" height={32} />
+              <Skeleton height={64} />
+              <Skeleton height={44} />
+              <Skeleton height={120} />
             </div>
           </div>
         </div>
@@ -93,667 +132,364 @@ export const ProductDetailPage: React.FC = () => {
     );
   }
 
-  if (isError || !product) {
+  if (isError) {
     return (
-      <div style={{ maxWidth: "800px", margin: "40px auto", padding: "0 20px" }}>
-        <div
-          style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-            padding: "36px",
-          }}
-        >
-          <ErrorState
-            error={error ?? new Error("Không tìm thấy thông tin sản phẩm.")}
-            onRetry={() => void refetch()}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const images = product.images.length > 0 ? product.images : [];
-  const currentImageUrl =
-    images.length > 0
-      ? resolveAssetUrl(images[selectedImageIndex]?.imageUrl)
-      : "";
-
-  const effectiveAvailable = selectedVariant
-    ? selectedVariant.availableQuantity
-    : product.availableQuantity;
-
-  const isOutOfStock = selectedVariant
-    ? !selectedVariant.inStock || selectedVariant.availableQuantity <= 0
-    : !product.inStock || product.availableQuantity <= 0;
-
-  const isLowStock = !isOutOfStock && effectiveAvailable <= 5;
-
-  const validateCartAction = (): PublicProductVariantDto | null => {
-    if (isOutOfStock) {
-      toast.warning("Sản phẩm hiện đang hết hàng.");
-      return null;
-    }
-
-    if (!isAuthenticated) {
-      toast.info("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
-      navigate(ROUTES.LOGIN, { state: { returnUrl: location.pathname } });
-      return null;
-    }
-
-    if (!hasRole(user, [ROLES.CUSTOMER])) {
-      toast.warning("Chỉ tài khoản Khách hàng mới có thể sử dụng giỏ hàng.");
-      return null;
-    }
-
-    if (!selectedVariant) {
-      toast.warning("Vui lòng chọn phân loại sản phẩm.");
-      return null;
-    }
-
-    return selectedVariant;
-  };
-
-  const handleAddToCart = () => {
-    const variant = validateCartAction();
-    if (!variant) return;
-
-    addToCartMutation.mutate({
-      variantId: variant.variantId,
-      quantity,
-    });
-  };
-
-  const handleBuyNow = () => {
-    const variant = validateCartAction();
-    if (!variant) return;
-
-    addToCartMutation.mutate(
-      {
-        variantId: variant.variantId,
-        quantity,
-      },
-      {
-        onSuccess: () => {
-          navigate(ROUTES.CART);
-        },
-      }
-    );
-  };
-
-  return (
-    <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px 20px" }}>
-      {/* Breadcrumb */}
-      <nav
-        aria-label="Breadcrumb"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          fontSize: "0.85rem",
-          color: "#64748b",
-          marginBottom: "20px",
-        }}
-      >
-        <Link to={ROUTES.HOME} style={{ color: "#64748b", textDecoration: "none" }}>
-          Trang chủ
-        </Link>
-        <ChevronRight size={14} />
-        <Link
-          to={`/products?categoryId=${product.categoryId}`}
-          style={{ color: "#64748b", textDecoration: "none" }}
-        >
-          {product.categoryName}
-        </Link>
-        <ChevronRight size={14} />
-        <span
-          style={{
-            color: "#0f172a",
-            fontWeight: 500,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            maxWidth: "350px",
-          }}
-        >
-          {product.productName}
-        </span>
-      </nav>
-
-      {/* Main Product Section */}
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          padding: "28px",
-          display: "grid",
-          gridTemplateColumns: "minmax(320px, 460px) 1fr",
-          gap: "40px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
-        }}
-      >
-        {/* LEFT COLUMN: IMAGE GALLERY */}
-        <div>
-          {/* Main Preview Image */}
-          <div
-            style={{
-              position: "relative",
-              width: "100%",
-              paddingTop: "100%",
-              borderRadius: "10px",
-              border: "1px solid #f1f5f9",
-              backgroundColor: "#f8fafc",
-              overflow: "hidden",
-            }}
-          >
-            {currentImageUrl ? (
-              <img
-                src={currentImageUrl}
-                alt={product.productName}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#94a3b8",
-                }}
-              >
-                <Package size={64} strokeWidth={1.5} />
-              </div>
-            )}
-          </div>
-
-          {/* Thumbnails row */}
-          {images.length > 1 && (
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                marginTop: "14px",
-                overflowX: "auto",
-                paddingBottom: "4px",
-              }}
-            >
-              {images.map((img, idx) => {
-                const isSelected = idx === selectedImageIndex;
-                const thumbUrl = resolveAssetUrl(img.imageUrl);
-                return (
-                  <button
-                    key={img.imageId || idx}
-                    type="button"
-                    onClick={() => setSelectedImageIndex(idx)}
-                    style={{
-                      width: "72px",
-                      height: "72px",
-                      borderRadius: "8px",
-                      border: isSelected ? "2px solid #0E7C66" : "1px solid #e2e8f0",
-                      padding: 0,
-                      backgroundColor: "#ffffff",
-                      overflow: "hidden",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                      opacity: isSelected ? 1 : 0.7,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <img
-                      src={thumbUrl}
-                      alt={`Thumbnail ${idx + 1}`}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Shop Card below images */}
-          <div
-            style={{
-              marginTop: "24px",
-              padding: "16px",
-              borderRadius: "10px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#f8fafc",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "14px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-              <div
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  backgroundColor: "#059669",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  overflow: "hidden",
-                }}
-              >
-                {product.shop.logoUrl ? (
-                  <img
-                    src={resolveAssetUrl(product.shop.logoUrl)}
-                    alt={product.shop.shopName}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : (
-                  <Store size={22} />
-                )}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div
-                  style={{
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    fontSize: "0.95rem",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {product.shop.shopName}
-                </div>
-                <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                  {product.shop.sellerBusinessName}
-                </div>
-              </div>
-            </div>
-
-            <Link to={`/shops/${product.shop.shopId}`} style={{ textDecoration: "none" }}>
-              <Button variant="secondary" size="sm">
-                Xem shop
-              </Button>
+      <div>
+        {fallbackBreadcrumb}
+        <div className="ks-container ks-store-main" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <Link to={ROUTES.PRODUCTS} className="ew-back-link">
+              <ArrowLeft size={16} aria-hidden="true" />
+              <span>Quay lại danh sách sản phẩm</span>
             </Link>
           </div>
+          <div className="ew-card">
+            <ErrorState
+              title="Không thể tải chi tiết sản phẩm"
+              error={error}
+              onRetry={() => void refetch()}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div>
+        {fallbackBreadcrumb}
+        <div className="ks-container ks-store-main">
+          <div className="ew-card">
+            <EmptyState
+              title="Không tìm thấy sản phẩm"
+              description="Sản phẩm này không tồn tại hoặc đã ngừng kinh doanh."
+              action={
+                <Link to={ROUTES.PRODUCTS} className="ew-btn ew-btn--primary ew-btn--md">
+                  Quay lại danh mục sản phẩm
+                </Link>
+              }
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const stockBadgeKey = resolveStockStatusKey(
+    activeVariant ? activeVariant.inStock : product.inStock,
+    activeVariant ? activeVariant.availableQuantity : product.availableQuantity
+  );
+
+  return (
+    <div>
+      {/* Breadcrumb */}
+      <div className="ks-breadcrumb-bar">
+        <div className="ks-container">
+          <nav className="ks-breadcrumb" aria-label="Đường dẫn trang">
+            <Link to={ROUTES.HOME}>Trang chủ</Link>
+            <ChevronRight size={14} aria-hidden="true" />
+            <Link to={ROUTES.PRODUCTS}>Sản phẩm</Link>
+            <ChevronRight size={14} aria-hidden="true" />
+            <Link to={`${ROUTES.PRODUCTS}?categoryId=${product.categoryId}`}>
+              {product.categoryName}
+            </Link>
+            <ChevronRight size={14} aria-hidden="true" />
+            <span className="ks-breadcrumb-current">{product.productName}</span>
+          </nav>
+        </div>
+      </div>
+
+      <div className="ks-container ks-store-main" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        <div>
+          <Link to={ROUTES.PRODUCTS} className="ew-back-link">
+            <ArrowLeft size={16} aria-hidden="true" />
+            <span>Quay lại danh sách sản phẩm</span>
+          </Link>
         </div>
 
-        {/* RIGHT COLUMN: PRODUCT INFO & VARIANTS */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {/* Title */}
-          <h1
-            style={{
-              fontSize: "1.65rem",
-              fontWeight: 800,
-              color: "#0f172a",
-              lineHeight: 1.3,
-              margin: "0 0 14px 0",
-            }}
-          >
-            {product.productName}
-          </h1>
-
-          {/* Pricing Box */}
-          <div
-            style={{
-              backgroundColor: "#f0fdf4",
-              borderRadius: "10px",
-              padding: "16px 20px",
-              marginBottom: "24px",
-              display: "flex",
-              alignItems: "baseline",
-              gap: "12px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "1.9rem",
-                fontWeight: 800,
-                color: "#0E7C66",
-              }}
-            >
-              {selectedVariant
-                ? formatCurrency(selectedVariant.price)
-                : product.minPrice === product.maxPrice
-                ? formatCurrency(product.minPrice)
-                : `${formatCurrency(product.minPrice)} - ${formatCurrency(product.maxPrice)}`}
+        <div className="ks-pdp-grid">
+          {/* Left: Product Image Gallery */}
+          <div className="ks-pdp-gallery">
+            <div className="ks-pdp-main-img-wrap">
+              {activeImageSrc ? (
+                <img
+                  src={activeImageSrc}
+                  alt={product.productName}
+                  className="ks-pdp-main-img"
+                />
+              ) : (
+                <div className="ks-product-placeholder">
+                  <Package size={52} strokeWidth={1.4} />
+                  <span>Chưa có ảnh sản phẩm</span>
+                </div>
+              )}
             </div>
 
-            {selectedVariant?.weightGrams && (
-              <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                (Trọng lượng: {selectedVariant.weightGrams}g)
-              </span>
-            )}
-          </div>
-
-          {/* Variant Selector */}
-          {product.variants.length > 0 && (
-            <div style={{ marginBottom: "24px" }}>
-              <div
-                style={{
-                  fontSize: "0.88rem",
-                  fontWeight: 700,
-                  color: "#334155",
-                  marginBottom: "10px",
-                }}
-              >
-                Chọn biến thể:
-              </div>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                {product.variants.map((variant) => {
-                  const isSelected = selectedVariant?.variantId === variant.variantId;
-                  const variantOutOfStock = !variant.inStock || variant.availableQuantity <= 0;
-
+            {sortedImages.length > 1 && (
+              <div className="ks-pdp-thumbs" role="list" aria-label="Album ảnh sản phẩm">
+                {sortedImages.map((img) => {
+                  const thumbSrc = resolveAssetUrl(img.imageUrl);
+                  const isActive = activeImageSrc === thumbSrc;
                   return (
                     <button
-                      key={variant.variantId}
+                      key={img.imageId}
                       type="button"
-                      onClick={() => setSelectedVariant(variant)}
-                      style={{
-                        padding: "8px 14px",
-                        borderRadius: "8px",
-                        border: isSelected ? "2px solid #0E7C66" : "1px solid #cbd5e1",
-                        backgroundColor: isSelected ? "#ecfdf5" : "#ffffff",
-                        color: isSelected ? "#065f46" : "#334155",
-                        fontWeight: isSelected ? 600 : 400,
-                        fontSize: "0.88rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        transition: "all 0.15s ease",
-                      }}
+                      className={`ks-pdp-thumb-btn ${
+                        isActive ? "ks-pdp-thumb-btn--active" : ""
+                      }`}
+                      aria-label={`Xem ảnh ${img.displayOrder + 1} của ${product.productName}`}
+                      onClick={() => setSelectedImageUrl(img.imageUrl)}
                     >
-                      <span>{variant.variantName}</span>
-                      <span
-                        style={{
-                          fontSize: "0.8rem",
-                          color: isSelected ? "#0E7C66" : "#64748b",
-                        }}
-                      >
-                        {formatCurrency(variant.price)}
-                      </span>
-                      {variantOutOfStock && (
-                        <span style={{ fontSize: "0.72rem", color: "#ef4444" }}>
-                          (Hết)
-                        </span>
-                      )}
+                      <img src={thumbSrc} alt={product.productName} />
                     </button>
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Variant details (SKU & Stock status) */}
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: "8px",
-              border: "1px solid #f1f5f9",
-              backgroundColor: "#fafafa",
-              marginBottom: "24px",
-            }}
-          >
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "120px 1fr",
-                rowGap: "8px",
-                fontSize: "0.85rem",
-              }}
-            >
-              <span style={{ color: "#64748b" }}>Mã SKU:</span>
-              <span style={{ fontWeight: 600, color: "#1e293b" }}>
-                {selectedVariant ? selectedVariant.sku : "—"}
-              </span>
-
-              {selectedVariant?.barcode && (
-                <>
-                  <span style={{ color: "#64748b" }}>Mã vạch:</span>
-                  <span style={{ color: "#1e293b" }}>{selectedVariant.barcode}</span>
-                </>
-              )}
-
-              <span style={{ color: "#64748b" }}>Tình trạng kho:</span>
-              <div>
-                {isOutOfStock ? (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      color: "#ef4444",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <XCircle size={15} />
-                    Hết hàng tại kho sàn
-                  </span>
-                ) : isLowStock ? (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      color: "#d97706",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <AlertTriangle size={15} />
-                    Sắp hết hàng (Còn {effectiveAvailable} sản phẩm có sẵn)
-                  </span>
-                ) : (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      color: "#059669",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <CheckCircle2 size={15} />
-                    Còn hàng ({effectiveAvailable} sản phẩm sẵn sàng giao)
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Quantity Selector */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "16px",
-              marginBottom: "28px",
-            }}
-          >
-            <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
-              Số lượng:
-            </span>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                border: "1px solid #cbd5e1",
-                borderRadius: "6px",
-                overflow: "hidden",
-              }}
-            >
-              <button
-                type="button"
-                disabled={isOutOfStock || quantity <= 1}
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  border: "none",
-                  backgroundColor: "#f8fafc",
-                  cursor: isOutOfStock || quantity <= 1 ? "not-allowed" : "pointer",
-                  fontSize: "1.1rem",
-                  color: "#334155",
-                }}
-              >
-                −
-              </button>
-              <input
-                type="number"
-                min={1}
-                max={effectiveAvailable || 1}
-                value={quantity}
-                disabled={isOutOfStock}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  if (val >= 1 && val <= effectiveAvailable) setQuantity(val);
-                }}
-                style={{
-                  width: "50px",
-                  height: "36px",
-                  border: "none",
-                  textAlign: "center",
-                  fontSize: "0.9rem",
-                  fontWeight: 600,
-                  outline: "none",
-                }}
-              />
-              <button
-                type="button"
-                disabled={isOutOfStock || quantity >= effectiveAvailable}
-                onClick={() => setQuantity((q) => Math.min(effectiveAvailable, q + 1))}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  border: "none",
-                  backgroundColor: "#f8fafc",
-                  cursor:
-                    isOutOfStock || quantity >= effectiveAvailable
-                      ? "not-allowed"
-                      : "pointer",
-                  fontSize: "1.1rem",
-                  color: "#334155",
-                }}
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: "flex", gap: "14px", marginTop: "auto" }}>
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              disabled={isOutOfStock || addToCartMutation.isPending}
-              loading={addToCartMutation.isPending}
-              onClick={handleAddToCart}
-              style={{
-                flex: 1,
-                borderColor: "#0E7C66",
-                color: "#0E7C66",
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                backgroundColor: "var(--color-accent-soft)",
+                fontSize: "13px",
+                color: "var(--color-forest-900)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
                 gap: "8px",
               }}
             >
-              <ShoppingCart size={18} />
-              <span>Thêm vào giỏ hàng</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              disabled={isOutOfStock || addToCartMutation.isPending}
-              onClick={handleBuyNow}
-              style={{ flex: 1, justifyContent: "center" }}
-            >
-              {isOutOfStock ? "Hết hàng" : "Mua ngay"}
-            </Button>
-          </div>
-
-          {/* Commitments & Policy */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "12px",
-              marginTop: "28px",
-              paddingTop: "20px",
-              borderTop: "1px solid #f1f5f9",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", color: "#64748b" }}>
-              <ShieldCheck size={18} color="#0E7C66" />
-              <span>100% Chính hãng</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", color: "#64748b" }}>
-              <Truck size={18} color="#0E7C66" />
-              <span>Giao hàng toàn quốc</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.78rem", color: "#64748b" }}>
-              <RotateCcw size={18} color="#0E7C66" />
-              <span>Đổi trả trong 7 ngày</span>
+              <ShieldCheck size={17} aria-hidden="true" />
+              <span>
+                Hàng lưu trữ &amp; xuất trực tiếp tại <strong>Kho sàn tập trung</strong> — quét
+                kiểm mã vạch khi đóng gói.
+              </span>
             </div>
           </div>
+
+          {/* Right: Purchase & Variant Panel */}
+          <section className="ks-pdp-panel">
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <span className="ks-warehouse-tag">
+                <Warehouse size={12} aria-hidden="true" />
+                <span>Kho sàn</span>
+              </span>
+              <StatusBadge status={stockBadgeKey} size="md" />
+              {activeVariant && (
+                <span className="ks-tabular" style={{ fontSize: "12px", color: "var(--color-muted)" }}>
+                  SKU: <strong>{activeVariant.sku}</strong>
+                </span>
+              )}
+            </div>
+
+            <h1 style={{ fontSize: "24px", fontWeight: 800, color: "var(--color-dark)", lineHeight: 1.3 }}>
+              {product.productName}
+            </h1>
+
+            {/* Price Box */}
+            <div className="ks-pdp-price-box ks-tabular">
+              <div>
+                <div style={{ fontSize: "12px", color: "var(--color-muted)", marginBottom: "2px" }}>
+                  {activeVariant ? `Giá biến thể "${activeVariant.variantName}"` : "Khoảng giá"}
+                </div>
+                <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--color-primary)" }}>
+                  {activeVariant
+                    ? formatCurrency(activeVariant.price)
+                    : formatPriceRange(product.minPrice, product.maxPrice)}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", fontSize: "13px", color: "var(--color-muted)" }}>
+                Tồn khả dụng tại Kho sàn
+                <div style={{ fontWeight: 700, color: "var(--color-dark)", fontSize: "15px" }}>
+                  {activeVariant ? activeVariant.availableQuantity : product.availableQuantity} sản phẩm
+                </div>
+              </div>
+            </div>
+
+            {/* Variant Selector */}
+            {product.variants.length > 0 && (
+              <div className="ew-field">
+                <span className="ew-field__label">Chọn phân loại sản phẩm</span>
+                <div className="ks-variant-list" role="radiogroup" aria-label="Phân loại sản phẩm">
+                  {product.variants.map((variant) => {
+                    const isSelected = activeVariant?.variantId === variant.variantId;
+                    return (
+                      <button
+                        key={variant.variantId}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        disabled={!variant.inStock}
+                        className={`ks-variant-btn ${
+                          isSelected ? "ks-variant-btn--active" : ""
+                        }`}
+                        onClick={() => {
+                          setSelectedVariantId(variant.variantId);
+                          setQuantity(1);
+                        }}
+                      >
+                        <span style={{ fontWeight: 600 }}>{variant.variantName}</span>
+                        <span
+                          className="ks-tabular"
+                          style={{ fontSize: "12px", color: "var(--color-muted)" }}
+                        >
+                          {formatCurrency(variant.price)} ·{" "}
+                          {variant.inStock ? `Còn ${variant.availableQuantity}` : "Hết hàng"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Quantity Stepper */}
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+              <span className="ew-field__label">Số lượng</span>
+              <div className="ks-qty-stepper">
+                <button
+                  type="button"
+                  className="ks-qty-btn"
+                  aria-label="Giảm số lượng"
+                  disabled={clampedQty <= 1 || maxOrderQty === 0 || addCartMutation.isPending}
+                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                >
+                  −
+                </button>
+                <span className="ks-qty-val ks-tabular">{maxOrderQty === 0 ? 0 : clampedQty}</span>
+                <button
+                  type="button"
+                  className="ks-qty-btn"
+                  aria-label="Tăng số lượng"
+                  disabled={
+                    clampedQty >= maxOrderQty || maxOrderQty === 0 || addCartMutation.isPending
+                  }
+                  onClick={() => setQuantity((prev) => Math.min(maxOrderQty, prev + 1))}
+                >
+                  +
+                </button>
+              </div>
+              {maxOrderQty === 0 && (
+                <span style={{ fontSize: "13px", color: "var(--color-danger)", fontWeight: 600 }}>
+                  Phân loại này tạm hết hàng
+                </span>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingTop: "4px" }}>
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                leftIcon={<ShoppingCart size={17} />}
+                loading={addCartMutation.isPending}
+                disabled={!activeVariant || !activeVariant.inStock}
+                onClick={() => void handleAddToCart(false)}
+              >
+                Thêm vào giỏ hàng
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                leftIcon={<Truck size={17} />}
+                loading={addCartMutation.isPending}
+                disabled={!activeVariant || !activeVariant.inStock}
+                onClick={() => void handleAddToCart(true)}
+              >
+                Mua ngay
+              </Button>
+            </div>
+
+            {/* Shop Info Card */}
+            <div className="ks-shop-card">
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                <div className="ks-shop-avatar">
+                  {product.shop.logoUrl ? (
+                    <img
+                      src={resolveAssetUrl(product.shop.logoUrl)}
+                      alt={product.shop.shopName}
+                    />
+                  ) : (
+                    product.shop.shopName.slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-dark)" }}>
+                    {product.shop.shopName}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--color-muted)" }}>
+                    Đơn vị kinh doanh: {product.shop.sellerBusinessName}
+                  </div>
+                </div>
+              </div>
+              <Link
+                to={`/shops/${product.shop.shopId}`}
+                className="ew-btn ew-btn--secondary ew-btn--sm"
+              >
+                <Store size={14} aria-hidden="true" />
+                <span>Xem gian hàng</span>
+              </Link>
+            </div>
+
+            {/* Description & Real Technical Specs */}
+            <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: "16px" }}>
+              <h2 className="ew-section-heading">Mô tả &amp; Thông tin chi tiết</h2>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "var(--color-text)",
+                  lineHeight: 1.65,
+                  marginBottom: "16px",
+                  whiteSpace: "pre-line",
+                }}
+              >
+                {product.description?.trim() ||
+                  "Người bán chưa bổ sung mô tả chi tiết cho sản phẩm này."}
+              </p>
+
+              <table className="ks-specs-table ks-tabular">
+                <tbody>
+                  <tr>
+                    <th>Danh mục</th>
+                    <td>{product.categoryName}</td>
+                  </tr>
+                  <tr>
+                    <th>Gian hàng cung cấp</th>
+                    <td>{product.shop.shopName}</td>
+                  </tr>
+                  <tr>
+                    <th>Nguồn lưu kho</th>
+                    <td>Kho sàn tập trung (Platform Warehouse)</td>
+                  </tr>
+                  {activeVariant && (
+                    <>
+                      <tr>
+                        <th>Mã SKU</th>
+                        <td>{activeVariant.sku}</td>
+                      </tr>
+                      {activeVariant.barcode && (
+                        <tr>
+                          <th>Mã vạch (Barcode)</th>
+                          <td>{activeVariant.barcode}</td>
+                        </tr>
+                      )}
+                      {activeVariant.weightGrams !== null && (
+                        <tr>
+                          <th>Khối lượng đóng gói</th>
+                          <td>{activeVariant.weightGrams} g</td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
-      </div>
-
-      {/* Description Section */}
-      <div
-        style={{
-          marginTop: "32px",
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          border: "1px solid #e2e8f0",
-          padding: "28px",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "1.2rem",
-            fontWeight: 700,
-            color: "#0f172a",
-            paddingBottom: "14px",
-            borderBottom: "1px solid #f1f5f9",
-            margin: "0 0 18px 0",
-          }}
-        >
-          Mô tả sản phẩm
-        </h2>
-
-        {product.description ? (
-          <div
-            style={{
-              fontSize: "0.92rem",
-              lineHeight: 1.7,
-              color: "#334155",
-              whiteSpace: "pre-line",
-            }}
-          >
-            {product.description}
-          </div>
-        ) : (
-          <p style={{ color: "#94a3b8", fontSize: "0.9rem", fontStyle: "italic" }}>
-            Người bán chưa cung cấp mô tả chi tiết cho sản phẩm này.
-          </p>
-        )}
       </div>
     </div>
   );

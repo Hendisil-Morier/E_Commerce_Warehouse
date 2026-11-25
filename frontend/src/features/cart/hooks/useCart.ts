@@ -1,84 +1,82 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/useToast";
-import { cartService } from "@/services/cartService";
+import { cartService } from "@/services/cart.service";
 import { useAuthStore } from "@/stores/authStore";
-import type { AddCartItemRequest, Cart, UpdateCartItemRequest } from "@/types/cart";
-import { getErrorMessage } from "@/utils/errorHandler";
+import type { AddCartItemRequest, UpdateCartItemRequest } from "@/types/cart";
+import { isHttpStatus } from "@/utils/errorHandler";
 import { hasRole, ROLES } from "@/utils/roleUtils";
 
-export const cartKeys = {
-  all: ["cart"] as const,
-  me: () => [...cartKeys.all, "me"] as const,
+export const CART_QUERY_KEYS = {
+  all: ["customer", "cart"] as const,
+  myCart: (userId?: number) => ["customer", "cart", userId ?? "guest"] as const,
 };
 
-export function useCart() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const user = useAuthStore((s) => s.user);
-  const isCustomer = isAuthenticated && hasRole(user, [ROLES.CUSTOMER]);
+export function useMyCart() {
+  const { user, isAuthenticated } = useAuthStore();
+  const isCustomer = isAuthenticated && hasRole(user, ROLES.CUSTOMER);
 
-  return useQuery<Cart>({
-    queryKey: cartKeys.me(),
+  return useQuery({
+    queryKey: CART_QUERY_KEYS.myCart(user?.userId),
     queryFn: () => cartService.getMyCart(),
     enabled: isCustomer,
   });
 }
 
-export function useAddToCartMutation(options?: {
-  onSuccess?: (cart: Cart) => void;
-  silent?: boolean;
-}) {
+export function useAddCartItem() {
   const queryClient = useQueryClient();
-  const toast = useToast();
+  const userId = useAuthStore((state) => state.user?.userId);
 
   return useMutation({
-    mutationFn: (data: AddCartItemRequest) => cartService.addItem(data),
+    mutationFn: (payload: AddCartItemRequest) => cartService.addItem(payload),
     onSuccess: (updatedCart) => {
-      queryClient.setQueryData(cartKeys.me(), updatedCart);
-      if (!options?.silent) {
-        toast.success("Đã thêm sản phẩm vào giỏ hàng.");
-      }
-      options?.onSuccess?.(updatedCart);
+      queryClient.setQueryData(CART_QUERY_KEYS.myCart(userId), updatedCart);
+      void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.all });
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error));
+    onError: (error) => {
+      // Đồng bộ lại giỏ hàng & tồn kho nếu gặp xung đột 409 (hết hàng / ngừng bán / đồng thời)
+      if (isHttpStatus(error, 409)) {
+        void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.all });
+        void queryClient.invalidateQueries({ queryKey: ["public", "products"] });
+      }
     },
   });
 }
 
-export function useUpdateCartItemMutation() {
+export function useUpdateCartItem() {
   const queryClient = useQueryClient();
-  const toast = useToast();
+  const userId = useAuthStore((state) => state.user?.userId);
 
   return useMutation({
     mutationFn: ({
       cartItemId,
-      data,
+      payload,
     }: {
       cartItemId: number;
-      data: UpdateCartItemRequest;
-    }) => cartService.updateItemQuantity(cartItemId, data),
+      payload: UpdateCartItemRequest;
+    }) => cartService.updateItemQuantity(cartItemId, payload),
     onSuccess: (updatedCart) => {
-      queryClient.setQueryData(cartKeys.me(), updatedCart);
+      queryClient.setQueryData(CART_QUERY_KEYS.myCart(userId), updatedCart);
+      void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.all });
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error));
-      void queryClient.invalidateQueries({ queryKey: cartKeys.me() });
+    onError: (error) => {
+      if (isHttpStatus(error, 409) || isHttpStatus(error, 404)) {
+        void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.all });
+      }
     },
   });
 }
 
-export function useRemoveCartItemMutation() {
+export function useRemoveCartItem() {
   const queryClient = useQueryClient();
-  const toast = useToast();
 
   return useMutation({
     mutationFn: (cartItemId: number) => cartService.removeItem(cartItemId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: cartKeys.me() });
-      toast.success("Đã xóa sản phẩm khỏi giỏ hàng.");
+      void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.all });
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error));
+    onError: (error) => {
+      if (isHttpStatus(error, 409) || isHttpStatus(error, 404)) {
+        void queryClient.invalidateQueries({ queryKey: CART_QUERY_KEYS.all });
+      }
     },
   });
 }

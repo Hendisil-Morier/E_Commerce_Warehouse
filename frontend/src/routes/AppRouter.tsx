@@ -1,73 +1,155 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { ForbiddenPage } from "@/components/common/ForbiddenPage";
+import { NotFoundPage } from "@/components/common/NotFoundPage";
 import { PlaceholderPage } from "@/components/common/PlaceholderPage";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ROUTES } from "@/constants/routes";
-import { AdminProductsPage } from "@/features/admin/pages/AdminProductsPage";
-import { AdminSellersPage } from "@/features/admin/pages/AdminSellersPage";
-import { AdminUsersPage } from "@/features/admin/pages/AdminUsersPage";
-import { LoginPage } from "@/features/auth/pages/LoginPage";
-import { RegisterPage } from "@/features/auth/pages/RegisterPage";
-import { BecomeSellerPage } from "@/features/seller/pages/BecomeSellerPage";
-import { SellerProductFormPage } from "@/features/seller/pages/SellerProductFormPage";
-import { SellerProductsPage } from "@/features/seller/pages/SellerProductsPage";
-import { SellerShopsPage } from "@/features/seller/pages/SellerShopsPage";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { MainLayout } from "@/layouts/MainLayout";
 import { SellerLayout } from "@/layouts/SellerLayout";
 import { WarehouseLayout } from "@/layouts/WarehouseLayout";
-import { HomePage } from "@/pages/HomePage";
-import { OrdersPage } from "@/pages/OrdersPage";
-import { ProfilePage } from "@/pages/ProfilePage";
-import { ProductsPage } from "@/pages/ProductsPage";
-import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage";
-import { ShopDetailPage } from "@/features/catalog/pages/ShopDetailPage";
-import { CartPage } from "@/features/cart/pages/CartPage";
 import { ROLES } from "@/utils/roleUtils";
 
+// Lazy-load các trang theo phân hệ để tối ưu kích thước bundle ban đầu
+const HomePage = lazy(() =>
+  import("@/pages/HomePage").then((m) => ({ default: m.HomePage }))
+);
+const PublicProductsPage = lazy(() =>
+  import("@/features/catalog/pages/PublicProductsPage").then((m) => ({
+    default: m.PublicProductsPage,
+  }))
+);
+const ProductDetailPage = lazy(() =>
+  import("@/features/catalog/pages/ProductDetailPage").then((m) => ({
+    default: m.ProductDetailPage,
+  }))
+);
+const ShopDetailPage = lazy(() =>
+  import("@/features/catalog/pages/ShopDetailPage").then((m) => ({
+    default: m.ShopDetailPage,
+  }))
+);
+const CartPage = lazy(() =>
+  import("@/features/cart/pages/CartPage").then((m) => ({ default: m.CartPage }))
+);
+const CustomerPortalLayout = lazy(() =>
+  import("@/features/customer/layouts/CustomerPortalLayout").then((m) => ({
+    default: m.CustomerPortalLayout,
+  }))
+);
+const CustomerOrdersPage = lazy(() =>
+  import("@/features/customer/pages/CustomerOrdersPage").then((m) => ({
+    default: m.CustomerOrdersPage,
+  }))
+);
+const CustomerAccountPage = lazy(() =>
+  import("@/features/customer/pages/CustomerAccountPage").then((m) => ({
+    default: m.CustomerAccountPage,
+  }))
+);
+const LoginPage = lazy(() =>
+  import("@/features/auth/pages/LoginPage").then((m) => ({ default: m.LoginPage }))
+);
+const RegisterPage = lazy(() =>
+  import("@/features/auth/pages/RegisterPage").then((m) => ({ default: m.RegisterPage }))
+);
+const BecomeSellerPage = lazy(() =>
+  import("@/features/seller/pages/BecomeSellerPage").then((m) => ({
+    default: m.BecomeSellerPage,
+  }))
+);
+const SellerShopsPage = lazy(() =>
+  import("@/features/seller/pages/SellerShopsPage").then((m) => ({
+    default: m.SellerShopsPage,
+  }))
+);
+const SellerProductsPage = lazy(() =>
+  import("@/features/seller/pages/SellerProductsPage").then((m) => ({
+    default: m.SellerProductsPage,
+  }))
+);
+const SellerProductFormPage = lazy(() =>
+  import("@/features/seller/pages/SellerProductFormPage").then((m) => ({
+    default: m.SellerProductFormPage,
+  }))
+);
+const AdminSellersPage = lazy(() =>
+  import("@/features/admin/pages/AdminSellersPage").then((m) => ({
+    default: m.AdminSellersPage,
+  }))
+);
+const AdminProductsPage = lazy(() =>
+  import("@/features/admin/pages/AdminProductsPage").then((m) => ({
+    default: m.AdminProductsPage,
+  }))
+);
+
+const RouteFallback: React.FC = () => (
+  <div className="ks-container" style={{ padding: "36px 24px" }}>
+    <div className="ew-card" style={{ padding: "24px" }}>
+      <Skeleton lines={5} height={20} gap={14} />
+    </div>
+  </div>
+);
+
+function withSuspense(element: React.ReactNode): React.ReactNode {
+  return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
+}
+
 const router = createBrowserRouter([
-  // 1. Khu vực Storefront (Khách mua hàng)
+  // 1. Khu vực Storefront & Cổng Khách hàng
   {
     path: ROUTES.HOME,
     element: <MainLayout />,
+    errorElement: <NotFoundPage />,
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: withSuspense(<HomePage />),
       },
       {
         path: ROUTES.PRODUCTS,
-        element: <ProductsPage />,
+        element: withSuspense(<PublicProductsPage />),
       },
       {
         path: ROUTES.PRODUCT_DETAIL,
-        element: <ProductDetailPage />,
+        element: withSuspense(<ProductDetailPage />),
       },
       {
         path: ROUTES.SHOP_DETAIL,
-        element: <ShopDetailPage />,
-      },
-      {
-        element: <ProtectedRoute />,
-        children: [
-          {
-            path: ROUTES.PROFILE,
-            element: <ProfilePage />,
-          },
-          {
-            path: ROUTES.ORDERS,
-            element: <OrdersPage />,
-          },
-        ],
+        element: withSuspense(<ShopDetailPage />),
       },
       {
         element: <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} />,
         children: [
           {
             path: ROUTES.CART,
-            element: <CartPage />,
+            element: withSuspense(<CartPage />),
+          },
+        ],
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: withSuspense(<CustomerPortalLayout />),
+            children: [
+              {
+                path: ROUTES.ORDERS,
+                element: withSuspense(<CustomerOrdersPage />),
+              },
+              {
+                path: ROUTES.ACCOUNT,
+                element: withSuspense(<CustomerAccountPage />),
+              },
+              {
+                path: ROUTES.ACCOUNT_ADDRESSES,
+                element: withSuspense(<CustomerAccountPage />),
+              },
+            ],
           },
         ],
       },
@@ -76,7 +158,7 @@ const router = createBrowserRouter([
         children: [
           {
             path: ROUTES.BECOME_SELLER,
-            element: <BecomeSellerPage />,
+            element: withSuspense(<BecomeSellerPage />),
           },
         ],
       },
@@ -103,19 +185,19 @@ const router = createBrowserRouter([
           },
           {
             path: "shops",
-            element: <SellerShopsPage />,
+            element: withSuspense(<SellerShopsPage />),
           },
           {
             path: "products",
-            element: <SellerProductsPage />,
+            element: withSuspense(<SellerProductsPage />),
           },
           {
             path: "products/new",
-            element: <SellerProductFormPage />,
+            element: withSuspense(<SellerProductFormPage />),
           },
           {
             path: "products/:id/edit",
-            element: <SellerProductFormPage />,
+            element: withSuspense(<SellerProductFormPage />),
           },
           {
             path: "orders",
@@ -335,11 +417,11 @@ const router = createBrowserRouter([
           },
           {
             path: "sellers",
-            element: <AdminSellersPage />,
+            element: withSuspense(<AdminSellersPage />),
           },
           {
             path: "products",
-            element: <AdminProductsPage />,
+            element: withSuspense(<AdminProductsPage />),
           },
           {
             path: "orders",
@@ -373,7 +455,13 @@ const router = createBrowserRouter([
           },
           {
             path: "users",
-            element: <AdminUsersPage />,
+            element: (
+              <PlaceholderPage
+                screenCode="A7"
+                title="Quản lý người dùng"
+                description="Danh sách tài khoản người dùng trên sàn, xem phân quyền và thao tác Khóa / Mở khóa tài khoản."
+              />
+            ),
           },
           {
             path: "categories",
@@ -396,17 +484,21 @@ const router = createBrowserRouter([
     children: [
       {
         path: ROUTES.LOGIN,
-        element: <LoginPage />,
+        element: withSuspense(<LoginPage />),
       },
       {
         path: ROUTES.REGISTER,
-        element: <RegisterPage />,
+        element: withSuspense(<RegisterPage />),
       },
     ],
   },
   {
     path: ROUTES.FORBIDDEN,
     element: <ForbiddenPage />,
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ]);
 

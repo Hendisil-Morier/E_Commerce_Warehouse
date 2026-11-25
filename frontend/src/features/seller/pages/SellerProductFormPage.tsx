@@ -59,6 +59,7 @@ export const SellerProductFormPage: React.FC = () => {
   const submitProduct = useSubmitProductMutation();
 
   const [images, setImages] = useState<ProductImageInput[]>([]);
+  const [syncedImageKey, setSyncedImageKey] = useState<string>("");
   const [draftVariants, setDraftVariants] = useState<UpsertVariantRequest[]>([
     { sku: "", barcode: "", variantName: "", price: 0, weightGrams: null, isActive: true },
   ]);
@@ -99,6 +100,20 @@ export const SellerProductFormPage: React.FC = () => {
     [categoriesQuery.data]
   );
 
+  const detailSyncKey =
+    isEdit && detail ? `${detail.productId}-${detail.updatedAt ?? ""}` : "";
+
+  if (detailSyncKey && detailSyncKey !== syncedImageKey && detail) {
+    setSyncedImageKey(detailSyncKey);
+    setImages(
+      detail.images.map((img) => ({
+        imageUrl: img.imageUrl,
+        isPrimary: img.isPrimary,
+        displayOrder: img.displayOrder,
+      }))
+    );
+  }
+
   useEffect(() => {
     if (isEdit && detail) {
       reset({
@@ -107,13 +122,6 @@ export const SellerProductFormPage: React.FC = () => {
         productName: detail.productName,
         description: detail.description ?? "",
       });
-      setImages(
-        detail.images.map((img) => ({
-          imageUrl: img.imageUrl,
-          isPrimary: img.isPrimary,
-          displayOrder: img.displayOrder,
-        }))
-      );
     } else if (!isEdit && activeShops.length === 1) {
       reset({
         shopId: String(activeShops[0].shopId),
@@ -141,10 +149,10 @@ export const SellerProductFormPage: React.FC = () => {
 
   const applyFieldErrors = (error: unknown) => {
     const fe = getFieldErrors(error);
-    if (fe.shopId?.[0]) setError("shopId", { message: fe.shopId[0] });
-    if (fe.categoryId?.[0]) setError("categoryId", { message: fe.categoryId[0] });
-    if (fe.productName?.[0]) setError("productName", { message: fe.productName[0] });
-    if (fe.description?.[0]) setError("description", { message: fe.description[0] });
+    if (fe.shopId) setError("shopId", { message: fe.shopId });
+    if (fe.categoryId) setError("categoryId", { message: fe.categoryId });
+    if (fe.productName) setError("productName", { message: fe.productName });
+    if (fe.description) setError("description", { message: fe.description });
   };
 
   const handleSave = async (values: ProductFormValues, andSubmit: boolean) => {

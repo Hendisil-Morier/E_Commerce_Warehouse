@@ -13,42 +13,46 @@ export interface UpdateCartItemRequest {
   quantity: number;
 }
 
-export interface CartItem {
+export interface CartItemDto {
   cartItemId: number;
   variantId: number;
   productId: number;
   productName: string;
   variantName: string;
   sku: string;
-  thumbnailUrl?: string | null;
+  thumbnailUrl: string | null;
   unitPrice: number;
   quantity: number;
   lineTotal: number;
   availableQuantity: number;
   isAvailable: boolean;
   availabilityStatus: CartAvailabilityStatus;
-  warningMessage?: string | null;
+  warningMessage: string | null;
   addedAt: string;
 }
 
-export interface CartShopGroup {
+export interface CartShopGroupDto {
   shopId: number;
   sellerId: number;
   shopName: string;
-  shopLogoUrl?: string | null;
+  shopLogoUrl: string | null;
   sellerBusinessName: string;
   isShopActive: boolean;
   shopSubtotal: number;
-  items: CartItem[];
+  items: CartItemDto[];
 }
 
-export interface Cart {
-  cartId?: number | null;
+export interface CartDto {
+  cartId: number | null;
   totalItems: number;
   totalQuantity: number;
   unavailableItemCount: number;
   hasWarnings: boolean;
   subtotal: number;
-  updatedAt?: string | null;
-  shops: CartShopGroup[];
+  updatedAt: string | null;
+  shops: CartShopGroupDto[];
 }
+
+export type Cart = CartDto;
+export type CartItem = CartItemDto;
+export type CartShopGroup = CartShopGroupDto;

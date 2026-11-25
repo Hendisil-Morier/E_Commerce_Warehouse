@@ -192,6 +192,18 @@ export interface RejectProductRequest {
   reason: string;
 }
 
+export interface PublicProductQuery {
+  categoryId?: number | "";
+  shopId?: number | "";
+  minPrice?: number | "";
+  maxPrice?: number | "";
+  inStockOnly?: boolean;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+}
+
 export interface PublicProductListItemDto {
   productId: number;
   shopId: number;
@@ -254,17 +266,4 @@ export interface PublicShopDto {
   activeProductCount: number;
   createdAt: string;
 }
-
-export interface PublicProductQuery {
-  categoryId?: number | "";
-  shopId?: number | "";
-  minPrice?: number | "";
-  maxPrice?: number | "";
-  inStockOnly?: boolean | "";
-  q?: string;
-  page?: number;
-  pageSize?: number;
-  sort?: string;
-}
-
 

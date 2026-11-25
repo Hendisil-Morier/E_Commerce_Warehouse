@@ -20,6 +20,8 @@
 ================================================================================
 */
 
+SET NAMES utf8mb4;
+
 USE ECommerceWarehouse;
 
 -- Tắt kiểm tra an toàn cập nhật tạm thời để hỗ trợ làm sạch dữ liệu demo

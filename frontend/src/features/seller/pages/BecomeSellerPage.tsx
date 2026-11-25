@@ -62,7 +62,7 @@ export const BecomeSellerPage: React.FC = () => {
     <section className="ew-become-seller-page">
       <PageHeader
         title="Đăng ký trở thành người bán"
-        subtitle="Mở tài khoản Seller để tạo gian hàng, đăng bán sản phẩm và đồng bộ tồn kho sàn E-Warehouse."
+        subtitle="Mở tài khoản Seller để tạo gian hàng, đăng bán sản phẩm và đồng bộ tồn kho sàn KHO SÀN+."
       />
 
       {renderBody()}

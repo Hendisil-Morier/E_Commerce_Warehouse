@@ -17,6 +17,13 @@ export const API_ENDPOINTS = {
   CATEGORIES: {
     BASE: "/api/v1/categories",
   },
+  PRODUCTS: {
+    BASE: "/api/v1/products",
+    BY_ID: (productId: number) => `/api/v1/products/${productId}`,
+  },
+  SHOPS: {
+    BY_ID: (shopId: number) => `/api/v1/shops/${shopId}`,
+  },
   SELLER_SHOPS: {
     BASE: "/api/v1/seller/shops",
     BY_ID: (shopId: number) => `/api/v1/seller/shops/${shopId}`,

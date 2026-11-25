@@ -1,1 +1,1 @@
-export { ProductsPage } from "@/features/catalog/pages/ProductsPage";
+export { PublicProductsPage as ProductsPage } from "@/features/catalog/pages/PublicProductsPage";
