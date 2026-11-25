@@ -97,7 +97,7 @@ Cách dùng: mỗi lần làm xong một việc, đánh dấu ở mục tương 
 | Danh sách sản phẩm `/products` | [x] | FE Bước 4b (lọc danh mục, giá, tồn kho, sắp xếp, tìm kiếm, phân trang) |
 | Chi tiết sản phẩm `/products/:id` | [x] | FE Bước 4b (gallery ảnh, chọn biến thể cập nhật giá/SKU/tồn, điều hướng shop) |
 | Trang shop `/shops/:id` | [x] | FE Bước 4b (thông tin shop, thống kê SP, lưới SP có lọc & phân trang) |
-| Giỏ hàng | [ ] | |
+| Giỏ hàng `/cart` | [x] | FE Giỏ hàng kết nối Cart API thật (nhóm theo shop, tăng/giảm SL, xóa, cảnh báo tồn, badge Header) |
 | Đặt hàng (checkout) | [ ] | |
 | Lịch sử đơn, chi tiết đơn, hủy đơn | [ ] | |
 | Theo dõi vận đơn | [ ] | |
@@ -188,6 +188,7 @@ Mỗi lần làm xong một việc, thêm một dòng ở **trên cùng** (mới
 
 | Ngày | Việc đã làm | Nhánh / PR |
 |---|---|---|
+| 2026-11-25 | **FE Giỏ hàng (Cart):** Tạo `types/cart.ts`, `cartService.ts`, `useCart.ts`, cập nhật `endpoints.ts`; nối nút "Thêm vào giỏ hàng" / "Mua ngay" ở `ProductDetailPage.tsx`; thay badge số lượng giỏ hàng động trên `Header.tsx`; xây dựng `CartPage.tsx` (/cart) nhóm theo Shop kèm cảnh báo tồn khả dụng và đăng ký route bảo vệ role `Customer` trong `AppRouter.tsx`. | `feature/namnh-full` |
 | 2026-11-23 | **TV1 – Nam (Task 52 - Admin Users & RBAC A7):** Hoàn thiện trọn vẹn BE & FE Quản lý người dùng và Phân quyền vai trò: `AdminUsersController` (`GET /api/v1/admin/users`, `GET .../roles`, `GET .../{id}`, `PUT .../status`, `PUT .../roles`), `IUserRepository`/`UserRepository`, `IAdminUserService`/`AdminUserService` (bảo vệ chống Admin tự khóa tài khoản hoặc tự tước quyền Admin của chính mình, phân quyền trong transaction); 9 unit tests mới (`AdminUserServiceTests` pass 100%); xây dựng trang `AdminUsersPage.tsx` (/admin/users) với bảng người dùng, bộ lọc tìm kiếm & vai trò, modal phân quyền RBAC đa vai trò và drawer chi tiết; build FE/BE đạt 0 lỗi 0 cảnh báo. | `feature/namnh-full` |
 | 2026-11-23 | **TV1 – Nam (Task 11 & Task 12):** Hoàn thiện BE & FE Hồ sơ cá nhân, Đổi mật khẩu và Sổ địa chỉ: `UsersController` (`GET/PUT /api/v1/users/me`, `PUT /users/me/password`), `UserAddressesController` (CRUD địa chỉ 4 cấp, đảm bảo toàn vẹn 1 địa chỉ mặc định duy nhất trong transaction); DTOs & FluentValidators; viết 10 unit tests (`UserServiceTests`, `UserAddressServiceTests`); xây dựng trang `ProfilePage.tsx` (/profile) 3 tab; FE & BE build sạch 100%. | `feature/namnh-full` |
 | 2026-11-23 | **TV1 – Nam (Core & Auth):** Hoàn thiện dứt điểm Bước 1 của TV1: bỏ ép email @gmail.com (hỗ trợ mọi domain email hợp lệ), đổi TokenHash của RefreshToken sang SHA-256 Hex 64 ký tự chuẩn cột CHAR(64) trong DB, bổ sung API `POST /api/v1/auth/logout` thu hồi token, gỡ try/catch ở AuthController để thống nhất qua GlobalExceptionMiddleware (ProblemDetails); tạo `docker-compose.yml` (MySQL 8 + Adminer) & `.env.example`; bổ sung unit tests; FE & BE build sạch 100%. | `feature/namnh-full` |

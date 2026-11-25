@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { usePublicProductDetail } from "@/features/catalog/hooks/usePublicCatalog";
+import { useAddToCartMutation } from "@/features/cart/hooks/useCart";
 import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "@/hooks/useToast";
 import { ROUTES } from "@/constants/routes";
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/common/ErrorState";
 import { formatCurrency, resolveAssetUrl } from "@/utils/formatters";
+import { hasRole, ROLES } from "@/utils/roleUtils";
 import type { PublicProductVariantDto } from "@/types/catalog";
 
 export const ProductDetailPage: React.FC = () => {
@@ -28,7 +30,8 @@ export const ProductDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const addToCartMutation = useAddToCartMutation();
 
   const {
     data: product,
@@ -126,23 +129,56 @@ export const ProductDetailPage: React.FC = () => {
 
   const isLowStock = !isOutOfStock && effectiveAvailable <= 5;
 
-  const handleAddToCart = () => {
+  const validateCartAction = (): PublicProductVariantDto | null => {
     if (isOutOfStock) {
       toast.warning("Sản phẩm hiện đang hết hàng.");
-      return;
+      return null;
     }
 
     if (!isAuthenticated) {
       toast.info("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
       navigate(ROUTES.LOGIN, { state: { returnUrl: location.pathname } });
-      return;
+      return null;
     }
 
-    toast.info("Tính năng giỏ hàng và đặt hàng sắp có (thuộc phân hệ Đơn hàng).");
+    if (!hasRole(user, [ROLES.CUSTOMER])) {
+      toast.warning("Chỉ tài khoản Khách hàng mới có thể sử dụng giỏ hàng.");
+      return null;
+    }
+
+    if (!selectedVariant) {
+      toast.warning("Vui lòng chọn phân loại sản phẩm.");
+      return null;
+    }
+
+    return selectedVariant;
+  };
+
+  const handleAddToCart = () => {
+    const variant = validateCartAction();
+    if (!variant) return;
+
+    addToCartMutation.mutate({
+      variantId: variant.variantId,
+      quantity,
+    });
   };
 
   const handleBuyNow = () => {
-    handleAddToCart();
+    const variant = validateCartAction();
+    if (!variant) return;
+
+    addToCartMutation.mutate(
+      {
+        variantId: variant.variantId,
+        quantity,
+      },
+      {
+        onSuccess: () => {
+          navigate(ROUTES.CART);
+        },
+      }
+    );
   };
 
   return (
@@ -622,7 +658,8 @@ export const ProductDetailPage: React.FC = () => {
               type="button"
               variant="secondary"
               size="lg"
-              disabled={isOutOfStock}
+              disabled={isOutOfStock || addToCartMutation.isPending}
+              loading={addToCartMutation.isPending}
               onClick={handleAddToCart}
               style={{
                 flex: 1,
@@ -642,7 +679,7 @@ export const ProductDetailPage: React.FC = () => {
               type="button"
               variant="primary"
               size="lg"
-              disabled={isOutOfStock}
+              disabled={isOutOfStock || addToCartMutation.isPending}
               onClick={handleBuyNow}
               style={{ flex: 1, justifyContent: "center" }}
             >

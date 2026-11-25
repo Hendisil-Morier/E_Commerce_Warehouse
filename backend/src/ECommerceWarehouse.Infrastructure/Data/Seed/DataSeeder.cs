@@ -79,12 +79,13 @@ public static class DataSeeder
             var allRoles = await context.Roles.ToDictionaryAsync(r => r.RoleName, r => r.RoleId);
             var passwordHasher = new PasswordHasher<User>();
 
-            // 3. Seed 5 tài khoản mẫu cho 4 vai trò (bao gồm manager1 & manager2 cho nghiệp vụ tách quyền kho)
+            // 3. Seed tài khoản mẫu cho các vai trò (bao gồm staff1, manager1 & manager2 cho nghiệp vụ phân quyền & tách quyền kho)
             var demoUsers = new List<(string Email, string Username, string FullName, string RoleName)>
             {
                 ("admin@gmail.com", "admin", "Quản trị viên Hệ thống", "Admin"),
-                ("manager1@gmail.com", "manager1", "Nguyễn Văn Kho 1 (Thủ kho 1)", "WarehouseManager"),
-                ("manager2@gmail.com", "manager2", "Trần Văn Kho 2 (Thủ kho 2)", "WarehouseManager"),
+                ("manager1@gmail.com", "manager1", "Nguyễn Văn Kho 1 (Quản lý kho 1)", "WarehouseManager"),
+                ("manager2@gmail.com", "manager2", "Trần Văn Kho 2 (Quản lý kho 2)", "WarehouseManager"),
+                ("staff1@gmail.com", "staff1", "Phạm Văn Soạn (Nhân viên kho)", "WarehouseStaff"),
                 ("seller@gmail.com", "seller", "Trần Thị Shop (Người bán)", "Seller"),
                 ("customer@gmail.com", "customer", "Lê Hoàng Khách (Khách hàng)", "Customer"),
             };

@@ -14,6 +14,7 @@ import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/services/authService";
 import { useCategoriesTree } from "@/features/catalog/hooks/usePublicCatalog";
+import { useCart } from "@/features/cart/hooks/useCart";
 import {
   ROLES,
   getDefaultRouteForUser,
@@ -26,6 +27,8 @@ export const Header: React.FC = () => {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { data: realCategories = [] } = useCategoriesTree();
+  const { data: cart } = useCart();
+  const cartCount = isAuthenticated ? (cart?.totalQuantity ?? 0) : 0;
 
   const handleLogout = () => {
     const refreshToken = useAuthStore.getState().refreshToken;
@@ -361,23 +364,26 @@ export const Header: React.FC = () => {
           >
             <div style={{ position: "relative" }}>
               <ShoppingCart size={24} color="#064e3b" />
-              <span style={{
-                position: "absolute",
-                top: "-8px",
-                right: "-10px",
-                backgroundColor: "#ef4444",
-                color: "#ffffff",
-                fontSize: "0.7rem",
-                fontWeight: 700,
-                borderRadius: "50%",
-                width: "18px",
-                height: "18px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                2
-              </span>
+              {cartCount > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-8px",
+                  right: "-10px",
+                  backgroundColor: "#ef4444",
+                  color: "#ffffff",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  borderRadius: "9999px",
+                  minWidth: "18px",
+                  height: "18px",
+                  padding: "0 4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
             </div>
           </Link>
 

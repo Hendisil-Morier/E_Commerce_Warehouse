@@ -91,6 +91,7 @@ public static class AuthExtensions
         {
             options.AddPolicy(RoleNames.Customer, policy => policy.RequireRole(RoleNames.Customer));
             options.AddPolicy(RoleNames.Seller, policy => policy.RequireRole(RoleNames.Seller));
+            options.AddPolicy(RoleNames.WarehouseStaff, policy => policy.RequireRole(RoleNames.WarehouseStaff));
             options.AddPolicy(RoleNames.WarehouseManager, policy => policy.RequireRole(RoleNames.WarehouseManager));
             options.AddPolicy(RoleNames.Admin, policy => policy.RequireRole(RoleNames.Admin));
         });

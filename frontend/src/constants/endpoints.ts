@@ -53,5 +53,10 @@ export const API_ENDPOINTS = {
     STATUS: (userId: number) => `/api/v1/admin/users/${userId}/status`,
     ROLES_UPDATE: (userId: number) => `/api/v1/admin/users/${userId}/roles`,
   },
+  CART: {
+    BASE: "/api/v1/cart",
+    ITEMS: "/api/v1/cart/items",
+    ITEM_BY_ID: (itemId: number) => `/api/v1/cart/items/${itemId}`,
+  },
 } as const;
 

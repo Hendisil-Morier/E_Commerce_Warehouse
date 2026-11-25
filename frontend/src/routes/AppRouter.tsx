@@ -24,6 +24,7 @@ import { ProfilePage } from "@/pages/ProfilePage";
 import { ProductsPage } from "@/pages/ProductsPage";
 import { ProductDetailPage } from "@/features/catalog/pages/ProductDetailPage";
 import { ShopDetailPage } from "@/features/catalog/pages/ShopDetailPage";
+import { CartPage } from "@/features/cart/pages/CartPage";
 import { ROLES } from "@/utils/roleUtils";
 
 const router = createBrowserRouter([
@@ -58,6 +59,15 @@ const router = createBrowserRouter([
           {
             path: ROUTES.ORDERS,
             element: <OrdersPage />,
+          },
+        ],
+      },
+      {
+        element: <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} />,
+        children: [
+          {
+            path: ROUTES.CART,
+            element: <CartPage />,
           },
         ],
       },
