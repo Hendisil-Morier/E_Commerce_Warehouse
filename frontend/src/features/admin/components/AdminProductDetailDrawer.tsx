@@ -13,6 +13,7 @@ import { formatCurrency, formatDate, resolveAssetUrl } from "@/utils/formatters"
 export interface AdminProductDetailDrawerProps {
   productId: number | null;
   isActionPending: boolean;
+  disableEscape?: boolean;
   onClose: () => void;
   onRequestAction: (
     detail: AdminProductDetailDto,
@@ -23,31 +24,34 @@ export interface AdminProductDetailDrawerProps {
 export const AdminProductDetailDrawer: React.FC<AdminProductDetailDrawerProps> = ({
   productId,
   isActionPending,
+  disableEscape = false,
   onClose,
   onRequestAction,
 }) => {
   const detailQuery = useAdminProductDetailQuery(productId);
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string>("");
+  const [selectedImage, setSelectedImage] = useState<{
+    productId: number;
+    url: string;
+  } | null>(null);
 
   const detail = detailQuery.data;
+  const primaryImageUrl =
+    detail?.images.find((img) => img.isPrimary)?.imageUrl ??
+    detail?.images[0]?.imageUrl ??
+    "";
+  const selectedImageUrl =
+    detail && selectedImage?.productId === detail.productId
+      ? selectedImage.url
+      : primaryImageUrl;
 
   useEffect(() => {
-    if (!detail) {
-      setSelectedImageUrl("");
-      return;
-    }
-    const primary = detail.images.find((img) => img.isPrimary) ?? detail.images[0];
-    setSelectedImageUrl(primary?.imageUrl ?? "");
-  }, [detail]);
-
-  useEffect(() => {
-    if (productId === null) return;
+    if (productId === null || disableEscape) return;
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose, productId]);
+  }, [disableEscape, onClose, productId]);
 
   if (productId === null) return null;
 
@@ -129,7 +133,9 @@ export const AdminProductDetailDrawer: React.FC<AdminProductDetailDrawerProps> =
                         <button
                           key={img.imageId}
                           type="button"
-                          onClick={() => setSelectedImageUrl(img.imageUrl)}
+                          onClick={() =>
+                            setSelectedImage({ productId: detail.productId, url: img.imageUrl })
+                          }
                           className={`ew-preview-thumb ${
                             isSelected ? "ew-preview-thumb--active" : ""
                           }`}

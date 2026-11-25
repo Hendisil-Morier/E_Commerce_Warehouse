@@ -38,6 +38,12 @@ const SORT_OPTIONS = [
   { value: "name_desc", label: "Tên Z → A" },
 ];
 
+const DEFAULT_SELLER_PRODUCT_FILTERS = {
+  status: "",
+  shopId: "",
+  q: "",
+};
+
 export const SellerProductsPage: React.FC = () => {
   const navigate = useNavigate();
   const [submitTarget, setSubmitTarget] = useState<SellerProductListItemDto | null>(null);
@@ -53,7 +59,7 @@ export const SellerProductsPage: React.FC = () => {
     setSort,
     resetFilters,
   } = useUrlFilters({
-    defaults: { status: "", shopId: "", q: "" },
+    defaults: DEFAULT_SELLER_PRODUCT_FILTERS,
     defaultPageSize: 10,
     defaultSort: "updated",
   });

@@ -80,10 +80,18 @@ export const ShopFormModal: React.FC<ShopFormModalProps> = ({
   });
 
   const watchedLogoUrl = useWatch({ control, name: "logoUrl" }) ?? "";
+  const openKey = open ? `open-${editingShop?.shopId ?? "new"}` : "closed";
+  const [prevOpenKey, setPrevOpenKey] = useState(openKey);
+
+  if (openKey !== prevOpenKey) {
+    setPrevOpenKey(openKey);
+    if (open) {
+      setUploadError(null);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
-    setUploadError(null);
     reset({
       shopName: editingShop?.shopName ?? "",
       description: editingShop?.description ?? "",
@@ -117,14 +125,14 @@ export const ShopFormModal: React.FC<ShopFormModalProps> = ({
 
   const applyBackendFieldErrors = (error: unknown) => {
     const fieldErrors = getFieldErrors(error);
-    if (fieldErrors.shopName?.[0]) {
-      setError("shopName", { message: fieldErrors.shopName[0] });
+    if (fieldErrors.shopName) {
+      setError("shopName", { message: fieldErrors.shopName });
     }
-    if (fieldErrors.description?.[0]) {
-      setError("description", { message: fieldErrors.description[0] });
+    if (fieldErrors.description) {
+      setError("description", { message: fieldErrors.description });
     }
-    if (fieldErrors.logoUrl?.[0]) {
-      setError("logoUrl", { message: fieldErrors.logoUrl[0] });
+    if (fieldErrors.logoUrl) {
+      setError("logoUrl", { message: fieldErrors.logoUrl });
     }
   };
 

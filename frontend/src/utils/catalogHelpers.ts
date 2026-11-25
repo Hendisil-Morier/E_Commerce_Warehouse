@@ -82,3 +82,12 @@ export function formatPriceRange(
   return formatCurrency(minPrice ?? maxPrice ?? 0);
 }
 
+export function resolveStockStatusKey(
+  inStock: boolean,
+  availableQuantity: number
+): "InStock" | "LowStock" | "OutOfStock" {
+  if (!inStock || availableQuantity <= 0) return "OutOfStock";
+  if (availableQuantity <= 5) return "LowStock";
+  return "InStock";
+}
+

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,13 +19,16 @@ const EMPTY_VARIANT_DRAFT: UpsertVariantRequest = {
 };
 
 function validateVariantFields(v: UpsertVariantRequest): string | null {
-  if (!v.sku.trim()) return "Vui lòng nhập SKU.";
-  if (v.sku.trim().length > 80) return "SKU tối đa 80 ký tự.";
+  const trimmedSku = v.sku.trim();
+  if (!trimmedSku) return "Vui lòng nhập SKU.";
+  if (trimmedSku.length > 64) return "SKU không được vượt quá 64 ký tự.";
+  if (/\s/.test(trimmedSku)) return "SKU không được chứa khoảng trắng.";
+  if (v.barcode && v.barcode.trim().length > 64) return "Barcode không được vượt quá 64 ký tự.";
   if (!v.variantName.trim()) return "Vui lòng nhập tên biến thể.";
   if (v.variantName.trim().length > 150) return "Tên biến thể tối đa 150 ký tự.";
   if (!Number.isFinite(v.price) || v.price <= 0) return "Giá bán phải lớn hơn 0.";
-  if (v.weightGrams !== null && v.weightGrams !== undefined && v.weightGrams < 0) {
-    return "Khối lượng không được âm.";
+  if (v.weightGrams !== null && v.weightGrams !== undefined && v.weightGrams <= 0) {
+    return "Khối lượng (gram) phải lớn hơn 0.";
   }
   return null;
 }
@@ -56,77 +59,103 @@ const VariantFieldsGrid: React.FC<VariantFieldsGridProps> = ({
   disabled,
   onChange,
   footerActions,
-}) => (
-  <div className="ew-variant-row__grid">
-    <div>
-      <label className="ew-variant-label">SKU *</label>
-      <Input
-        value={value.sku}
-        disabled={disabled}
-        onChange={(e) => onChange({ ...value, sku: e.target.value })}
-        placeholder="SKU-001"
-      />
-    </div>
-    <div>
-      <label className="ew-variant-label">Tên biến thể *</label>
-      <Input
-        value={value.variantName}
-        disabled={disabled}
-        onChange={(e) => onChange({ ...value, variantName: e.target.value })}
-        placeholder="Đen - 128GB"
-      />
-    </div>
-    <div>
-      <label className="ew-variant-label">Giá bán (₫) *</label>
-      <Input
-        type="number"
-        min={1}
-        step={1000}
-        value={value.price || ""}
-        disabled={disabled}
-        onChange={(e) => onChange({ ...value, price: Number(e.target.value) })}
-        placeholder="250000"
-      />
-    </div>
-    <div>
-      <label className="ew-variant-label">Barcode</label>
-      <Input
-        value={value.barcode ?? ""}
-        disabled={disabled}
-        onChange={(e) => onChange({ ...value, barcode: e.target.value })}
-        placeholder="Tùy chọn"
-      />
-    </div>
-    <div>
-      <label className="ew-variant-label">Khối lượng (g)</label>
-      <Input
-        type="number"
-        min={0}
-        value={value.weightGrams ?? ""}
-        disabled={disabled}
-        onChange={(e) =>
-          onChange({
-            ...value,
-            weightGrams: e.target.value === "" ? null : Number(e.target.value),
-          })
-        }
-        placeholder="Ví dụ: 350"
-      />
-    </div>
-    <div className="ew-variant-row__footer">
-      <label className="ew-inline-check">
-        <input
-          type="checkbox"
-          checked={value.isActive}
+}) => {
+  const skuId = useId();
+  const nameId = useId();
+  const priceId = useId();
+  const barcodeId = useId();
+  const weightId = useId();
+
+  return (
+    <div className="ew-variant-row__grid">
+      <div>
+        <label htmlFor={skuId} className="ew-variant-label">
+          SKU *
+        </label>
+        <Input
+          id={skuId}
+          value={value.sku}
+          maxLength={64}
           disabled={disabled}
-          onChange={(e) => onChange({ ...value, isActive: e.target.checked })}
+          onChange={(e) => onChange({ ...value, sku: e.target.value })}
+          placeholder="SKU-001"
         />
-        <span>Đang bán</span>
-      </label>
-      {footerActions}
+      </div>
+      <div>
+        <label htmlFor={nameId} className="ew-variant-label">
+          Tên biến thể *
+        </label>
+        <Input
+          id={nameId}
+          value={value.variantName}
+          maxLength={150}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, variantName: e.target.value })}
+          placeholder="Đen - 128GB"
+        />
+      </div>
+      <div>
+        <label htmlFor={priceId} className="ew-variant-label">
+          Giá bán (₫) *
+        </label>
+        <Input
+          id={priceId}
+          type="number"
+          min={1}
+          step={1000}
+          value={value.price || ""}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, price: Number(e.target.value) })}
+          placeholder="250000"
+        />
+      </div>
+      <div>
+        <label htmlFor={barcodeId} className="ew-variant-label">
+          Barcode
+        </label>
+        <Input
+          id={barcodeId}
+          value={value.barcode ?? ""}
+          maxLength={64}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, barcode: e.target.value })}
+          placeholder="Tùy chọn"
+        />
+      </div>
+      <div>
+        <label htmlFor={weightId} className="ew-variant-label">
+          Khối lượng (g)
+        </label>
+        <Input
+          id={weightId}
+          type="number"
+          min={1}
+          value={value.weightGrams ?? ""}
+          disabled={disabled}
+          onChange={(e) =>
+            onChange({
+              ...value,
+              weightGrams: e.target.value === "" ? null : Number(e.target.value),
+            })
+          }
+          placeholder="Ví dụ: 350"
+        />
+      </div>
+      <div className="ew-variant-row__footer">
+        <label className="ew-inline-check">
+          <input
+            type="checkbox"
+            checked={value.isActive}
+            disabled={disabled}
+            onChange={(e) => onChange({ ...value, isActive: e.target.checked })}
+          />
+          <span>Đang bán</span>
+        </label>
+        {footerActions}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ExistingVariantRow: React.FC<{
   variant: ProductVariantDto;

@@ -1,11 +1,6 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Eye,
-  EyeOff,
-  Store,
-  ShoppingBag,
-} from "lucide-react";
+import { Eye, EyeOff, ShoppingBag, Store } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/authStore";
@@ -15,6 +10,14 @@ import { getDefaultRouteForUser } from "@/utils/roleUtils";
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  const fullNameId = useId();
+  const usernameId = useId();
+  const emailId = useId();
+  const phoneId = useId();
+  const shopNameId = useId();
+  const passwordId = useId();
+  const confirmPasswordId = useId();
 
   const [accountType, setAccountType] = useState<"customer" | "seller">("customer");
   const [fullName, setFullName] = useState("");
@@ -28,7 +31,7 @@ export const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -47,15 +50,15 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    // 1. Kiểm tra định dạng Gmail hợp lệ (@gmail.com)
+    // Khớp ràng buộc Gmail (@gmail.com) của AuthService ở Backend
     const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
     if (!GMAIL_REGEX.test(cleanEmail)) {
-      setErrorMessage("Địa chỉ email phải là Gmail hợp lệ (kết thúc bằng @gmail.com, ví dụ: yourname@gmail.com).");
+      setErrorMessage(
+        "Địa chỉ email phải là Gmail hợp lệ (kết thúc bằng @gmail.com, ví dụ: yourname@gmail.com)."
+      );
       return;
     }
 
-    // 2. Kiểm tra số điện thoại: đúng 10 số và thuộc các đầu số nhà mạng VN quy định
-    // Các đầu số hợp lệ: 070, 076-079, 089, 090, 093, 032-039, 086, 096-098, 081-085, 088, 091, 094, 092, 056, 058, 052, 099, 059
     const VIETNAM_PHONE_REGEX = /^(03[2-9]|05[2689]|07[06-9]|08[1-689]|09[0-46-9])\d{7}$/;
     if (cleanPhone.length !== 10) {
       setErrorMessage("Số điện thoại phải gồm đúng 10 chữ số.");
@@ -66,6 +69,11 @@ export const RegisterPage: React.FC = () => {
       setErrorMessage(
         "Đầu số điện thoại không hợp lệ. Chỉ chấp nhận các đầu số: 032-039, 052/056/058/059, 070/076-079, 081-086/088/089, 090-094/096-099."
       );
+      return;
+    }
+
+    if (accountType === "seller" && !shopName.trim()) {
+      setErrorMessage("Vui lòng nhập tên gian hàng hoặc doanh nghiệp dự kiến.");
       return;
     }
 
@@ -101,299 +109,288 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div style={{
-      backgroundColor: "#ffffff",
-      borderRadius: "16px",
-      boxShadow: "0 20px 40px rgba(15, 23, 42, 0.25)",
-      padding: "32px 36px",
-      width: "100%",
-      maxWidth: "480px",
-      boxSizing: "border-box",
-    }}>
-      <h2 style={{
-        fontSize: "1.45rem",
-        fontWeight: 800,
-        color: "#0f172a",
-        marginBottom: "16px",
-      }}>
-        Đăng ký tài khoản
+    <div className="ks-auth-card ks-auth-card--wide">
+      <h2
+        style={{
+          fontSize: "1.45rem",
+          fontWeight: 800,
+          color: "var(--color-dark)",
+          marginBottom: "16px",
+        }}
+      >
+        Đăng ký tài khoản KHO SÀN+
       </h2>
 
-      {/* Account Type Selector (Khách hàng vs Người bán) */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "10px",
-        marginBottom: "20px",
-      }}>
+      {/* Account Type Selector */}
+      <div
+        role="tablist"
+        aria-label="Chọn loại tài khoản đăng ký"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "10px",
+          marginBottom: "18px",
+        }}
+      >
         <button
           type="button"
+          role="tab"
+          aria-selected={accountType === "customer"}
           onClick={() => setAccountType("customer")}
+          disabled={loading}
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: "8px",
-            padding: "10px",
+            minHeight: "44px",
+            padding: "8px 10px",
             borderRadius: "8px",
-            border: accountType === "customer" ? "2px solid #059669" : "1px solid #cbd5e1",
-            backgroundColor: accountType === "customer" ? "#e8f5f1" : "#ffffff",
-            color: accountType === "customer" ? "#059669" : "#64748b",
+            border:
+              accountType === "customer"
+                ? "2px solid var(--color-primary)"
+                : "1px solid var(--color-border-strong)",
+            backgroundColor:
+              accountType === "customer" ? "var(--color-accent-soft)" : "var(--color-white)",
+            color:
+              accountType === "customer" ? "var(--color-primary)" : "var(--color-muted)",
             fontWeight: 700,
             fontSize: "0.85rem",
-            cursor: "pointer",
-            transition: "all 0.2s",
           }}
         >
-          <ShoppingBag size={17} />
+          <ShoppingBag size={17} aria-hidden="true" />
           <span>Khách mua hàng</span>
         </button>
 
         <button
           type="button"
+          role="tab"
+          aria-selected={accountType === "seller"}
           onClick={() => setAccountType("seller")}
+          disabled={loading}
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: "8px",
-            padding: "10px",
+            minHeight: "44px",
+            padding: "8px 10px",
             borderRadius: "8px",
-            border: accountType === "seller" ? "2px solid #059669" : "1px solid #cbd5e1",
-            backgroundColor: accountType === "seller" ? "#e8f5f1" : "#ffffff",
-            color: accountType === "seller" ? "#059669" : "#64748b",
+            border:
+              accountType === "seller"
+                ? "2px solid var(--color-primary)"
+                : "1px solid var(--color-border-strong)",
+            backgroundColor:
+              accountType === "seller" ? "var(--color-accent-soft)" : "var(--color-white)",
+            color:
+              accountType === "seller" ? "var(--color-primary)" : "var(--color-muted)",
             fontWeight: 700,
             fontSize: "0.85rem",
-            cursor: "pointer",
-            transition: "all 0.2s",
           }}
         >
-          <Store size={17} />
+          <Store size={17} aria-hidden="true" />
           <span>Đối tác Người bán</span>
         </button>
       </div>
 
       {errorMessage && (
-        <div style={{
-          backgroundColor: "#fef2f2",
-          border: "1px solid #fecaca",
-          color: "#dc2626",
-          padding: "10px 14px",
-          borderRadius: "8px",
-          marginBottom: "16px",
-          fontSize: "0.85rem",
-        }}>
+        <div
+          role="alert"
+          style={{
+            backgroundColor: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "var(--color-danger)",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+            fontSize: "0.85rem",
+            lineHeight: 1.5,
+          }}
+        >
           {errorMessage}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        {/* Full Name */}
-        <div>
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        style={{ display: "flex", flexDirection: "column", gap: "14px" }}
+      >
+        <div className="ew-field">
+          <label htmlFor={fullNameId} className="ew-field__label">
+            Họ và tên đầy đủ <span className="ew-field__required">*</span>
+          </label>
           <input
+            id={fullNameId}
             type="text"
+            className="ew-control"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Họ và tên đầy đủ *"
+            placeholder="Ví dụ: Nguyễn Văn An"
+            disabled={loading}
             required
-            style={{
-              width: "100%",
-              padding: "11px 14px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.92rem",
-              outline: "none",
-            }}
           />
         </div>
 
-        {/* Username */}
-        <div>
+        <div className="ew-field">
+          <label htmlFor={usernameId} className="ew-field__label">
+            Tên đăng nhập <span className="ew-field__required">*</span>
+          </label>
           <input
+            id={usernameId}
             type="text"
+            className="ew-control"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Tên đăng nhập *"
-            required
+            placeholder="Tối thiểu 3 ký tự"
             autoCapitalize="none"
-            style={{
-              width: "100%",
-              padding: "11px 14px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.92rem",
-              outline: "none",
-            }}
+            disabled={loading}
+            required
           />
         </div>
 
-        {/* Email (Gmail) */}
-        <div>
+        <div className="ew-field">
+          <label htmlFor={emailId} className="ew-field__label">
+            Địa chỉ Gmail <span className="ew-field__required">*</span>
+          </label>
           <input
+            id={emailId}
             type="email"
+            className="ew-control"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Địa chỉ Gmail (ví dụ: name@gmail.com) *"
+            placeholder="Ví dụ: tenban@gmail.com"
+            disabled={loading}
             required
-            style={{
-              width: "100%",
-              padding: "11px 14px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.92rem",
-              outline: "none",
-            }}
           />
+          <span className="ew-field__hint">
+            Hệ thống hiện yêu cầu địa chỉ Gmail kết thúc bằng <strong>@gmail.com</strong>.
+          </span>
         </div>
 
-        {/* Phone */}
-        <div>
+        <div className="ew-field">
+          <label htmlFor={phoneId} className="ew-field__label">
+            Số điện thoại liên hệ <span className="ew-field__required">*</span>
+          </label>
           <input
+            id={phoneId}
             type="tel"
+            className="ew-control ks-tabular"
             value={phoneNumber}
             onChange={(e) => {
               const val = e.target.value.replace(/\D/g, "").slice(0, 10);
               setPhoneNumber(val);
             }}
-            placeholder="Số điện thoại liên hệ (10 chữ số) *"
-            required
+            placeholder="10 chữ số (đầu số di động Việt Nam)"
             maxLength={10}
-            style={{
-              width: "100%",
-              padding: "11px 14px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.92rem",
-              outline: "none",
-            }}
+            disabled={loading}
+            required
           />
         </div>
 
-        {/* Extra fields if Seller */}
         {accountType === "seller" && (
-          <div>
+          <div className="ew-field">
+            <label htmlFor={shopNameId} className="ew-field__label">
+              Tên gian hàng / Doanh nghiệp dự kiến <span className="ew-field__required">*</span>
+            </label>
             <input
+              id={shopNameId}
               type="text"
+              className="ew-control"
               value={shopName}
               onChange={(e) => setShopName(e.target.value)}
-              placeholder="Tên gian hàng / Doanh nghiệp dự kiến *"
+              placeholder="Ví dụ: Công ty TNHH Thiết Bị Số An Phát"
+              disabled={loading}
               required
-              style={{
-                width: "100%",
-                padding: "11px 14px",
-                borderRadius: "8px",
-                border: "1px solid #059669",
-                backgroundColor: "#f8fafc",
-                fontSize: "0.92rem",
-                outline: "none",
-              }}
             />
           </div>
         )}
 
-        {/* Password */}
-        <div>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <div className="ew-field">
+          <label htmlFor={passwordId} className="ew-field__label">
+            Mật khẩu <span className="ew-field__required">*</span>
+          </label>
+          <div className="ew-control-wrap">
             <input
+              id={passwordId}
               type={showPassword ? "text" : "password"}
+              className="ew-control ew-control--has-right"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mật khẩu (tối thiểu 6 ký tự) *"
+              placeholder="Tối thiểu 6 ký tự"
+              autoComplete="new-password"
+              disabled={loading}
               required
-              style={{
-                width: "100%",
-                padding: "11px 42px 11px 14px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.92rem",
-                outline: "none",
-              }}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: "absolute",
-                right: "12px",
-                color: "#64748b",
-              }}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            <span className="ew-control__addon-right">
+              <button
+                type="button"
+                className="ew-icon-btn"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                disabled={loading}
+              >
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </span>
           </div>
         </div>
 
-        {/* Confirm Password */}
-        <div>
+        <div className="ew-field">
+          <label htmlFor={confirmPasswordId} className="ew-field__label">
+            Xác nhận lại mật khẩu <span className="ew-field__required">*</span>
+          </label>
           <input
+            id={confirmPasswordId}
             type={showPassword ? "text" : "password"}
+            className="ew-control"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Xác nhận lại mật khẩu *"
+            placeholder="Nhập lại mật khẩu"
+            autoComplete="new-password"
+            disabled={loading}
             required
-            style={{
-              width: "100%",
-              padding: "11px 14px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.92rem",
-              outline: "none",
-            }}
           />
         </div>
 
-        {/* Big Submit Button (Emerald Green #059669) */}
         <button
           type="submit"
           disabled={loading}
-          style={{
-            width: "100%",
-            padding: "13px",
-            backgroundColor: loading ? "#94a3b8" : "#059669",
-            color: "#ffffff",
-            borderRadius: "8px",
-            fontWeight: 800,
-            fontSize: "1rem",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            boxShadow: "0 4px 14px rgba(5, 150, 105, 0.35)",
-            marginTop: "6px",
-            cursor: loading ? "not-allowed" : "pointer",
-            transition: "background-color 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) e.currentTarget.style.backgroundColor = "#047857";
-          }}
-          onMouseLeave={(e) => {
-            if (!loading) e.currentTarget.style.backgroundColor = "#059669";
-          }}
+          className="ew-btn ew-btn--primary ew-btn--lg ew-btn--full"
+          style={{ marginTop: "4px" }}
         >
-          {loading ? "ĐANG TẠO TÀI KHOẢN..." : (accountType === "seller" ? "ĐĂNG KÝ MỞ GIAN HÀNG" : "ĐĂNG KÝ NGAY")}
+          {loading
+            ? "Đang tạo tài khoản..."
+            : accountType === "seller"
+              ? "Đăng ký mở gian hàng"
+              : "Đăng ký ngay"}
         </button>
 
-        {/* Disclaimer */}
-        <p style={{
-          fontSize: "0.72rem",
-          color: "#94a3b8",
-          textAlign: "center",
-          lineHeight: 1.4,
-          margin: "4px 0 0",
-        }}>
-          Bằng việc đăng ký, bạn xác nhận đã đọc và đồng ý với Điều khoản dịch vụ & Chính sách bảo mật của Tên sàn.
+        <p
+          style={{
+            fontSize: "0.75rem",
+            color: "var(--color-muted)",
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          Bằng việc đăng ký, bạn xác nhận đồng ý với Điều khoản dịch vụ &amp; Chính sách bảo mật của KHO SÀN+.
         </p>
 
-        {/* Switch to Login */}
-        <div style={{
-          textAlign: "center",
-          fontSize: "0.85rem",
-          color: "#64748b",
-          paddingTop: "6px",
-        }}>
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: "0.88rem",
+            color: "var(--color-muted)",
+            paddingTop: "8px",
+            borderTop: "1px solid var(--color-border)",
+          }}
+        >
           Bạn đã có tài khoản?{" "}
           <Link
             to={ROUTES.LOGIN}
             style={{
-              color: "#059669",
+              color: "var(--color-primary)",
               fontWeight: 700,
               textDecoration: "none",
             }}

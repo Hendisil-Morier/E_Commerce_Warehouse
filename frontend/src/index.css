@@ -16,7 +16,43 @@
 
   --color-mint-card: #e6f4f1;
   --color-peach-card: #fdf6ec;
+  --color-warm-accent: #fdf6ec;
+  --color-topbar: #072b22;
   --color-footer-dark: #0a1420;
+  --color-surface-subtle: #f1f5f9;
+  --color-border-strong: #cbd5e1;
+  --color-warehouse-badge: #f59e0b;
+
+  /* Status Badge Palettes (KHO SÀN+ Spec) */
+  --color-success-dot: #10b981;
+  --color-success-bg: #ecfdf5;
+  --color-success-text: #065f46;
+  --color-success-border: #a7f3d0;
+
+  --color-pending-dot: #f59e0b;
+  --color-pending-bg: #fffbeb;
+  --color-pending-text: #92400e;
+  --color-pending-border: #fde68a;
+
+  --color-rejected-dot: #ef4444;
+  --color-rejected-bg: #fef2f2;
+  --color-rejected-text: #991b1b;
+  --color-rejected-border: #fecaca;
+
+  --color-info-dot: #0284c7;
+  --color-info-bg: #f0f9ff;
+  --color-info-text: #075985;
+  --color-info-border: #bae6fd;
+
+  /* Shape Radii & Elevation */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  --shadow-card-hover: 0 10px 18px -4px rgba(14, 124, 102, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-modal: 0 20px 40px -12px rgba(15, 23, 42, 0.25);
+  --container-max: 1280px;
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
@@ -62,10 +98,16 @@ html, body {
   min-height: 100%;
   font-family: var(--font-sans);
   color: var(--color-text);
-  background-color: var(--color-white);
+  background-color: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
+  overflow-x: hidden;
+}
+
+.ks-tabular {
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+  font-variant-numeric: tabular-nums;
 }
 
 #root {
