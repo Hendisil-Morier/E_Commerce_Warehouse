@@ -109,42 +109,73 @@ public class SellerOrderServiceTests
         public Task<List<Order>> GetExpiredPendingOrdersAsync(DateTime utcNow, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }
 
-    private static (SellerOrderService Service, StubOrderRepo Repo, SpyInventoryLedger Ledger, StubCurrentUser CurrentUser) CreateSut()
+    private sealed class StubIssueRepo : IInventoryIssueRepository
+    {
+        public List<InventoryIssue> Issues { get; } = [];
+        public Task<PagedResult<IssueDto>> GetPagedAsync(IssueQueryDto query, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<InventoryIssue?> GetByIdWithDetailsAsync(long issueId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<IssueDto?> GetDtoByIdAsync(long issueId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<bool> ExistsForSellerOrderAsync(long sellerOrderId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Issues.Any(i => i.SellerOrderId == sellerOrderId));
+        public Task AddAsync(InventoryIssue issue, CancellationToken cancellationToken = default)
+        {
+            issue.IssueId = Issues.Count + 1;
+            Issues.Add(issue);
+            return Task.CompletedTask;
+        }
+    }
+
+    private static (SellerOrderService Service, StubOrderRepo Repo, SpyInventoryLedger Ledger, StubCurrentUser CurrentUser, StubIssueRepo IssueRepo) CreateSut()
     {
         var repo = new StubOrderRepo();
+        var issueRepo = new StubIssueRepo();
         var ledger = new SpyInventoryLedger();
         var currentUser = new StubCurrentUser { SellerId = 10 };
 
         var service = new SellerOrderService(
             repo,
+            issueRepo,
             ledger,
             new StubUnitOfWork(),
             currentUser,
             new SellerOrderQueryValidator(),
             new CancelSellerOrderRequestValidator());
 
-        return (service, repo, ledger, currentUser);
+        return (service, repo, ledger, currentUser, issueRepo);
     }
 
     [Fact]
     public async Task ConfirmSellerOrderAsync_PendingOrder_ConfirmsAndUpdatesParentToProcessing()
     {
-        var (service, repo, _, _) = CreateSut();
+        var (service, repo, _, _, issueRepo) = CreateSut();
         var order = new Order { OrderId = 1, OrderCode = "ORD-1", OrderStatus = OrderStatuses.Confirmed };
-        var so = new SellerOrder { SellerOrderId = 1, OrderId = 1, SellerId = 10, Status = SellerOrderStatuses.Pending, Order = order };
+        var so = new SellerOrder
+        {
+            SellerOrderId = 1,
+            OrderId = 1,
+            SellerId = 10,
+            WarehouseId = 1,
+            Status = SellerOrderStatuses.Pending,
+            Order = order,
+            Items = [new OrderItem { OrderItemId = 10, SellerOrderId = 1, VariantId = 101, Quantity = 2 }]
+        };
         order.SellerOrders.Add(so);
         repo.SellerOrders.Add(so);
+        repo.Reservations.Add(new StockReservation { ReservationId = 99, OrderItemId = 10, WarehouseId = 1, LocationId = 3, VariantId = 101, Quantity = 2, Status = ReservationStatuses.Active });
 
         var result = await service.ConfirmSellerOrderAsync(1);
 
         Assert.Equal(SellerOrderStatuses.Confirmed, result.Status);
         Assert.Equal(OrderStatuses.Processing, order.OrderStatus);
+        var createdIssue = Assert.Single(issueRepo.Issues);
+        Assert.Equal(IssueStatuses.Draft, createdIssue.Status);
+        Assert.Equal(99, createdIssue.Details.Single().ReservationId);
     }
 
     [Fact]
     public async Task ConfirmSellerOrderAsync_OtherSellerOrder_ThrowsNotFoundException()
     {
-        var (service, repo, _, _) = CreateSut();
+        var (service, repo, _, _, _) = CreateSut();
         var order = new Order { OrderId = 1, OrderCode = "ORD-1", OrderStatus = OrderStatuses.Confirmed };
         var so = new SellerOrder { SellerOrderId = 1, OrderId = 1, SellerId = 999, Status = SellerOrderStatuses.Pending, Order = order };
         order.SellerOrders.Add(so);
@@ -156,7 +187,7 @@ public class SellerOrderServiceTests
     [Fact]
     public async Task CancelSellerOrderAsync_ShippedOrder_ThrowsInvalidStatusTransition()
     {
-        var (service, repo, _, _) = CreateSut();
+        var (service, repo, _, _, _) = CreateSut();
         var order = new Order { OrderId = 1, OrderCode = "ORD-1", OrderStatus = OrderStatuses.Shipped };
         var so = new SellerOrder { SellerOrderId = 1, OrderId = 1, SellerId = 10, Status = SellerOrderStatuses.Shipped, Order = order };
         order.SellerOrders.Add(so);
@@ -171,7 +202,7 @@ public class SellerOrderServiceTests
     [Fact]
     public async Task CancelSellerOrderAsync_OnlySellerOrder_CancelsParentOrderAndReleasesStock()
     {
-        var (service, repo, ledger, _) = CreateSut();
+        var (service, repo, ledger, _, _) = CreateSut();
         var order = new Order { OrderId = 1, OrderCode = "ORD-1", OrderStatus = OrderStatuses.Confirmed };
         var so = new SellerOrder
         {

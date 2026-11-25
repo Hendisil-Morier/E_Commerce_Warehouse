@@ -4,6 +4,7 @@ using ECommerceWarehouse.Application.DTOs.Common;
 using ECommerceWarehouse.Application.DTOs.Order;
 using ECommerceWarehouse.Domain.Constants;
 using ECommerceWarehouse.Domain.Entities.Order;
+using ECommerceWarehouse.Domain.Entities.Warehouse;
 using ECommerceWarehouse.Domain.Exceptions;
 using FluentValidation;
 
@@ -12,6 +13,7 @@ namespace ECommerceWarehouse.Application.Services;
 public class SellerOrderService : ISellerOrderService
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IInventoryIssueRepository _issueRepository;
     private readonly IInventoryLedgerService _inventoryLedgerService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUser _currentUser;
@@ -20,6 +22,7 @@ public class SellerOrderService : ISellerOrderService
 
     public SellerOrderService(
         IOrderRepository orderRepository,
+        IInventoryIssueRepository issueRepository,
         IInventoryLedgerService inventoryLedgerService,
         IUnitOfWork unitOfWork,
         ICurrentUser currentUser,
@@ -27,6 +30,7 @@ public class SellerOrderService : ISellerOrderService
         IValidator<CancelSellerOrderRequestDto> cancelValidator)
     {
         _orderRepository = orderRepository;
+        _issueRepository = issueRepository;
         _inventoryLedgerService = inventoryLedgerService;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
@@ -115,6 +119,40 @@ public class SellerOrderService : ISellerOrderService
                     ChangedBy = userId,
                     CreatedAt = now
                 }, ct);
+            }
+
+            // Tự sinh Phiếu xuất kho (Draft) từ các dòng giữ chỗ Active của đơn con này
+            if (sellerOrder.WarehouseId.HasValue &&
+                !await _issueRepository.ExistsForSellerOrderAsync(sellerOrder.SellerOrderId, ct))
+            {
+                var itemIds = sellerOrder.Items.Select(i => i.OrderItemId).ToList();
+                var reservations = await _orderRepository.GetActiveReservationsByOrderItemsAsync(itemIds, ct);
+
+                if (reservations.Count > 0)
+                {
+                    var issue = new InventoryIssue
+                    {
+                        WarehouseId = sellerOrder.WarehouseId.Value,
+                        SellerOrderId = sellerOrder.SellerOrderId,
+                        IssueCode = $"PX-{now:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}",
+                        IssueType = IssueTypes.OrderFulfillment,
+                        Status = IssueStatuses.Draft,
+                        Note = $"Phiếu xuất tự sinh cho đơn con #{sellerOrder.SellerOrderId} ({sellerOrder.Order.OrderCode})",
+                        CreatedBy = userId,
+                        CreatedAt = now,
+                        Details = reservations.Select(r => new IssueDetail
+                        {
+                            WarehouseId = r.WarehouseId,
+                            VariantId = r.VariantId,
+                            LocationId = r.LocationId,
+                            Quantity = r.Quantity,
+                            PickedQuantity = 0,
+                            ReservationId = r.ReservationId
+                        }).ToList()
+                    };
+
+                    await _issueRepository.AddAsync(issue, ct);
+                }
             }
 
             await _unitOfWork.SaveChangesAsync(ct);
