@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CheckCircle2, Info, Mail, MapPin, Plus, ShieldCheck, Store, Trash2, User } from "lucide-react";
+import { CheckCircle2, KeyRound, Mail, MapPin, Plus, Save, ShieldCheck, Store, Trash2, User } from "lucide-react";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
@@ -15,6 +15,11 @@ import {
   useMyAddresses,
   useSetDefaultAddress,
 } from "@/features/customer/hooks/useAddresses";
+import {
+  useChangePassword,
+  useMyProfile,
+  useUpdateMyProfile,
+} from "@/features/customer/hooks/useUserProfile";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/stores/authStore";
 import { getErrorMessage } from "@/utils/errorHandler";
@@ -36,6 +41,25 @@ export const CustomerAccountPage: React.FC = () => {
   const isAddressesTab = location.pathname.startsWith(ROUTES.ACCOUNT_ADDRESSES);
   const roles = getUserRoles(user);
   const isSeller = hasRole(user, ROLES.SELLER);
+
+  const { data: profile } = useMyProfile();
+  const updateProfile = useUpdateMyProfile();
+  const changePassword = useChangePassword();
+
+  const [fullName, setFullName] = useState(user?.fullName ?? "");
+  const [phoneNumberProfile, setPhoneNumberProfile] = useState(user?.phoneNumber ?? "");
+  const profileSyncKey = profile ? `${profile.userId}-${profile.fullName}-${profile.phoneNumber ?? ""}` : "";
+  const [prevProfileSyncKey, setPrevProfileSyncKey] = useState("");
+  if (profile && profileSyncKey !== prevProfileSyncKey) {
+    setPrevProfileSyncKey(profileSyncKey);
+    setFullName(profile.fullName ?? "");
+    setPhoneNumberProfile(profile.phoneNumber ?? "");
+  }
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { data: addresses = [], isLoading: addrLoading } = useMyAddresses();
   const createAddress = useCreateAddress();
@@ -117,75 +141,156 @@ export const CustomerAccountPage: React.FC = () => {
 
       {!isAddressesTab ? (
         <div className="ks-profile-grid">
-          {/* Left: Real User Info from Auth Session */}
+          {/* Left: Editable User Profile connected to GET/PUT /api/v1/users/me */}
           <section className="ew-card" style={{ padding: "24px" }}>
-            <h2 className="ew-section-heading">Thông tin tài khoản đăng nhập</h2>
-
-            <div className="ew-form-grid-2" style={{ marginBottom: "18px" }}>
-              <div className="ew-field">
-                <label htmlFor="profile-fullname" className="ew-field__label">
-                  Họ và tên
-                </label>
-                <input
-                  id="profile-fullname"
-                  type="text"
-                  className="ew-control"
-                  value={user?.fullName ?? ""}
-                  readOnly
-                  disabled
-                />
-              </div>
-
-              <div className="ew-field">
-                <label htmlFor="profile-email" className="ew-field__label">
-                  Địa chỉ Email
-                </label>
-                <input
-                  id="profile-email"
-                  type="email"
-                  className="ew-control"
-                  value={user?.email ?? ""}
-                  readOnly
-                  disabled
-                />
-              </div>
-
-              <div className="ew-field">
-                <label htmlFor="profile-userid" className="ew-field__label">
-                  Mã tài khoản (User ID)
-                </label>
-                <input
-                  id="profile-userid"
-                  type="text"
-                  className="ew-control ks-tabular"
-                  value={user ? `#${user.userId}` : "—"}
-                  readOnly
-                  disabled
-                />
-              </div>
-
-              <div className="ew-field">
-                <label htmlFor="profile-phone" className="ew-field__label">
-                  Số điện thoại
-                </label>
-                <input
-                  id="profile-phone"
-                  type="text"
-                  className="ew-control ks-tabular"
-                  value={user?.phoneNumber || "Chưa cập nhật"}
-                  readOnly
-                  disabled
-                />
-              </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", gap: "12px" }}>
+              <h2 className="ew-section-heading" style={{ margin: 0 }}>Thông tin tài khoản đăng nhập</h2>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                leftIcon={<KeyRound size={14} />}
+                onClick={() => setShowPasswordModal(true)}
+              >
+                Đổi mật khẩu
+              </Button>
             </div>
 
-            <div className="ks-alert-banner ks-alert-banner--info">
-              <Info size={16} style={{ flexShrink: 0, marginTop: "2px" }} aria-hidden="true" />
-              <span>
-                Tính năng chỉnh sửa hồ sơ trực tuyến (<code>GET / PUT /api/v1/users/me</code>) sẽ
-                được kích hoạt khi Backend bổ sung endpoint quản lý hồ sơ cá nhân.
-              </span>
-            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void updateProfile
+                  .mutateAsync({
+                    fullName: fullName.trim(),
+                    phoneNumber: phoneNumberProfile.trim() || null,
+                    avatarUrl: profile?.avatarUrl ?? null,
+                  })
+                  .then((updated) => {
+                    if (user) {
+                      useAuthStore.setState({
+                        user: {
+                          ...user,
+                          fullName: updated.fullName,
+                          phoneNumber: updated.phoneNumber ?? undefined,
+                        },
+                      });
+                    }
+                    toast.success("Đã cập nhật thông tin hồ sơ.");
+                  })
+                  .catch((err) => toast.error(getErrorMessage(err)));
+              }}
+            >
+              <div className="ew-form-grid-2" style={{ marginBottom: "18px" }}>
+                <div className="ew-field">
+                  <label htmlFor="profile-fullname" className="ew-field__label">
+                    Họ và tên
+                  </label>
+                  <input
+                    id="profile-fullname"
+                    type="text"
+                    required
+                    className="ew-control"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+
+                <div className="ew-field">
+                  <label htmlFor="profile-email" className="ew-field__label">
+                    Địa chỉ Email
+                  </label>
+                  <input
+                    id="profile-email"
+                    type="email"
+                    className="ew-control"
+                    value={profile?.email ?? user?.email ?? ""}
+                    readOnly
+                    disabled
+                  />
+                </div>
+
+                <div className="ew-field">
+                  <label htmlFor="profile-userid" className="ew-field__label">
+                    Mã tài khoản (User ID)
+                  </label>
+                  <input
+                    id="profile-userid"
+                    type="text"
+                    className="ew-control ks-tabular"
+                    value={profile ? `#${profile.userId}` : user ? `#${user.userId}` : "—"}
+                    readOnly
+                    disabled
+                  />
+                </div>
+
+                <div className="ew-field">
+                  <label htmlFor="profile-phone" className="ew-field__label">
+                    Số điện thoại
+                  </label>
+                  <input
+                    id="profile-phone"
+                    type="text"
+                    className="ew-control ks-tabular"
+                    placeholder="Nhập số điện thoại..."
+                    value={phoneNumberProfile}
+                    onChange={(e) => setPhoneNumberProfile(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  leftIcon={<Save size={15} />}
+                  loading={updateProfile.isPending}
+                >
+                  Lưu thay đổi
+                </Button>
+              </div>
+            </form>
+
+            <Modal
+              open={showPasswordModal}
+              title="Đổi mật khẩu tài khoản"
+              onClose={() => setShowPasswordModal(false)}
+            >
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void changePassword
+                    .mutateAsync({ currentPassword, newPassword, confirmPassword })
+                    .then(() => {
+                      toast.success("Đổi mật khẩu thành công!");
+                      setShowPasswordModal(false);
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    })
+                    .catch((err) => toast.error(getErrorMessage(err)));
+                }}
+                style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+              >
+                <FormField label="Mật khẩu hiện tại" required>
+                  <Input type="password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                </FormField>
+                <FormField label="Mật khẩu mới" required>
+                  <Input type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </FormField>
+                <FormField label="Xác nhận mật khẩu mới" required>
+                  <Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                </FormField>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "6px" }}>
+                  <Button type="button" variant="secondary" onClick={() => setShowPasswordModal(false)}>
+                    Hủy
+                  </Button>
+                  <Button type="submit" variant="primary" loading={changePassword.isPending}>
+                    Xác nhận đổi mật khẩu
+                  </Button>
+                </div>
+              </form>
+            </Modal>
           </section>
 
           {/* Right: Member Summary & Roles Card */}

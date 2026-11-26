@@ -70,6 +70,10 @@ export const API_ENDPOINTS = {
     BY_ID: (addressId: number) => `/api/v1/users/me/addresses/${addressId}`,
     SET_DEFAULT: (addressId: number) => `/api/v1/users/me/addresses/${addressId}/default`,
   },
+  USER_PROFILE: {
+    BASE: "/api/v1/users/me",
+    PASSWORD: "/api/v1/users/me/password",
+  },
   ORDERS: {
     BASE: "/api/v1/orders",
     BY_ID: (orderId: number) => `/api/v1/orders/${orderId}`,
