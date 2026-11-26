@@ -93,14 +93,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
 
           {/* Right: Workspace switcher + User info + Logout */}
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexShrink: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+              maxWidth: "100%",
+            }}
+          >
             {switchableWorkspaces.length > 0 && (
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
-                  paddingRight: "12px",
+                  flexWrap: "wrap",
+                  paddingRight: "10px",
                   borderRight: "1px solid var(--color-border)",
                 }}
               >

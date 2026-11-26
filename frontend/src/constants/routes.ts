@@ -39,6 +39,7 @@ export const ROUTES = {
   WAREHOUSE_ISSUES: "/warehouse/issues",
   WAREHOUSE_ISSUE_DETAIL: "/warehouse/issues/:id",
   WAREHOUSE_ISSUE_PICK: "/warehouse/issues/:id/pick",
+  WAREHOUSE_ISSUE_PACK: "/warehouse/issues/:id/pack",
   WAREHOUSE_SHIPMENTS: "/warehouse/shipments",
   WAREHOUSE_RETURNS: "/warehouse/returns",
 
