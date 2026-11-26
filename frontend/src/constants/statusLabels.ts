@@ -47,6 +47,22 @@ const SHARED_STATUSES: StatusDictionary = {
   Good: { label: "Hàng tốt", tone: "success" },
   MinorDefect: { label: "Lỗi nhẹ", tone: "warning" },
   Damaged: { label: "Hỏng", tone: "danger" },
+
+  // Thanh toán
+  Paid: { label: "Đã thanh toán", tone: "success" },
+  Refunded: { label: "Đã hoàn tiền", tone: "info" },
+  PartiallyRefunded: { label: "Hoàn một phần", tone: "warning" },
+
+  // Loại biến động sổ cái tồn kho (StockMovements.MovementType)
+  Receipt: { label: "Nhập kho", tone: "success" },
+  Issue: { label: "Xuất kho", tone: "info" },
+  TransferIn: { label: "Nhận điều chuyển", tone: "success" },
+  TransferOut: { label: "Xuất điều chuyển", tone: "warning" },
+  Adjustment: { label: "Điều chỉnh tồn", tone: "warning" },
+  ReturnIn: { label: "Nhập hàng hoàn", tone: "info" },
+  StockCount: { label: "Kiểm kê kho", tone: "neutral" },
+  Reserve: { label: "Giữ chỗ đơn", tone: "warning" },
+  ReleaseReserve: { label: "Nhả giữ chỗ", tone: "neutral" },
 };
 
 const DOMAIN_STATUS_OVERRIDES: Partial<Record<StatusDomain, StatusDictionary>> = {

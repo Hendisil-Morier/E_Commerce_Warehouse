@@ -1,0 +1,322 @@
+/* ============================================================================
+ * WMS Industrial Floor Terminal Styles (W2 2D Bin Map, W7 Rugged Scanner)
+ * ============================================================================ */
+
+/* Rugged Barcode Scanner Input (56px height, 2px #0E7C66 border) */
+.ew-scanner-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.ew-scanner-prefix {
+  position: absolute;
+  left: 16px;
+  color: var(--color-primary);
+  pointer-events: none;
+}
+
+.ew-scanner-input {
+  width: 100%;
+  height: 56px;
+  padding: 0 112px 0 52px;
+  background-color: var(--color-white);
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-dark);
+  transition: box-shadow var(--transition-fast);
+}
+
+.ew-scanner-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(14, 124, 102, 0.18);
+}
+
+.ew-scanner-enter-hint {
+  position: absolute;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background-color: var(--color-accent-soft);
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* Progress Bar for W7 Picking */
+.ew-progress-card {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.ew-progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background-color: var(--color-slate-200);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.ew-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--color-primary);
+  transition: width 200ms ease;
+}
+
+/* Interactive 2D Warehouse Bin Map Layout */
+.ew-binmap-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.ew-binmap-layout > * {
+  min-width: 0;
+}
+
+.ew-zone-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ew-zone-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-strong);
+  background-color: var(--color-white);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ew-zone-filter-btn--active {
+  border-color: var(--color-primary);
+  background-color: var(--color-accent-soft);
+  color: var(--color-forest-900);
+}
+
+.ew-zone-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Auto-fit 2D Bin Grid — prevents vertical text squeezing or card overlap at any width */
+.ew-bin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.ew-bin-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 124px;
+  padding: 13px;
+  border-radius: 8px;
+  border: 2px solid var(--color-border-strong);
+  background-color: var(--color-white);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ew-bin-cell:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.ew-bin-cell--empty {
+  border-style: dashed;
+}
+
+.ew-bin-cell--inactive {
+  opacity: 0.58;
+}
+
+.ew-bin-cell--selected {
+  box-shadow: 0 0 0 3px rgba(14, 124, 102, 0.25);
+  border-color: var(--color-primary) !important;
+}
+
+.ew-bin-coord {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--color-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ew-bin-sku {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ew-bin-cap-row {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ew-bin-cap-text {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.73rem;
+  color: var(--color-muted);
+}
+
+/* 7 Semantic WMS Zone Colors (matching WarehouseLocations.StorageType) */
+.wms-zone-standard {
+  border-color: var(--color-wms-standard);
+  background-color: rgba(2, 132, 199, 0.06);
+}
+
+.wms-zone-cold {
+  border-color: var(--color-wms-cold);
+  background-color: rgba(6, 182, 212, 0.07);
+}
+
+.wms-zone-fragile {
+  border-color: var(--color-wms-fragile);
+  background-color: rgba(139, 92, 246, 0.07);
+}
+
+.wms-zone-hazardous {
+  border-color: var(--color-wms-hazardous);
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+.wms-zone-inbound {
+  border-color: var(--color-wms-inbound);
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.wms-zone-returns {
+  border-color: var(--color-wms-returns);
+  background-color: rgba(236, 72, 153, 0.07);
+}
+
+.wms-zone-damaged {
+  border-color: var(--color-wms-damaged);
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+/* W7 Pick Card */
+.ew-pick-card {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 155px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.ew-pick-card--done {
+  border-color: var(--color-success-border);
+  background-color: var(--color-success-bg);
+}
+
+.ew-pick-bin-box {
+  padding: 11px 10px;
+  border-radius: 8px;
+  border: 2px solid var(--color-primary);
+  background-color: var(--color-accent-soft);
+  text-align: center;
+}
+
+.ew-pick-bin-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-forest-900);
+  text-transform: uppercase;
+}
+
+.ew-pick-bin-coord {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-dark);
+  margin-top: 2px;
+}
+
+/* Warehouse Hub Card Grid (W2a) */
+.ew-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Responsive WMS Breakpoints */
+@media (max-width: 1200px) {
+  .ew-binmap-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ew-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .ew-hub-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ew-pick-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .ew-scanner-input {
+    font-size: 0.92rem;
+    padding-right: 78px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ew-bin-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  }
+}

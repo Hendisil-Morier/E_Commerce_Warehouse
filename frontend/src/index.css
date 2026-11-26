@@ -44,6 +44,15 @@
   --color-info-text: #075985;
   --color-info-border: #bae6fd;
 
+  /* WMS Industrial Rack & Bin Map Chromatic Tokens (7 StorageType Zones) */
+  --color-wms-standard: #0284c7;
+  --color-wms-cold: #06b6d4;
+  --color-wms-fragile: #8b5cf6;
+  --color-wms-hazardous: #f59e0b;
+  --color-wms-inbound: #10b981;
+  --color-wms-returns: #ec4899;
+  --color-wms-damaged: #ef4444;
+
   /* Shape Radii & Elevation */
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -51,6 +60,7 @@
   --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
   --shadow-card-hover: 0 10px 18px -4px rgba(14, 124, 102, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
   --shadow-modal: 0 20px 40px -12px rgba(15, 23, 42, 0.25);
+  --shadow-drawer: -8px 0 24px 0 rgba(15, 23, 42, 0.14);
   --container-max: 1280px;
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 
