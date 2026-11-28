@@ -156,6 +156,10 @@ CREATE INDEX IX_Transfers_Destination_Status
 CREATE INDEX IX_Shipments_SellerOrder_Status
     ON Shipments (SellerOrderId, ShippingStatus);
 
+-- Nhật ký hành trình của một vận đơn, mới nhất trước.
+CREATE INDEX IX_TrackingEvents_Shipment_Time
+    ON ShipmentTrackingEvents (ShipmentId, EventTime DESC);
+
 -- Hàng đợi xử lý trả hàng theo trạng thái.
 CREATE INDEX IX_ReturnRequests_Status_Created
     ON ReturnRequests (Status, CreatedAt);

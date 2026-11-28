@@ -13,5 +13,6 @@ public interface IShipmentService
     Task<PagedResult<ShipmentDto>> GetShipmentsAsync(ShipmentQueryDto query, CancellationToken cancellationToken = default);
     Task<ShipmentDto> CreateShipmentAsync(long sellerOrderId, CreateShipmentRequestDto request, CancellationToken cancellationToken = default);
     Task<ShipmentDto> UpdateShipmentStatusAsync(long shipmentId, UpdateShipmentStatusRequestDto request, CancellationToken cancellationToken = default);
+    Task<ShipmentDto> AddTrackingEventAsync(long shipmentId, CreateShipmentTrackingEventRequestDto request, CancellationToken cancellationToken = default);
     Task<ShipmentDto> TrackByNumberForCustomerAsync(string trackingNumber, CancellationToken cancellationToken = default);
 }

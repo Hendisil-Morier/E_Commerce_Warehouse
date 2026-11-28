@@ -87,6 +87,13 @@ public class ShipmentServiceTests
             return Task.CompletedTask;
         }
 
+        public Task AddTrackingEventAsync(ShipmentTrackingEvent trackingEvent, CancellationToken cancellationToken = default)
+        {
+            var target = Shipments.FirstOrDefault(s => s.ShipmentId == trackingEvent.ShipmentId);
+            target?.TrackingEvents.Add(trackingEvent);
+            return Task.CompletedTask;
+        }
+
         public List<Domain.Entities.Warehouse.InventoryReceipt> ReturnReceipts { get; } = [];
         public Task<List<CarrierDto>> GetAllCarriersAsync(CancellationToken cancellationToken = default) => Task.FromResult<List<CarrierDto>>([]);
         public Task<Carrier?> GetCarrierByIdForUpdateAsync(int carrierId, CancellationToken cancellationToken = default) => Task.FromResult<Carrier?>(null);

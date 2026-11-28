@@ -76,6 +76,25 @@ public class ShipmentsController : ControllerBase
     }
 
     /// <summary>
+    /// Thêm chặng hành trình trung chuyển cho vận đơn (Nhân viên kho, Quản lý kho, Admin)
+    /// </summary>
+    [HttpPost("shipments/{id:long}/events")]
+    [Authorize(Roles = $"{RoleNames.WarehouseStaff},{RoleNames.WarehouseManager},{RoleNames.Admin}")]
+    [ProducesResponseType(typeof(ShipmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ShipmentDto>> AddTrackingEvent(
+        long id,
+        [FromBody] CreateShipmentTrackingEventRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _shipmentService.AddTrackingEventAsync(id, request, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Khách hàng tra cứu hành trình vận đơn theo mã vận đơn (chỉ đơn của chính mình)
     /// </summary>
     [HttpGet("shipments/track/{trackingNumber}")]

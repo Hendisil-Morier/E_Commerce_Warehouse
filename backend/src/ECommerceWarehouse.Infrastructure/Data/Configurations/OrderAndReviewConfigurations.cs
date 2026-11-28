@@ -235,6 +235,27 @@ public class ShipmentConfiguration : IEntityTypeConfiguration<Shipment>
     }
 }
 
+public class ShipmentTrackingEventConfiguration : IEntityTypeConfiguration<ShipmentTrackingEvent>
+{
+    public void Configure(EntityTypeBuilder<ShipmentTrackingEvent> builder)
+    {
+        builder.ToTable("ShipmentTrackingEvents");
+        builder.HasKey(x => x.EventId);
+        builder.Property(x => x.Milestone).HasMaxLength(40).IsRequired();
+        builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Description).HasMaxLength(500);
+        builder.Property(x => x.LocationName).HasMaxLength(200);
+        builder.Property(x => x.Latitude).HasPrecision(10, 7);
+        builder.Property(x => x.Longitude).HasPrecision(10, 7);
+        builder.Property(x => x.EventTime).HasColumnType("datetime(3)");
+
+        builder.HasOne(x => x.Shipment)
+               .WithMany(s => s.TrackingEvents)
+               .HasForeignKey(x => x.ShipmentId)
+               .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 public class ReturnRequestConfiguration : IEntityTypeConfiguration<ReturnRequest>
 {
     public void Configure(EntityTypeBuilder<ReturnRequest> builder)

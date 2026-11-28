@@ -303,6 +303,10 @@ ALTER TABLE Shipments
     ADD CONSTRAINT FK_Shipments_SellerOrders FOREIGN KEY (SellerOrderId) REFERENCES SellerOrders (SellerOrderId);
 ALTER TABLE Shipments
     ADD CONSTRAINT FK_Shipments_Carriers FOREIGN KEY (CarrierId) REFERENCES Carriers (CarrierId);
+ALTER TABLE ShipmentTrackingEvents
+    ADD CONSTRAINT FK_TrackingEvents_Shipments FOREIGN KEY (ShipmentId) REFERENCES Shipments (ShipmentId);
+ALTER TABLE ShipmentTrackingEvents
+    ADD CONSTRAINT FK_TrackingEvents_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users (UserId);
 
 -- Yêu cầu trả hàng: đơn seller, khách yêu cầu, người duyệt.
 ALTER TABLE ReturnRequests

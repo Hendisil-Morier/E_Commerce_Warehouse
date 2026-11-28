@@ -140,6 +140,7 @@ public class ShipmentRepository : IShipmentRepository
         var s = await _context.Shipments
             .AsNoTracking()
             .Include(x => x.Carrier)
+            .Include(x => x.TrackingEvents)
             .Include(x => x.SellerOrder)
                 .ThenInclude(so => so.Order)
             .FirstOrDefaultAsync(x => x.ShipmentId == shipmentId, cancellationToken);
@@ -155,6 +156,7 @@ public class ShipmentRepository : IShipmentRepository
         var s = await _context.Shipments
             .AsNoTracking()
             .Include(x => x.Carrier)
+            .Include(x => x.TrackingEvents)
             .Include(x => x.SellerOrder)
                 .ThenInclude(so => so.Order)
             .FirstOrDefaultAsync(
@@ -184,6 +186,9 @@ public class ShipmentRepository : IShipmentRepository
     public async Task AddShipmentAsync(Shipment shipment, CancellationToken cancellationToken = default)
         => await _context.Shipments.AddAsync(shipment, cancellationToken);
 
+    public async Task AddTrackingEventAsync(ShipmentTrackingEvent trackingEvent, CancellationToken cancellationToken = default)
+        => await _context.ShipmentTrackingEvents.AddAsync(trackingEvent, cancellationToken);
+
     private static ShipmentDto MapToDto(Shipment s) => new()
     {
         ShipmentId = s.ShipmentId,
@@ -200,6 +205,20 @@ public class ShipmentRepository : IShipmentRepository
         ShippedAt = s.ShippedAt,
         DeliveredAt = s.DeliveredAt,
         CreatedAt = s.CreatedAt,
-        UpdatedAt = s.UpdatedAt
+        UpdatedAt = s.UpdatedAt,
+        TrackingEvents = s.TrackingEvents
+            .OrderByDescending(e => e.EventTime)
+            .Select(e => new ShipmentTrackingEventDto
+            {
+                EventId = e.EventId,
+                ShipmentId = e.ShipmentId,
+                Milestone = e.Milestone,
+                Title = e.Title,
+                Description = e.Description,
+                LocationName = e.LocationName,
+                Latitude = e.Latitude,
+                Longitude = e.Longitude,
+                EventTime = e.EventTime
+            }).ToList()
     };
 }

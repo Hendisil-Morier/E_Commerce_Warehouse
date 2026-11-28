@@ -1,4 +1,5 @@
 using ECommerceWarehouse.Application.DTOs.Common;
+using ECommerceWarehouse.Application.DTOs.Shipping;
 
 namespace ECommerceWarehouse.Application.DTOs.Order;
 
@@ -43,6 +44,21 @@ public class OrderItemDto
     public decimal LineTotal { get; set; }
 }
 
+public class OrderShipmentDto
+{
+    public long ShipmentId { get; set; }
+    public string? CarrierCode { get; set; }
+    public string? CarrierName { get; set; }
+    public string? TrackingNumber { get; set; }
+    public string ShippingStatus { get; set; } = null!;
+    public decimal CodAmount { get; set; }
+    public string? FailedReason { get; set; }
+    public DateTime? ShippedAt { get; set; }
+    public DateTime? DeliveredAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<ShipmentTrackingEventDto> TrackingEvents { get; set; } = new();
+}
+
 public class OrderSellerOrderDto
 {
     public long SellerOrderId { get; set; }
@@ -50,10 +66,12 @@ public class OrderSellerOrderDto
     public string SellerBusinessName { get; set; } = null!;
     public long? WarehouseId { get; set; }
     public string? WarehouseName { get; set; }
+    public string? WarehouseAddress { get; set; }
     public decimal Subtotal { get; set; }
     public string Status { get; set; } = null!;
     public string? CancelReason { get; set; }
     public DateTime? CancelledAt { get; set; }
+    public OrderShipmentDto? Shipment { get; set; }
     public List<OrderItemDto> Items { get; set; } = new();
 }
 

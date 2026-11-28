@@ -42,6 +42,30 @@ public class UpdateShipmentStatusRequestDto
     public string? FailedReason { get; set; }
 }
 
+public class ShipmentTrackingEventDto
+{
+    public long EventId { get; set; }
+    public long ShipmentId { get; set; }
+    public string Milestone { get; set; } = null!;
+    public string Title { get; set; } = null!;
+    public string? Description { get; set; }
+    public string? LocationName { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    public DateTime EventTime { get; set; }
+}
+
+public class CreateShipmentTrackingEventRequestDto
+{
+    public string Milestone { get; set; } = "InTransit";
+    public string Title { get; set; } = null!;
+    public string? Description { get; set; }
+    public string? LocationName { get; set; }
+    public decimal? Latitude { get; set; }
+    public decimal? Longitude { get; set; }
+    public DateTime? EventTime { get; set; }
+}
+
 public class ShipmentDto
 {
     public long ShipmentId { get; set; }
@@ -59,4 +83,5 @@ public class ShipmentDto
     public DateTime? DeliveredAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public List<ShipmentTrackingEventDto> TrackingEvents { get; set; } = new();
 }

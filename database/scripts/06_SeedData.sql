@@ -1207,5 +1207,39 @@ WHERE inv.LocationId = @loc_sellable
       WHERE sm.LocationId = inv.LocationId AND sm.VariantId = inv.VariantId
   );
 
+-- Bổ sung sự kiện hành trình mặc định cho các vận đơn mẫu (nếu có)
+INSERT INTO ShipmentTrackingEvents (ShipmentId, Milestone, Title, Description, LocationName, EventTime)
+SELECT
+    s.ShipmentId,
+    CASE s.ShippingStatus
+        WHEN 'Delivered' THEN 'Delivered'
+        WHEN 'InTransit' THEN 'OutForDelivery'
+        WHEN 'PickedUp'  THEN 'PickedUp'
+        WHEN 'Failed'    THEN 'Failed'
+        WHEN 'Returned'  THEN 'Returned'
+        ELSE 'Preparing'
+    END,
+    CASE s.ShippingStatus
+        WHEN 'Delivered' THEN 'Giao hàng thành công'
+        WHEN 'InTransit' THEN 'Đơn hàng đang trên đường giao tới bạn'
+        WHEN 'PickedUp'  THEN 'Đơn vị vận chuyển đã lấy hàng'
+        WHEN 'Failed'    THEN 'Giao hàng không thành công'
+        WHEN 'Returned'  THEN 'Đơn hàng đang được hoàn về kho'
+        ELSE 'Đơn hàng đang được chuẩn bị tại kho'
+    END,
+    CASE
+        WHEN s.ShippingStatus = 'Failed' AND s.FailedReason IS NOT NULL THEN s.FailedReason
+        WHEN s.TrackingNumber IS NOT NULL THEN CONCAT('Mã vận đơn: ', s.TrackingNumber)
+        ELSE NULL
+    END,
+    w.WarehouseName,
+    COALESCE(s.DeliveredAt, s.ShippedAt, s.CreatedAt)
+FROM Shipments s
+INNER JOIN SellerOrders so ON so.SellerOrderId = s.SellerOrderId
+LEFT JOIN Warehouses w ON w.WarehouseId = so.WarehouseId
+WHERE NOT EXISTS (
+    SELECT 1 FROM ShipmentTrackingEvents e WHERE e.ShipmentId = s.ShipmentId
+);
+
 -- Khôi phục chế độ kiểm tra an toàn sau khi hoàn tất seed
 SET SQL_SAFE_UPDATES = 1;

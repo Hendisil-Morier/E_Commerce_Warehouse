@@ -40,16 +40,44 @@ export interface OrderItemDto {
   lineTotal: number;
 }
 
+export interface ShipmentTrackingEventDto {
+  eventId: number;
+  shipmentId: number;
+  milestone: string;
+  title: string;
+  description: string | null;
+  locationName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  eventTime: string;
+}
+
+export interface OrderShipmentDto {
+  shipmentId: number;
+  carrierCode: string | null;
+  carrierName: string | null;
+  trackingNumber: string | null;
+  shippingStatus: string;
+  codAmount: number;
+  failedReason: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+  trackingEvents: ShipmentTrackingEventDto[];
+}
+
 export interface OrderSellerOrderDto {
   sellerOrderId: number;
   sellerId: number;
   sellerBusinessName: string;
   warehouseId: number | null;
   warehouseName: string | null;
+  warehouseAddress: string | null;
   subtotal: number;
   status: string;
   cancelReason: string | null;
   cancelledAt: string | null;
+  shipment: OrderShipmentDto | null;
   items: OrderItemDto[];
 }
 

@@ -172,6 +172,8 @@ public class ShipmentService : IShipmentService
                 409);
         }
 
+        var userId = RequireCurrentUserId();
+        var now = DateTime.UtcNow;
         var isCod = sellerOrder.Order.Payments.Any(p => p.PaymentMethod == PaymentMethods.COD);
         var shipment = new Shipment
         {
@@ -180,7 +182,19 @@ public class ShipmentService : IShipmentService
             TrackingNumber = trackingNumber,
             ShippingStatus = ShippingStatuses.Preparing,
             CodAmount = request.CodAmount ?? (isCod ? sellerOrder.Subtotal : 0m),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now,
+            TrackingEvents = new List<ShipmentTrackingEvent>
+            {
+                new()
+                {
+                    Milestone = "Preparing",
+                    Title = "Đơn hàng đã được tạo vận đơn và đang chuẩn bị bàn giao",
+                    Description = $"ĐVVC: {carrier.CarrierName} · Mã vận đơn: {trackingNumber}",
+                    LocationName = sellerOrder.Warehouse?.WarehouseName,
+                    EventTime = now,
+                    CreatedBy = userId
+                }
+            }
         };
 
         await _shipmentRepository.AddShipmentAsync(shipment, cancellationToken);
@@ -233,10 +247,40 @@ public class ShipmentService : IShipmentService
             if (next == ShippingStatuses.PickedUp)
             {
                 shipment.ShippedAt = now;
+                await _shipmentRepository.AddTrackingEventAsync(new ShipmentTrackingEvent
+                {
+                    ShipmentId = shipment.ShipmentId,
+                    Milestone = "PickedUp",
+                    Title = "Đơn vị vận chuyển đã lấy hàng thành công",
+                    Description = $"Bưu tá {shipment.Carrier?.CarrierName ?? "đối tác"} đã nhận kiện hàng {shipment.TrackingNumber}",
+                    EventTime = now,
+                    CreatedBy = userId
+                }, ct);
+            }
+            else if (next == ShippingStatuses.InTransit)
+            {
+                await _shipmentRepository.AddTrackingEventAsync(new ShipmentTrackingEvent
+                {
+                    ShipmentId = shipment.ShipmentId,
+                    Milestone = "OutForDelivery",
+                    Title = "Đơn hàng đang trên đường giao tới bạn",
+                    Description = $"Kiện hàng {shipment.TrackingNumber} đang được vận chuyển",
+                    EventTime = now,
+                    CreatedBy = userId
+                }, ct);
             }
             else if (next == ShippingStatuses.Delivered)
             {
                 shipment.DeliveredAt = now;
+                await _shipmentRepository.AddTrackingEventAsync(new ShipmentTrackingEvent
+                {
+                    ShipmentId = shipment.ShipmentId,
+                    Milestone = "Delivered",
+                    Title = "Giao hàng thành công",
+                    Description = $"Kiện hàng {shipment.TrackingNumber} đã giao tới người nhận",
+                    EventTime = now,
+                    CreatedBy = userId
+                }, ct);
                 var prevSo = shipment.SellerOrder.Status;
                 shipment.SellerOrder.Status = SellerOrderStatuses.Delivered;
                 shipment.SellerOrder.UpdatedAt = now;
@@ -273,6 +317,15 @@ public class ShipmentService : IShipmentService
             else if (next == ShippingStatuses.Failed)
             {
                 shipment.FailedReason = request.FailedReason?.Trim();
+                await _shipmentRepository.AddTrackingEventAsync(new ShipmentTrackingEvent
+                {
+                    ShipmentId = shipment.ShipmentId,
+                    Milestone = "Failed",
+                    Title = "Giao hàng không thành công",
+                    Description = shipment.FailedReason ?? "Không liên hệ được người nhận",
+                    EventTime = now,
+                    CreatedBy = userId
+                }, ct);
                 var prevSo = shipment.SellerOrder.Status;
                 shipment.SellerOrder.Status = SellerOrderStatuses.DeliveryFailed;
                 shipment.SellerOrder.UpdatedAt = now;
@@ -290,6 +343,15 @@ public class ShipmentService : IShipmentService
             }
             else if (next == ShippingStatuses.Returned)
             {
+                await _shipmentRepository.AddTrackingEventAsync(new ShipmentTrackingEvent
+                {
+                    ShipmentId = shipment.ShipmentId,
+                    Milestone = "Returned",
+                    Title = "Đơn hàng đang được hoàn về kho",
+                    Description = $"Kiện hàng {shipment.TrackingNumber} đã hoàn về kho xử lý",
+                    EventTime = now,
+                    CreatedBy = userId
+                }, ct);
                 if (shipment.SellerOrder.WarehouseId.HasValue && shipment.SellerOrder.Items.Count > 0)
                 {
                     var returnLocationId = await _shipmentRepository.GetReturnLocationIdAsync(
@@ -332,6 +394,42 @@ public class ShipmentService : IShipmentService
 
             await _unitOfWork.SaveChangesAsync(ct);
         }, cancellationToken);
+
+        return await _shipmentRepository.GetDtoByIdAsync(shipment.ShipmentId, cancellationToken)
+            ?? throw new NotFoundException("Shipment", shipment.ShipmentId);
+    }
+
+    public async Task<ShipmentDto> AddTrackingEventAsync(
+        long shipmentId,
+        CreateShipmentTrackingEventRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = RequireCurrentUserId();
+        var title = request.Title?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new BusinessException(ErrorCodes.ValidationError, "Tiêu đề chặng vận chuyển không được để trống.", 400);
+        }
+
+        var shipment = await _shipmentRepository.GetByIdWithOrderAsync(shipmentId, cancellationToken)
+            ?? throw new NotFoundException("Shipment", shipmentId);
+
+        var milestone = string.IsNullOrWhiteSpace(request.Milestone) ? "InTransit" : request.Milestone.Trim();
+        var trackingEvent = new ShipmentTrackingEvent
+        {
+            ShipmentId = shipment.ShipmentId,
+            Milestone = milestone,
+            Title = title,
+            Description = request.Description?.Trim(),
+            LocationName = request.LocationName?.Trim(),
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            EventTime = request.EventTime ?? DateTime.UtcNow,
+            CreatedBy = userId
+        };
+
+        await _shipmentRepository.AddTrackingEventAsync(trackingEvent, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await _shipmentRepository.GetDtoByIdAsync(shipment.ShipmentId, cancellationToken)
             ?? throw new NotFoundException("Shipment", shipment.ShipmentId);

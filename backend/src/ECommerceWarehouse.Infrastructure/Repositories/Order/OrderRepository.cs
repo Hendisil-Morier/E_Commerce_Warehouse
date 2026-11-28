@@ -1,6 +1,7 @@
 using ECommerceWarehouse.Application.Contracts.Persistence;
 using ECommerceWarehouse.Application.DTOs.Common;
 using ECommerceWarehouse.Application.DTOs.Order;
+using ECommerceWarehouse.Application.DTOs.Shipping;
 using ECommerceWarehouse.Domain.Constants;
 using ECommerceWarehouse.Domain.Entities.Customer;
 using ECommerceWarehouse.Domain.Entities.Order;
@@ -203,6 +204,8 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.SellerOrders).ThenInclude(so => so.Seller)
             .Include(o => o.SellerOrders).ThenInclude(so => so.Warehouse)
             .Include(o => o.SellerOrders).ThenInclude(so => so.Items)
+            .Include(o => o.SellerOrders).ThenInclude(so => so.Shipments).ThenInclude(s => s.Carrier)
+            .Include(o => o.SellerOrders).ThenInclude(so => so.Shipments).ThenInclude(s => s.TrackingEvents)
             .Include(o => o.Payments)
             .Include(o => o.StatusHistories)
             .FirstOrDefaultAsync(o => o.OrderId == orderId, cancellationToken);
@@ -223,6 +226,12 @@ public class OrderRepository : IOrderRepository
                 .ThenInclude(so => so.Warehouse)
             .Include(o => o.SellerOrders)
                 .ThenInclude(so => so.Items)
+            .Include(o => o.SellerOrders)
+                .ThenInclude(so => so.Shipments)
+                    .ThenInclude(s => s.Carrier)
+            .Include(o => o.SellerOrders)
+                .ThenInclude(so => so.Shipments)
+                    .ThenInclude(s => s.TrackingEvents)
             .Include(o => o.Payments)
             .Include(o => o.StatusHistories)
             .FirstOrDefaultAsync(o => o.OrderId == orderId && o.CustomerId == customerId, cancellationToken);
@@ -262,10 +271,41 @@ public class OrderRepository : IOrderRepository
                 SellerBusinessName = so.Seller.BusinessName,
                 WarehouseId = so.WarehouseId,
                 WarehouseName = so.Warehouse?.WarehouseName,
+                WarehouseAddress = so.Warehouse?.Address,
                 Subtotal = so.Subtotal,
                 Status = so.Status,
                 CancelReason = so.CancelReason,
                 CancelledAt = so.CancelledAt,
+                Shipment = so.Shipments
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Select(s => new OrderShipmentDto
+                    {
+                        ShipmentId = s.ShipmentId,
+                        CarrierCode = s.Carrier != null ? s.Carrier.CarrierCode : null,
+                        CarrierName = s.Carrier != null ? s.Carrier.CarrierName : null,
+                        TrackingNumber = s.TrackingNumber,
+                        ShippingStatus = s.ShippingStatus,
+                        CodAmount = s.CodAmount,
+                        FailedReason = s.FailedReason,
+                        ShippedAt = s.ShippedAt,
+                        DeliveredAt = s.DeliveredAt,
+                        CreatedAt = s.CreatedAt,
+                        TrackingEvents = s.TrackingEvents
+                            .OrderByDescending(e => e.EventTime)
+                            .Select(e => new ShipmentTrackingEventDto
+                            {
+                                EventId = e.EventId,
+                                ShipmentId = e.ShipmentId,
+                                Milestone = e.Milestone,
+                                Title = e.Title,
+                                Description = e.Description,
+                                LocationName = e.LocationName,
+                                Latitude = e.Latitude,
+                                Longitude = e.Longitude,
+                                EventTime = e.EventTime
+                            }).ToList()
+                    })
+                    .FirstOrDefault(),
                 Items = so.Items.Select(i => new OrderItemDto
                 {
                     OrderItemId = i.OrderItemId,

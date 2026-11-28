@@ -70,6 +70,7 @@ public class ApplicationDbContext : DbContext
     // 6. Shipping, Returns & Reviews
     public DbSet<Carrier> Carriers => Set<Carrier>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<ShipmentTrackingEvent> ShipmentTrackingEvents => Set<ShipmentTrackingEvent>();
     public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
     public DbSet<ReturnRequestItem> ReturnRequestItems => Set<ReturnRequestItem>();
     public DbSet<Review> Reviews => Set<Review>();

@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/useToast";
 import type { PaymentMethod } from "@/types/order";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { formatCurrency, formatDate } from "@/utils/formatters";
+import { OrderTrackingSection } from "@/features/customer/components/OrderTrackingSection";
 
 export const CustomerOrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -139,6 +140,9 @@ export const CustomerOrderDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Tiến trình theo dõi đơn hàng & Bản đồ hành trình */}
+      <OrderTrackingSection order={order} />
 
       {/* Địa chỉ & Tổng tiền */}
       <div className="ew-card" style={{ padding: "18px 20px", display: "grid", gridTemplateColumns: "1fr auto", gap: "20px" }}>

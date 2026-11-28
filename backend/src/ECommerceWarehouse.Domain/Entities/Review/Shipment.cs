@@ -18,4 +18,5 @@ public class Shipment
 
     public SellerOrder SellerOrder { get; set; } = null!;
     public Carrier? Carrier { get; set; }
+    public ICollection<ShipmentTrackingEvent> TrackingEvents { get; set; } = new List<ShipmentTrackingEvent>();
 }

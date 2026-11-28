@@ -736,6 +736,22 @@ CREATE TABLE Shipments (
     CONSTRAINT CK_Shipments_Delivered CHECK (ShippingStatus <> 'Delivered' OR DeliveredAt IS NOT NULL)
 ) ENGINE=InnoDB;
 
+DROP TABLE IF EXISTS ShipmentTrackingEvents;
+-- Nhật ký các chặng hành trình của kiện hàng (chuẩn theo dõi kiểu Shopee: lấy hàng, qua kho phân loại, đang giao, giao thành công).
+CREATE TABLE ShipmentTrackingEvents (
+    EventId       BIGINT         NOT NULL AUTO_INCREMENT,
+    ShipmentId    BIGINT         NOT NULL,
+    Milestone     VARCHAR(40)    NOT NULL,
+    Title         VARCHAR(200)   NOT NULL,
+    Description   VARCHAR(500)   NULL,
+    LocationName  VARCHAR(200)   NULL,
+    Latitude      DECIMAL(10,7)  NULL,
+    Longitude     DECIMAL(10,7)  NULL,
+    EventTime     DATETIME(3)    NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
+    CreatedBy     BIGINT         NULL,
+    CONSTRAINT PK_ShipmentTrackingEvents PRIMARY KEY (EventId)
+) ENGINE=InnoDB;
+
 DROP TABLE IF EXISTS ReturnRequests;
 -- Yêu cầu TRẢ HÀNG của khách (theo đơn seller). Hàng hoàn KHÔNG tự cộng tồn bán được:
 -- nhận về -> kiểm tra từng dòng (ReturnRequestItems.InspectionResult) -> mới nhập vào kệ bán hoặc khu hàng hỏng.
