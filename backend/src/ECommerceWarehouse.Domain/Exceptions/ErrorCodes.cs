@@ -18,6 +18,12 @@ public static class ErrorCodes
     public const string UsernameAlreadyExists = "USERNAME_ALREADY_EXISTS";
     public const string AccountLocked = "ACCOUNT_LOCKED";
     public const string InvalidRefreshToken = "INVALID_REFRESH_TOKEN";
+    public const string OtpInvalid = "OTP_INVALID";
+    public const string OtpExpired = "OTP_EXPIRED";
+    public const string OtpTooManyAttempts = "OTP_TOO_MANY_ATTEMPTS";
+    public const string OtpResendTooSoon = "OTP_RESEND_TOO_SOON";
+    public const string WrongCurrentPassword = "WRONG_CURRENT_PASSWORD";
+    public const string GoogleTokenInvalid = "GOOGLE_TOKEN_INVALID";
 
     // 3. Nghiệp vụ lõi
     public const string InsufficientStock = "INSUFFICIENT_STOCK";

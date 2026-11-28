@@ -18,6 +18,7 @@ export interface RegisterRequest {
   fullName: string;
   username?: string;
   email: string;
+  otp: string;
   password: string;
   phoneNumber?: string;
   accountType?: "customer" | "seller";
@@ -33,4 +34,24 @@ export interface AuthResponse {
   roles: string[];
   accessToken: string;
   refreshToken: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

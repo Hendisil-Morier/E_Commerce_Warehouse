@@ -1,7 +1,9 @@
-import React, { useId, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, ShoppingBag, Store } from "lucide-react";
+import axios from "axios";
+import { Eye, EyeOff, Mail, ShoppingBag, Store } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
+import { GoogleSignInButton } from "@/features/auth/components/GoogleSignInButton";
 import { authService } from "@/services/authService";
 import { useAuthStore } from "@/stores/authStore";
 import { getErrorMessage } from "@/utils/errorHandler";
@@ -16,6 +18,7 @@ export const RegisterPage: React.FC = () => {
   const emailId = useId();
   const phoneId = useId();
   const shopNameId = useId();
+  const otpId = useId();
   const passwordId = useId();
   const confirmPasswordId = useId();
 
@@ -23,13 +26,53 @@ export const RegisterPage: React.FC = () => {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [shopName, setShopName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpInfo, setOtpInfo] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = window.setTimeout(() => setOtpCooldown((prev) => prev - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [otpCooldown]);
+
+  const handleSendRegisterOtp = async () => {
+    setErrorMessage(null);
+    setOtpInfo(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+    if (!GMAIL_REGEX.test(cleanEmail)) {
+      setErrorMessage("Vui lòng nhập địa chỉ Gmail hợp lệ (@gmail.com) trước khi gửi mã OTP.");
+      return;
+    }
+
+    try {
+      setOtpLoading(true);
+      await authService.sendRegisterOtp(cleanEmail);
+      setEmail(cleanEmail);
+      setOtpCooldown(60);
+      setOtpInfo(`Đã gửi mã OTP 6 chữ số tới ${cleanEmail} (hiệu lực 5 phút).`);
+    } catch (err: unknown) {
+      if (axios.isAxiosError<{ retryAfterSeconds?: number }>(err)) {
+        const retry = err.response?.data?.retryAfterSeconds;
+        if (typeof retry === "number" && retry > 0) {
+          setOtpCooldown(retry);
+        }
+      }
+      setErrorMessage(getErrorMessage(err));
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -56,6 +99,12 @@ export const RegisterPage: React.FC = () => {
       setErrorMessage(
         "Địa chỉ email phải là Gmail hợp lệ (kết thúc bằng @gmail.com, ví dụ: yourname@gmail.com)."
       );
+      return;
+    }
+
+    const cleanOtp = otp.trim();
+    if (!/^\d{6}$/.test(cleanOtp)) {
+      setErrorMessage("Vui lòng nhập đầy đủ mã OTP 6 chữ số đã gửi về Gmail của bạn.");
       return;
     }
 
@@ -93,6 +142,7 @@ export const RegisterPage: React.FC = () => {
         fullName: cleanFullName,
         username: cleanUsername,
         email: cleanEmail,
+        otp: cleanOtp,
         password,
         phoneNumber: cleanPhone,
         accountType,
@@ -253,19 +303,79 @@ export const RegisterPage: React.FC = () => {
           <label htmlFor={emailId} className="ew-field__label">
             Địa chỉ Gmail <span className="ew-field__required">*</span>
           </label>
-          <input
-            id={emailId}
-            type="email"
-            className="ew-control"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Ví dụ: tenban@gmail.com"
-            disabled={loading}
-            required
-          />
+          <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+            <input
+              id={emailId}
+              type="email"
+              className="ew-control"
+              style={{ flex: 1 }}
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setOtpInfo(null);
+              }}
+              placeholder="Ví dụ: tenban@gmail.com"
+              disabled={loading || otpLoading}
+              required
+            />
+            <button
+              type="button"
+              disabled={loading || otpLoading || otpCooldown > 0}
+              onClick={() => void handleSendRegisterOtp()}
+              className="ew-btn ew-btn--secondary"
+              style={{
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0 14px",
+              }}
+            >
+              <Mail size={15} />
+              {otpLoading
+                ? "Đang gửi..."
+                : otpCooldown > 0
+                  ? `Gửi lại (${otpCooldown}s)`
+                  : "Gửi mã OTP"}
+            </button>
+          </div>
           <span className="ew-field__hint">
             Hệ thống hiện yêu cầu địa chỉ Gmail kết thúc bằng <strong>@gmail.com</strong>.
           </span>
+          {otpInfo && (
+            <div
+              role="status"
+              style={{
+                color: "#0f766e",
+                backgroundColor: "#f0fdfa",
+                border: "1px solid #99f6e4",
+                borderRadius: "6px",
+                padding: "6px 10px",
+                fontSize: "0.8rem",
+                marginTop: "6px",
+              }}
+            >
+              {otpInfo}
+            </div>
+          )}
+        </div>
+
+        <div className="ew-field">
+          <label htmlFor={otpId} className="ew-field__label">
+            Mã OTP xác thực Gmail <span className="ew-field__required">*</span>
+          </label>
+          <input
+            id={otpId}
+            type="text"
+            inputMode="numeric"
+            className="ew-control ks-tabular"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="Nhập 6 chữ số OTP từ hộp thư Gmail"
+            maxLength={6}
+            disabled={loading}
+            required
+          />
         </div>
 
         <div className="ew-field">
@@ -365,6 +475,12 @@ export const RegisterPage: React.FC = () => {
               ? "Đăng ký mở gian hàng"
               : "Đăng ký ngay"}
         </button>
+
+        <GoogleSignInButton
+          disabled={loading}
+          onSuccess={(authData) => navigate(getDefaultRouteForUser(authData), { replace: true })}
+          onError={(msg) => setErrorMessage(msg)}
+        />
 
         <p
           style={{

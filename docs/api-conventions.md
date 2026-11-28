@@ -72,7 +72,8 @@ Ký hiệu quyền: 🌐 công khai · 🔐 đã đăng nhập · C = Customer �
 
 | Method | URL | Quyền | Mô tả |
 |---|---|---|---|
-| POST | `/auth/register` | 🌐 | Đăng ký (mặc định vai trò Customer) |
+| POST | `/auth/register/send-otp` | 🌐 | Gửi mã OTP 6 số xác thực email trước khi đăng ký |
+| POST | `/auth/register` | 🌐 | Đăng ký (mặc định vai trò Customer; yêu cầu `otp` 6 số) |
 | POST | `/auth/login` | 🌐 | Trả accessToken + refreshToken |
 | POST | `/auth/refresh` | 🌐 | Đổi refreshToken lấy cặp token mới |
 | POST | `/auth/logout` | 🔐 | Thu hồi refreshToken |

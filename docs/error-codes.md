@@ -25,6 +25,12 @@ BE trả lỗi theo định dạng ở `api-conventions.md`. Trường `code` l�
 | `USERNAME_ALREADY_EXISTS` 🆕 | 409 | Tên đăng nhập đã tồn tại (bảng `Users` có `UQ_Users_Username`) | Tên đăng nhập này đã được sử dụng. |
 | `ACCOUNT_LOCKED` 🆕 | 403 | Tài khoản bị khóa | Tài khoản của bạn đang bị khóa. |
 | `INVALID_REFRESH_TOKEN` 🆕 | 401 | Refresh token sai, đã thu hồi hoặc hết hạn | Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại. |
+| `OTP_INVALID` 🆕 | 400 | Mã OTP không chính xác | Mã OTP không chính xác. |
+| `OTP_EXPIRED` 🆕 | 400 | Mã OTP đã hết hạn hoặc đã được sử dụng | Mã OTP đã hết hạn hoặc đã được sử dụng. |
+| `OTP_TOO_MANY_ATTEMPTS` 🆕 | 429 | Nhập sai OTP quá 5 lần | Bạn đã nhập sai OTP quá số lần cho phép, vui lòng yêu cầu mã mới. |
+| `OTP_RESEND_TOO_SOON` 🆕 | 429 | Yêu cầu gửi lại OTP trong thời gian cooldown 60 giây | Vui lòng chờ trước khi yêu cầu gửi lại mã OTP. |
+| `WRONG_CURRENT_PASSWORD` 🆕 | 400 | Mật khẩu hiện tại không đúng khi đổi mật khẩu | Mật khẩu hiện tại không chính xác. |
+| `GOOGLE_TOKEN_INVALID` 🆕 | 401 | Google ID Token không hợp lệ, chưa xác minh email hoặc sai tài khoản liên kết | Xác thực Google thất bại, vui lòng thử lại. |
 
 ## 3. Nghiệp vụ lõi
 

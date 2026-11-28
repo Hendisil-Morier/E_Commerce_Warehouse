@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq.Expressions;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using ECommerceWarehouse.Application.Contracts.Persistence;
 using ECommerceWarehouse.Application.DTOs.Identity;
 using ECommerceWarehouse.Application.Services;
@@ -102,6 +104,22 @@ public class AuthServiceRefreshTests
         });
 
         var uow = new TestUnitOfWork();
+        var emailOtps = new InMemoryRepo<EmailVerificationOtp>(o => o.OtpId);
+        var otpHash = Convert.ToHexString(
+            HMACSHA256.HashData(
+                Encoding.UTF8.GetBytes("SuperSecretTestSigningKeyForUnitTests1234567890!"),
+                Encoding.UTF8.GetBytes("123456")))
+            .ToLowerInvariant();
+        emailOtps.Items.Add(new EmailVerificationOtp
+        {
+            OtpId = 1,
+            Email = "seller@emarket.vn",
+            OtpHash = otpHash,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+            CreatedAt = DateTime.UtcNow,
+            IsUsed = false
+        });
+        uow.Register(emailOtps);
         uow.Register(users);
         uow.Register(roles);
         uow.Register(userRoles);
@@ -223,6 +241,7 @@ public class AuthServiceRefreshTests
         {
             FullName = "Trần Doanh Nghiệp",
             Email = "seller@emarket.vn",
+            Otp = "123456",
             PhoneNumber = "0912345678",
             Password = "Password@123",
             Username = "doanhnghiep01"

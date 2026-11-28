@@ -42,6 +42,10 @@ ALTER TABLE UserRoles
 ALTER TABLE RefreshTokens
     ADD CONSTRAINT FK_RefreshTokens_Users FOREIGN KEY (UserId) REFERENCES Users (UserId) ON DELETE CASCADE;
 
+-- Mã OTP đặt lại mật khẩu gắn với người dùng.
+ALTER TABLE PasswordResetOtps
+    ADD CONSTRAINT FK_PasswordResetOtps_Users FOREIGN KEY (UserId) REFERENCES Users (UserId) ON DELETE CASCADE;
+
 -- Hồ sơ người bán gắn với một tài khoản đã đăng ký.
 ALTER TABLE Sellers
     ADD CONSTRAINT FK_Sellers_Users FOREIGN KEY (UserId) REFERENCES Users (UserId);

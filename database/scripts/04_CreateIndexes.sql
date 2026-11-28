@@ -172,6 +172,14 @@ CREATE INDEX IX_ReturnRequests_Customer_Created
 CREATE INDEX IX_RefreshTokens_User_Expires
     ON RefreshTokens (UserId, ExpiresAt);
 
+-- Tra cứu OTP mới nhất theo email.
+CREATE INDEX IX_PasswordResetOtps_Email_Created
+    ON PasswordResetOtps (Email, CreatedAt);
+
+-- Tra cứu OTP xác thực đăng ký theo email.
+CREATE INDEX IX_EmailVerificationOtps_Email_Created
+    ON EmailVerificationOtps (Email, CreatedAt);
+
 -- Seller duyệt/ngừng: lọc hồ sơ seller theo trạng thái.
 CREATE INDEX IX_Sellers_Status
     ON Sellers (Status);

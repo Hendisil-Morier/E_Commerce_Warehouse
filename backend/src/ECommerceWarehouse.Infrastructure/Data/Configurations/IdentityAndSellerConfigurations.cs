@@ -20,6 +20,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
         builder.Property(x => x.PhoneNumber).HasMaxLength(20);
         builder.Property(x => x.AvatarUrl).HasMaxLength(1000);
+        builder.Property(x => x.GoogleSubject).HasMaxLength(64);
+        builder.HasIndex(x => x.GoogleSubject).IsUnique();
         builder.Property(x => x.CreatedAt).HasColumnType("datetime(3)");
         builder.Property(x => x.UpdatedAt).HasColumnType("datetime(3)");
     }
@@ -75,6 +77,43 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
                .WithMany(u => u.RefreshTokens)
                .HasForeignKey(x => x.UserId)
                .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class PasswordResetOtpConfiguration : IEntityTypeConfiguration<PasswordResetOtp>
+{
+    public void Configure(EntityTypeBuilder<PasswordResetOtp> builder)
+    {
+        builder.ToTable("PasswordResetOtps");
+        builder.HasKey(x => x.OtpId);
+        builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
+        builder.Property(x => x.OtpHash).HasMaxLength(255).IsRequired();
+        builder.Property(x => x.ExpiresAt).HasColumnType("datetime(3)");
+        builder.Property(x => x.AttemptCount).HasDefaultValue(0);
+        builder.Property(x => x.IsUsed).HasDefaultValue(false);
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(3)");
+        builder.HasIndex(x => new { x.Email, x.CreatedAt });
+
+        builder.HasOne(x => x.User)
+               .WithMany()
+               .HasForeignKey(x => x.UserId)
+               .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class EmailVerificationOtpConfiguration : IEntityTypeConfiguration<EmailVerificationOtp>
+{
+    public void Configure(EntityTypeBuilder<EmailVerificationOtp> builder)
+    {
+        builder.ToTable("EmailVerificationOtps");
+        builder.HasKey(x => x.OtpId);
+        builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
+        builder.Property(x => x.OtpHash).HasMaxLength(255).IsRequired();
+        builder.Property(x => x.ExpiresAt).HasColumnType("datetime(3)");
+        builder.Property(x => x.AttemptCount).HasDefaultValue(0);
+        builder.Property(x => x.IsUsed).HasDefaultValue(false);
+        builder.Property(x => x.CreatedAt).HasColumnType("datetime(3)");
+        builder.HasIndex(x => new { x.Email, x.CreatedAt });
     }
 }
 

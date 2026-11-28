@@ -57,12 +57,14 @@ CREATE TABLE Users (
     PasswordHash  VARCHAR(500)  NOT NULL,                       -- chỉ lưu hash (BCrypt/PBKDF2), không lưu mật khẩu thô
     PhoneNumber   VARCHAR(20)   NULL,
     AvatarUrl     VARCHAR(1000) NULL,
+    GoogleSubject VARCHAR(64)   NULL,
     IsActive      BOOLEAN       NOT NULL DEFAULT TRUE,          -- FALSE = khóa tài khoản
     CreatedAt     DATETIME(3)   NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
     UpdatedAt     DATETIME(3)   NULL,
     CONSTRAINT PK_Users PRIMARY KEY (UserId),
     CONSTRAINT UQ_Users_Email UNIQUE (Email),
-    CONSTRAINT UQ_Users_Username UNIQUE (Username)
+    CONSTRAINT UQ_Users_Username UNIQUE (Username),
+    CONSTRAINT UQ_Users_GoogleSubject UNIQUE (GoogleSubject)
 ) ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS Roles;
@@ -97,6 +99,37 @@ CREATE TABLE RefreshTokens (
     ReplacedByHash   CHAR(64)     NULL,                         -- token mới thay thế khi xoay vòng (rotation)
     CONSTRAINT PK_RefreshTokens PRIMARY KEY (RefreshTokenId),
     CONSTRAINT UQ_RefreshTokens_Hash UNIQUE (TokenHash)
+) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS PasswordResetOtps;
+-- Mã OTP 6 số đặt lại mật khẩu (băm HMAC-SHA256, hết hạn sau 5 phút, tối đa 5 lần thử).
+CREATE TABLE PasswordResetOtps (
+    OtpId         BIGINT       NOT NULL AUTO_INCREMENT,
+    UserId        BIGINT       NOT NULL,
+    Email         VARCHAR(255) NOT NULL,
+    OtpHash       VARCHAR(255) NOT NULL,
+    ExpiresAt     DATETIME(3)  NOT NULL,
+    AttemptCount  INT          NOT NULL DEFAULT 0,
+    IsUsed        TINYINT(1)   NOT NULL DEFAULT 0,
+    CreatedAt     DATETIME(3)  NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
+    CONSTRAINT PK_PasswordResetOtps PRIMARY KEY (OtpId),
+    CONSTRAINT CK_PasswordResetOtps_Attempt CHECK (AttemptCount >= 0),
+    CONSTRAINT CK_PasswordResetOtps_IsUsed CHECK (IsUsed IN (0, 1))
+) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS EmailVerificationOtps;
+-- Mã OTP 6 số xác thực email khi đăng ký tài khoản (băm HMAC-SHA256, hết hạn sau 5 phút, tối đa 5 lần thử).
+CREATE TABLE EmailVerificationOtps (
+    OtpId         BIGINT       NOT NULL AUTO_INCREMENT,
+    Email         VARCHAR(255) NOT NULL,
+    OtpHash       VARCHAR(255) NOT NULL,
+    ExpiresAt     DATETIME(3)  NOT NULL,
+    AttemptCount  INT          NOT NULL DEFAULT 0,
+    IsUsed        TINYINT(1)   NOT NULL DEFAULT 0,
+    CreatedAt     DATETIME(3)  NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
+    CONSTRAINT PK_EmailVerificationOtps PRIMARY KEY (OtpId),
+    CONSTRAINT CK_EmailVerificationOtps_Attempt CHECK (AttemptCount >= 0),
+    CONSTRAINT CK_EmailVerificationOtps_IsUsed CHECK (IsUsed IN (0, 1))
 ) ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS Sellers;
@@ -161,6 +194,7 @@ CREATE TABLE Products (
     ProductName    VARCHAR(250)  NOT NULL,
     Description    TEXT          NULL,
     ProductStatus  VARCHAR(30)   NOT NULL DEFAULT 'Draft',
+    RejectReason   VARCHAR(500)  NULL,
     CreatedAt      DATETIME(3)   NOT NULL DEFAULT (UTC_TIMESTAMP(3)),
     UpdatedAt      DATETIME(3)   NULL,
     CONSTRAINT PK_Products PRIMARY KEY (ProductId),

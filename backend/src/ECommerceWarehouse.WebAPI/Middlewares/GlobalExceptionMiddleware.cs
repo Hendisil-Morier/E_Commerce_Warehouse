@@ -72,6 +72,7 @@ public class GlobalExceptionMiddleware
         string title;
         string detail;
         IDictionary<string, string[]>? errors = null;
+        IReadOnlyDictionary<string, object?>? extraExtensions = null;
 
         switch (exception)
         {
@@ -99,6 +100,7 @@ public class GlobalExceptionMiddleware
                 code = businessEx.Code;
                 title = GetDefaultTitleForStatus(status);
                 detail = businessEx.Message;
+                extraExtensions = businessEx.Extensions;
                 break;
 
             case DbUpdateConcurrencyException:
@@ -152,6 +154,14 @@ public class GlobalExceptionMiddleware
             problem.Extensions["errors"] = errors;
         }
 
+        if (extraExtensions != null)
+        {
+            foreach (var kvp in extraExtensions)
+            {
+                problem.Extensions[kvp.Key] = kvp.Value;
+            }
+        }
+
         return problem;
     }
 
@@ -177,6 +187,7 @@ public class GlobalExceptionMiddleware
         StatusCodes.Status403Forbidden => "Không có quyền truy cập",
         StatusCodes.Status404NotFound => "Không tìm thấy tài nguyên",
         StatusCodes.Status409Conflict => "Vi phạm quy tắc nghiệp vụ",
+        StatusCodes.Status429TooManyRequests => "Quá nhiều yêu cầu",
         _ => "Lỗi xử lý yêu cầu"
     };
 

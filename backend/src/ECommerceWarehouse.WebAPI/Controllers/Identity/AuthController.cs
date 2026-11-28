@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using ECommerceWarehouse.Application.DTOs.Identity;
 using ECommerceWarehouse.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ECommerceWarehouse.WebAPI.Controllers.Identity;
 
@@ -14,6 +17,23 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService)
     {
         _authService = authService;
+    }
+
+    /// <summary>
+    /// Gửi mã OTP 6 số xác thực email trước khi đăng ký tài khoản
+    /// </summary>
+    [HttpPost("/api/v1/auth/register/send-otp")]
+    [EnableRateLimiting("ForgotPasswordPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> SendRegisterOtp(
+        [FromBody] SendRegisterOtpRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        await _authService.SendRegisterOtpAsync(model, cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -85,5 +105,91 @@ public class AuthController : ControllerBase
     {
         await _authService.LogoutAsync(model, cancellationToken);
         return Ok(new { success = true, message = "Đăng xuất thành công!" });
+    }
+
+    /// <summary>
+    /// Yêu cầu gửi mã OTP đặt lại mật khẩu qua Email (luôn trả 204 dù email có tồn tại hay không)
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [EnableRateLimiting("ForgotPasswordPolicy")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        await _authService.ForgotPasswordAsync(model, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Kiểm tra mã OTP đặt lại mật khẩu (không tiêu thụ OTP)
+    /// </summary>
+    [HttpPost("verify-otp")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> VerifyOtp(
+        [FromBody] VerifyOtpRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        await _authService.VerifyOtpAsync(model, cancellationToken);
+        return Ok(new { success = true, message = "Mã OTP hợp lệ." });
+    }
+
+    /// <summary>
+    /// Đặt lại mật khẩu mới bằng mã OTP và thu hồi toàn bộ Refresh Token
+    /// </summary>
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        await _authService.ResetPasswordAsync(model, cancellationToken);
+        return Ok(new { success = true, message = "Đặt lại mật khẩu thành công!" });
+    }
+
+    /// <summary>
+    /// Đổi mật khẩu khi đã đăng nhập, thu hồi toàn bộ Refresh Token cũ và cấp cặp token mới
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!long.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var result = await _authService.ChangePasswordAsync(userId, model, ipAddress, cancellationToken);
+        return Ok(new { success = true, data = result, message = "Đổi mật khẩu thành công!" });
+    }
+
+    /// <summary>
+    /// Đăng nhập bằng Google (ID Token Flow)
+    /// </summary>
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GoogleLogin(
+        [FromBody] GoogleLoginRequestDto model,
+        CancellationToken cancellationToken)
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var result = await _authService.GoogleLoginAsync(model, ipAddress, cancellationToken);
+        return Ok(new { success = true, data = result, message = "Đăng nhập Google thành công!" });
     }
 }

@@ -8,12 +8,19 @@ public class BusinessException : Exception
 {
     public string Code { get; }
     public int HttpStatus { get; }
+    public IReadOnlyDictionary<string, object?>? Extensions { get; }
 
-    public BusinessException(string code, string message, int httpStatus = 409, Exception? innerException = null)
+    public BusinessException(
+        string code,
+        string message,
+        int httpStatus = 409,
+        Exception? innerException = null,
+        IReadOnlyDictionary<string, object?>? extensions = null)
         : base(message, innerException)
     {
         Code = code;
         HttpStatus = httpStatus;
+        Extensions = extensions;
     }
 
     public static BusinessException InsufficientStock(string? message = null)

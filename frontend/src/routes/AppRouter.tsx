@@ -67,6 +67,12 @@ const LoginPage = lazy(() =>
 const RegisterPage = lazy(() =>
   import("@/features/auth/pages/RegisterPage").then((m) => ({ default: m.RegisterPage }))
 );
+const ForgotPasswordPage = lazy(() =>
+  import("@/features/auth/pages/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage }))
+);
+const ChangePasswordPage = lazy(() =>
+  import("@/features/auth/pages/ChangePasswordPage").then((m) => ({ default: m.ChangePasswordPage }))
+);
 
 // Seller (S0–S9)
 const BecomeSellerPage = lazy(() =>
@@ -292,6 +298,10 @@ const router = createBrowserRouter([
                 path: ROUTES.ACCOUNT_ADDRESSES,
                 element: withSuspense(<CustomerAccountPage />),
               },
+              {
+                path: ROUTES.CHANGE_PASSWORD,
+                element: withSuspense(<ChangePasswordPage />),
+              },
             ],
           },
         ],
@@ -380,6 +390,7 @@ const router = createBrowserRouter([
     children: [
       { path: ROUTES.LOGIN, element: withSuspense(<LoginPage />) },
       { path: ROUTES.REGISTER, element: withSuspense(<RegisterPage />) },
+      { path: ROUTES.FORGOT_PASSWORD, element: withSuspense(<ForgotPasswordPage />) },
     ],
   },
   { path: ROUTES.FORBIDDEN, element: <ForbiddenPage /> },

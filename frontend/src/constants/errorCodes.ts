@@ -12,6 +12,12 @@ export const ERROR_CODES: Record<string, string> = {
   USERNAME_ALREADY_EXISTS: "Tên đăng nhập này đã được sử dụng.",
   ACCOUNT_LOCKED: "Tài khoản của bạn đang bị khóa.",
   INVALID_REFRESH_TOKEN: "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.",
+  OTP_INVALID: "Mã OTP không chính xác.",
+  OTP_EXPIRED: "Mã OTP đã hết hạn hoặc đã được sử dụng.",
+  OTP_TOO_MANY_ATTEMPTS: "Bạn đã nhập sai OTP quá 5 lần, vui lòng yêu cầu mã mới.",
+  OTP_RESEND_TOO_SOON: "Vui lòng chờ trước khi yêu cầu gửi lại mã OTP.",
+  WRONG_CURRENT_PASSWORD: "Mật khẩu hiện tại không chính xác.",
+  GOOGLE_TOKEN_INVALID: "Xác thực Google thất bại, vui lòng thử lại.",
 
   // 3. Nghiệp vụ lõi
   INSUFFICIENT_STOCK: "Sản phẩm không đủ hàng.",

@@ -3,6 +3,7 @@ export const ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   REGISTER: "/register",
+  FORGOT_PASSWORD: "/forgot-password",
   FORBIDDEN: "/forbidden",
   PRODUCTS: "/products",
   PRODUCT_DETAIL: "/products/:id",
@@ -13,6 +14,7 @@ export const ROUTES = {
   ORDER_DETAIL: "/orders/:id",
   ACCOUNT: "/account",
   ACCOUNT_ADDRESSES: "/account/addresses",
+  CHANGE_PASSWORD: "/account/change-password",
   BECOME_SELLER: "/become-seller",
 
   // Seller Area (/seller)

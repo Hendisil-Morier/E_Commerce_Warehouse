@@ -15,7 +15,8 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
-        string? contentRootPath = null)
+        string? contentRootPath = null,
+        bool isDevelopment = false)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -30,6 +31,32 @@ public static class DependencyInjection
         var fileStorageOptions = BuildFileStorageOptions(configuration, contentRootPath);
         services.AddSingleton(fileStorageOptions);
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
+        var emailSection = configuration.GetSection(EmailSettings.SectionName);
+        var emailSettings = new EmailSettings
+        {
+            Host = emailSection[nameof(EmailSettings.Host)]?.Trim() ?? string.Empty,
+            Port = int.TryParse(emailSection[nameof(EmailSettings.Port)], out var port) && port > 0 ? port : 587,
+            User = emailSection[nameof(EmailSettings.User)]?.Trim() ?? string.Empty,
+            Password = emailSection[nameof(EmailSettings.Password)] ?? string.Empty,
+            FromName = string.IsNullOrWhiteSpace(emailSection[nameof(EmailSettings.FromName)])
+                ? "KHO SÀN+"
+                : emailSection[nameof(EmailSettings.FromName)]!.Trim(),
+            FromAddress = emailSection[nameof(EmailSettings.FromAddress)]?.Trim() ?? string.Empty,
+            IsDevelopment = isDevelopment
+        };
+        if (!isDevelopment &&
+            (string.IsNullOrWhiteSpace(emailSettings.Host) ||
+             string.IsNullOrWhiteSpace(emailSettings.User) ||
+             string.IsNullOrWhiteSpace(emailSettings.Password) ||
+             string.IsNullOrWhiteSpace(emailSettings.FromAddress)))
+        {
+            throw new InvalidOperationException(
+                "EmailSettings SMTP chưa được cấu hình đầy đủ (Host, User, Password, FromAddress) cho môi trường hiện tại.");
+        }
+        services.AddSingleton(emailSettings);
+        services.AddSingleton<IEmailSender, MailKitEmailSender>();
+        services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 
         services.AddScoped<ISellerRepository, SellerRepository>();
         services.AddScoped<IShopRepository, ShopRepository>();

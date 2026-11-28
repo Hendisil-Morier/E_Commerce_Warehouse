@@ -22,6 +22,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
+    public DbSet<EmailVerificationOtp> EmailVerificationOtps => Set<EmailVerificationOtp>();
     public DbSet<Seller> Sellers => Set<Seller>();
     public DbSet<Shop> Shops => Set<Shop>();
     public DbSet<SellerSettlement> SellerSettlements => Set<SellerSettlement>();

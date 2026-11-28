@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using ECommerceWarehouse.Application;
 using ECommerceWarehouse.Application.Contracts.Services;
 using ECommerceWarehouse.Domain.Exceptions;
@@ -92,8 +94,43 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddApplication();
 
 // Đăng ký Infrastructure (DbContext, UnitOfWork, Repositories, AuthService, Storage...)
-builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.ContentRootPath, builder.Environment.IsDevelopment());
 builder.Services.AddHostedService<ECommerceWarehouse.WebAPI.BackgroundServices.OrderExpirationBackgroundService>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/problem+json; charset=utf-8";
+        var problem = new ProblemDetails
+        {
+            Type = "https://httpstatuses.com/429",
+            Title = "Quá nhiều yêu cầu",
+            Status = StatusCodes.Status429TooManyRequests,
+            Detail = "Bạn đã gửi quá nhiều yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau ít phút."
+        };
+        problem.Extensions["code"] = ErrorCodes.OtpResendTooSoon;
+        problem.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+        await context.HttpContext.Response.WriteAsync(
+            JsonSerializer.Serialize(problem, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+            cancellationToken);
+    };
+
+    options.AddPolicy("ForgotPasswordPolicy", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ip,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+});
 
 // Đăng ký JWT Bearer Authentication, Role Policies và ICurrentUser
 builder.Services.AddJwtAuthenticationAndPolicies(builder.Configuration);
@@ -165,6 +202,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

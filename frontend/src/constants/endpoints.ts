@@ -2,7 +2,13 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: "/api/v1/Auth/login",
     REGISTER: "/api/v1/Auth/register",
+    SEND_REGISTER_OTP: "/api/v1/auth/register/send-otp",
     REFRESH: "/api/v1/Auth/refresh",
+    FORGOT_PASSWORD: "/api/v1/Auth/forgot-password",
+    VERIFY_OTP: "/api/v1/Auth/verify-otp",
+    RESET_PASSWORD: "/api/v1/Auth/reset-password",
+    CHANGE_PASSWORD: "/api/v1/Auth/change-password",
+    GOOGLE: "/api/v1/Auth/google",
   },
   SELLERS: {
     BASE: "/api/v1/sellers",

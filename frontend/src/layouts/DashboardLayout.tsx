@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ArrowRightLeft, LogOut, User as UserIcon } from "lucide-react";
+import { ArrowRightLeft, KeyRound, LogOut, User as UserIcon } from "lucide-react";
 import type { NavItem } from "@/constants/navigation";
 import { ROUTES } from "@/constants/routes";
 import { Sidebar } from "@/layouts/Sidebar";
@@ -175,6 +175,28 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
               </div>
             </div>
+
+            <Link
+              to={ROUTES.CHANGE_PASSWORD}
+              aria-label="Đổi mật khẩu"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                minHeight: "44px",
+                padding: "0 12px",
+                borderRadius: "8px",
+                border: "1px solid var(--color-border)",
+                backgroundColor: "var(--color-white)",
+                color: "var(--color-dark)",
+                fontSize: "0.83rem",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              <KeyRound size={15} />
+              <span>Đổi mật khẩu</span>
+            </Link>
 
             <button
               type="button"

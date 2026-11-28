@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { authService } from "@/services/authService";
+import { GoogleSignInButton } from "@/features/auth/components/GoogleSignInButton";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthResponse } from "@/types/auth";
 import { getErrorMessage } from "@/utils/errorHandler";
@@ -50,6 +51,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const resetSuccessMessage = (location.state as { resetSuccessMessage?: string } | null)?.resetSuccessMessage;
 
   const redirectByRole = (userData: Pick<AuthResponse, "role" | "roles">) => {
     const fromState = (
@@ -106,6 +108,24 @@ export const LoginPage: React.FC = () => {
         </p>
       </div>
 
+      {resetSuccessMessage && !errorMessage && (
+        <div
+          role="status"
+          style={{
+            backgroundColor: "#f0fdfa",
+            border: "1px solid #99f6e4",
+            color: "#0f766e",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            marginBottom: "18px",
+            fontSize: "0.85rem",
+            lineHeight: 1.5,
+          }}
+        >
+          {resetSuccessMessage}
+        </div>
+      )}
+
       {errorMessage && (
         <div
           role="alert"
@@ -147,9 +167,22 @@ export const LoginPage: React.FC = () => {
         </div>
 
         <div className="ew-field">
-          <label htmlFor={passwordId} className="ew-field__label">
-            Mật khẩu <span className="ew-field__required">*</span>
-          </label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <label htmlFor={passwordId} className="ew-field__label" style={{ marginBottom: 0 }}>
+              Mật khẩu <span className="ew-field__required">*</span>
+            </label>
+            <Link
+              to={ROUTES.FORGOT_PASSWORD}
+              style={{
+                fontSize: "0.82rem",
+                color: "var(--color-primary)",
+                fontWeight: 600,
+                textDecoration: "none",
+              }}
+            >
+              Quên mật khẩu?
+            </Link>
+          </div>
           <div className="ew-control-wrap">
             <input
               id={passwordId}
@@ -184,6 +217,12 @@ export const LoginPage: React.FC = () => {
         >
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
+
+        <GoogleSignInButton
+          disabled={loading}
+          onSuccess={(authData) => redirectByRole(authData)}
+          onError={(msg) => setErrorMessage(msg)}
+        />
 
         <p
           style={{
